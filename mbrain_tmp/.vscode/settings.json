@@ -1,0 +1,5 @@
+{
+    "python.defaultInterpreterPath": "/Users/glerma/.local/share/mamba/envs/mbrain/bin/python",
+    "python.terminal.activateEnvironment": false,
+    "python-envs.pythonProjects": []
+}
