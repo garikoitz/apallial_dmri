@@ -2,12 +2,8 @@
 """
 Configuration loader for mbrain pipeline.
 
-This module provides a centralized way to load configuration from config.yaml.
+This module provides a centralized way to load configuration from config1.yaml.
 All scripts should use this to get parameters instead of hardcoding values.
-
-Supports multiple pipelines via environment variable or --pipeline argument:
-  - MBRAIN_PIPELINE=flip2 uses config.yaml (default)
-  - MBRAIN_PIPELINE=flip1 uses config1.yaml
 
 Usage:
     from config_loader import load_config, get_config
@@ -34,23 +30,13 @@ _current_pipeline: Optional[str] = None
 
 def get_config_path(pipeline: Optional[str] = None) -> Path:
     """
-    Get the path to config file based on pipeline.
-    
-    Args:
-        pipeline: 'flip1' or 'flip2' (default). If None, uses MBRAIN_PIPELINE env var.
+    Get the path to config1.yaml.
     
     Returns:
-        Path to config.yaml or config1.yaml
+        Path to config1.yaml
     """
-    if pipeline is None:
-        pipeline = os.environ.get('MBRAIN_PIPELINE', 'flip2')
-    
     base_dir = Path(__file__).parent.parent
-    
-    if pipeline == 'flip1':
-        return base_dir / "config1.yaml"
-    else:
-        return base_dir / "config.yaml"
+    return base_dir / "config1.yaml"
 
 def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -58,7 +44,7 @@ def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = No
     
     Args:
         config_path: Optional explicit path to config file.
-        pipeline: 'flip1' or 'flip2'. Ignored if config_path is provided.
+        pipeline: Ignored, kept for API compatibility.
         
     Returns:
         Dictionary with all configuration parameters.
@@ -68,11 +54,7 @@ def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = No
     if config_path is None:
         config_path = get_config_path(pipeline)
     
-    # Track which pipeline is loaded
-    if 'config1.yaml' in str(config_path):
-        _current_pipeline = 'flip1'
-    else:
-        _current_pipeline = 'flip2'
+    _current_pipeline = 'flip1'
     
     with open(config_path, 'r') as f:
         _config = yaml.safe_load(f)
@@ -80,7 +62,7 @@ def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = No
     return _config
 
 def get_current_pipeline() -> str:
-    """Get the currently loaded pipeline name ('flip1' or 'flip2')."""
+    """Get the currently loaded pipeline name ('flip1')."""
     global _current_pipeline
     if _current_pipeline is None:
         get_config()  # This will set _current_pipeline
@@ -146,8 +128,14 @@ def get_paths() -> Dict[str, str]:
         paths['base_dir'] = paths['repo_dir']
     if 'allen_atlas_dir' in paths and 'atlas_dir' not in paths:
         paths['atlas_dir'] = paths['allen_atlas_dir']
-    if 'allen_atlas_dir' in paths and 'atlas_rois_dir' not in paths:
-        paths['atlas_rois_dir'] = paths['allen_atlas_dir'] + '/rois'
+    
+    # Ensure atlas_rois_dir is set
+    if 'atlas_rois_dir' not in paths:
+        if 'allen_atlas_dir' in paths:
+            paths['atlas_rois_dir'] = paths['allen_atlas_dir'] + '/rois'
+        elif 'atlas_dir' in paths:
+            paths['atlas_rois_dir'] = paths['atlas_dir'] + '/rois'
+            
     if 'matlab_path' in paths and 'matlab_bin' not in paths:
         paths['matlab_bin'] = paths['matlab_path']
     if 'rtp2_pipeline_path' in paths and 'afq_path' not in paths:
@@ -259,5 +247,8 @@ if __name__ == "__main__":
         print(f"  {group}: {subjects}")
     
     print("\nTract definitions:")
-    for tract in get_tract_definitions():
-        print(f"  {tract['name']}: {tract['seed']} -> {tract['target']}")
+    if 'tracts' in cfg and 'pairs' in cfg['tracts']:
+        for tract in cfg['tracts']['pairs']:
+             print(f"  {tract.get('name', 'N/A')}: {tract.get('seed', 'N/A')} -> {tract.get('target', 'N/A')}")
+    else:
+        print("  No tract pairs defined in config.")

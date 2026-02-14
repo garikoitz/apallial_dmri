@@ -5,12 +5,12 @@ Batch Processing Script for FLIP1 Pipeline
 This script processes all subjects through the complete flip1 pipeline:
 1. Create folder structure in mrtrix_preproc_flip1
 2. Flip T2w images
-3. Flip manual ROIs
+3. Flip manual ROIs (AP/APTR only)
 4. Preprocess DWI (convert, flip, denoise, bias correct, register to T2w)
 5. Generate FOD
-6. Resample ROIs to FOD space
-7. Create graft segments
-8. Run tractography with MATLAB cleaning
+6. Resample ROIs to FOD space (AP/APTR only)
+7. Create graft segments (AP/APTR only)
+8. Run tractography with MATLAB cleaning (AP/APTR only)
 
 Usage:
     # Process a single subject:
@@ -21,6 +21,9 @@ Usage:
     
     # Process all AP subjects:
     python functions/batch_process_flip1.py --group AP
+    
+    # Process all CTRL subjects:
+    python functions/batch_process_flip1.py --group CTRL
     
     # Process all AP and APTR subjects:
     python functions/batch_process_flip1.py --group AP APTR
@@ -84,16 +87,20 @@ def file_exists(path):
     return os.path.exists(path) and os.path.getsize(path) > 0
 
 
-def step1_create_folders(subject, session, derivatives_dir, dry_run=False):
+def step1_create_folders(subject, session, derivatives_dir, group, dry_run=False):
     """Step 1: Create folder structure."""
     log_message(f"Step 1: Creating folder structure")
     
     base_dir = os.path.join(derivatives_dir, subject, session)
     folders = [
         os.path.join(base_dir, "dwi"),
-        os.path.join(base_dir, "manual_roi"),
-        os.path.join(base_dir, "manual_roi", "fod_space"),
     ]
+    
+    if group != "CTRL":
+        folders.extend([
+            os.path.join(base_dir, "manual_roi"),
+            os.path.join(base_dir, "manual_roi", "fod_space"),
+        ])
     
     for folder in folders:
         if not os.path.exists(folder):
@@ -277,9 +284,9 @@ def step4_preprocess_dwi(subject, session, bids_dir, derivatives_dir, dry_run=Fa
     run_cmd(f"rm -rf '{tmp_bias}'", dry_run)
     print(f"  Created: dwi_flip_gradcheck_denoise_bias.mif")
     
-    # Step 4h: Extract mean b0 for registration
+    # Step 4h: Extract mean low-b for registration (use b<50 as "b0" for mouse data)
     b0_bias = os.path.join(dwi_dir, "b0_bias.mif")
-    cmd = f"dwiextract '{dwi_bias}' - -bzero | mrmath - mean '{b0_bias}' -axis 3 -force -quiet"
+    cmd = f"dwiextract '{dwi_bias}' - -bvalue 50 | mrmath - mean '{b0_bias}' -axis 3 -force -quiet"
     if not run_cmd(cmd, dry_run):
         return False
     
@@ -324,9 +331,9 @@ def step4_preprocess_dwi(subject, session, bids_dir, derivatives_dir, dry_run=Fa
         return False
     print(f"  Created: dwi_flip_gradcheck_denoise_bias_anat.mif")
     
-    # Step 4m: Extract final b0
+    # Step 4m: Extract final low-b reference
     b0_final = os.path.join(dwi_dir, "b0_final.mif")
-    cmd = f"dwiextract '{final_dwi}' - -bzero | mrmath - mean '{b0_final}' -axis 3 -force -quiet"
+    cmd = f"dwiextract '{final_dwi}' - -bvalue 50 | mrmath - mean '{b0_final}' -axis 3 -force -quiet"
     if not run_cmd(cmd, dry_run):
         return False
     print(f"  Created: b0_final.mif")
@@ -471,7 +478,7 @@ def step8_tractography(subject, session, derivatives_dir, dry_run=False, force=F
     return True
 
 
-def process_subject(subject, session, config, steps="1,2,3,4,5,6,7,8", dry_run=False, force=False):
+def process_subject(subject, session, config, group, steps="1,2,3,4,5,6,7,8", dry_run=False, force=False):
     """Process a single subject through all specified steps."""
     
     log_message(f"{'='*70}")
@@ -488,7 +495,7 @@ def process_subject(subject, session, config, steps="1,2,3,4,5,6,7,8", dry_run=F
     results = {}
     
     if 1 in step_list:
-        results[1] = step1_create_folders(subject, session, derivatives_dir, dry_run)
+        results[1] = step1_create_folders(subject, session, derivatives_dir, group, dry_run)
     
     if 2 in step_list:
         results[2] = step2_flip_t2w(subject, session, bids_dir, derivatives_dir, dry_run, force)
@@ -496,7 +503,7 @@ def process_subject(subject, session, config, steps="1,2,3,4,5,6,7,8", dry_run=F
             log_message("Step 2 failed, stopping", "ERROR")
             return results
     
-    if 3 in step_list:
+    if 3 in step_list and group != "CTRL":
         results[3] = step3_flip_rois(subject, session, old_derivatives_dir, derivatives_dir, dry_run, force)
         if not results.get(3, True):
             log_message("Step 3 failed, stopping", "ERROR")
@@ -514,19 +521,19 @@ def process_subject(subject, session, config, steps="1,2,3,4,5,6,7,8", dry_run=F
             log_message("Step 5 failed, stopping", "ERROR")
             return results
     
-    if 6 in step_list:
+    if 6 in step_list and group != "CTRL":
         results[6] = step6_resample_rois(subject, session, derivatives_dir, dry_run, force)
         if not results.get(6, True):
             log_message("Step 6 failed, stopping", "ERROR")
             return results
     
-    if 7 in step_list:
+    if 7 in step_list and group != "CTRL":
         results[7] = step7_create_segments(subject, session, derivatives_dir, dry_run, force)
         if not results.get(7, True):
             log_message("Step 7 failed, stopping", "ERROR")
             return results
     
-    if 8 in step_list:
+    if 8 in step_list and group != "CTRL":
         results[8] = step8_tractography(subject, session, derivatives_dir, dry_run, force)
     
     return results
@@ -539,7 +546,7 @@ def main():
         epilog=__doc__
     )
     parser.add_argument("--subject", help="Single subject ID to process")
-    parser.add_argument("--group", nargs="+", choices=["AP", "APTR"], 
+    parser.add_argument("--group", nargs="+", choices=["AP", "APTR", "CTRL"], 
                         help="Process all subjects in group(s)")
     parser.add_argument("--steps", default="1,2,3,4,5,6,7,8",
                         help="Comma-separated list of steps to run (default: all)")
@@ -557,7 +564,7 @@ def main():
     
     if args.subject:
         # Find session for this subject
-        for group_name in ["AP", "APTR"]:
+        for group_name in ["AP", "APTR", "CTRL"]:
             for subj_info in config['groups'].get(group_name, []):
                 if subj_info['id'] == args.subject:
                     subjects_to_process.append((args.subject, subj_info['session'], group_name))
@@ -592,7 +599,7 @@ def main():
         log_message(f"\n[{i}/{len(subjects_to_process)}] Subject: {subject} (Group: {group})")
         
         results = process_subject(
-            subject, session, config,
+            subject, session, config, group,
             steps=args.steps,
             dry_run=args.dry_run,
             force=args.force

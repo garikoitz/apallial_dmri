@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Segment isocortex ROI into anterior/central/posterior AND dorsal/ventral.
+Segment isocortex ROI into 5 anterior-posterior segments.
 
-For each slice in the medial-lateral (Z) direction:
-- Divide each slice into dorsal (top half) and ventral (bottom half)
-- Accumulate across slices within each anterior/central/posterior section
+For CTRL subjects, divides isocortex along the anterior-posterior axis (X in flip1 space)
+into 5 equal segments:
+  - anterior (highest X)
+  - anterior_central
+  - central  
+  - posterior_central
+  - posterior (lowest X)
 
-Output: 6 segments per hemisphere:
-- {hemi}_anterior_dorsal, {hemi}_anterior_ventral
-- {hemi}_central_dorsal, {hemi}_central_ventral  
-- {hemi}_posterior_dorsal, {hemi}_posterior_ventral
+Output: 10 segment files per subject (5 positions × 2 hemispheres)
+  - isocortex_{left,right}_{position}.nii.gz
+
+Parameters are read from config1.yaml (segment_rois.isocortex_segments section).
 
 Usage: 
     python segment_isocortex_slicewise.py --subject sub-129-921-R1F
@@ -54,31 +58,47 @@ def get_subjects(group=None, subject=None):
 
 
 def segment_isocortex(subject, session):
-    """Segment isocortex ROI for a single subject."""
+    """Segment isocortex ROI for a single subject into 5 A-P segments."""
     cfg = load_config()
     paths = cfg.get('paths', {})
+    segment_cfg = cfg.get('segment_rois', {}).get('isocortex_segments', {})
     
-    # Use flip2 derivatives folder
+    # Get segment configuration
+    num_segments = segment_cfg.get('num_segments', 5)
+    positions = segment_cfg.get('positions', [
+        'anterior', 'anterior_central', 'central', 'posterior_central', 'posterior'
+    ])
+    output_folder = segment_cfg.get('folder', 'isocortex_segments_v2/')
+    
+    # Use flip1 derivatives folder
     base_dir = Path(paths['derivatives_dir']) / subject / session
 
     # Output directory
-    output_dir = base_dir / "dwi" / "isocortex_segments_v2"
+    output_dir = base_dir / "dwi" / output_folder.rstrip('/')
     output_dir.mkdir(parents=True, exist_ok=True)
     
     print(f"\n{'='*60}")
     print(f"Segmenting isocortex: {subject}/{session}")
+    print(f"Number of A-P segments: {num_segments}")
+    print(f"Positions: {positions}")
     print(f"{'='*60}")
 
     # Process both hemispheres
     for hemi in ["left", "right"]:
         print(f"\n--- Processing {hemi} hemisphere ---")
         
-        # Input ROI (from atlas coregistration)
-        roi_path = base_dir / "dwi" / "atlas" / "rois" / f"roi_isocortex_{hemi}.nii.gz"
+        # Input ROI (from atlas coregistration - now in atlas/rois/fod_space/)
+        roi_path = base_dir / "atlas" / "rois" / "fod_space" / f"roi_isocortex_{hemi}.nii.gz"
         
+        if not roi_path.exists():
+            # Try old path for backward compatibility
+            roi_path = base_dir / "dwi" / "atlas" / "rois" / f"roi_isocortex_{hemi}.nii.gz"
+            
         if not roi_path.exists():
             print(f"  WARNING: ROI not found: {roi_path}")
             continue
+        
+        print(f"  Input ROI: {roi_path}")
         
         # Load the ROI
         img = nib.load(str(roi_path))
@@ -100,72 +120,57 @@ def segment_isocortex(subject, session):
         print(f"  Y range (dor-vent): {y_coords.min()} - {y_coords.max()}")
         print(f"  Z range (med-lat): {z_coords.min()} - {z_coords.max()}")
         
-        # Divide X (anterior-posterior) into thirds
+        # Divide X (anterior-posterior) into 5 equal parts
         x_min, x_max = x_coords.min(), x_coords.max()
         x_range = x_max - x_min + 1
-        x_third = x_range / 3
+        segment_size = x_range / num_segments
         
-        x_ant_max = x_min + x_third
-        x_cent_max = x_min + 2 * x_third
+        # Calculate boundaries for 5 segments
+        # positions are ordered: anterior (high X) -> posterior (low X)
+        # So we need to assign high X to anterior, low X to posterior
+        boundaries = []
+        for i in range(num_segments + 1):
+            boundaries.append(x_min + i * segment_size)
         
-        print(f"  Anterior: X >= {x_cent_max:.1f}")
-        print(f"  Central: {x_ant_max:.1f} <= X < {x_cent_max:.1f}")
-        print(f"  Posterior: X < {x_ant_max:.1f}")
+        print(f"\n  Segment boundaries (X values):")
+        for i, pos in enumerate(positions):
+            x_low = boundaries[num_segments - 1 - i]  # Reverse: posterior=low X, anterior=high X
+            x_high = boundaries[num_segments - i]
+            print(f"    {pos}: {x_low:.1f} <= X < {x_high:.1f}")
         
-        # Initialize output arrays
-        segments = {
-            "anterior_dorsal": np.zeros_like(data),
-            "anterior_ventral": np.zeros_like(data),
-            "central_dorsal": np.zeros_like(data),
-            "central_ventral": np.zeros_like(data),
-            "posterior_dorsal": np.zeros_like(data),
-            "posterior_ventral": np.zeros_like(data),
-        }
+        # Initialize output arrays for each segment
+        segments = {pos: np.zeros_like(data) for pos in positions}
         
-        # Process slice by slice in Z (medial-lateral direction)
-        unique_z = np.unique(z_coords)
-        
-        for z in unique_z:
-            # Get voxels in this Z slice
-            z_mask = (z_coords == z)
-            slice_x = x_coords[z_mask]
-            slice_y = y_coords[z_mask]
+        # Assign each voxel to appropriate segment
+        for idx in range(len(x_coords)):
+            x = x_coords[idx]
+            y = y_coords[idx]
+            z = z_coords[idx]
             
-            if len(slice_y) == 0:
-                continue
+            # Determine which segment this voxel belongs to
+            # X axis: high X = anterior, low X = posterior
+            # We find which bin the x value falls into
+            segment_idx = int((x - x_min) / segment_size)
+            if segment_idx >= num_segments:
+                segment_idx = num_segments - 1
             
-            # Find dorsal/ventral midpoint for this slice
-            y_mid = (slice_y.min() + slice_y.max()) / 2
+            # Reverse index: high X (high segment_idx) = anterior
+            # positions[0] = anterior = highest X
+            # positions[4] = posterior = lowest X
+            pos_idx = num_segments - 1 - segment_idx
+            position = positions[pos_idx]
             
-            # Assign each voxel to appropriate segment
-            for i, (x, y) in enumerate(zip(slice_x, slice_y)):
-                # Determine anterior/central/posterior
-                # In flip2: Low X = posterior, High X = anterior
-                if x < x_ant_max:
-                    ap_section = "posterior"  # Low X = posterior
-                elif x < x_cent_max:
-                    ap_section = "central"
-                else:
-                    ap_section = "anterior"  # High X = anterior
-                
-                # Determine dorsal/ventral (Y axis: higher = more ventral)
-                if y >= y_mid:
-                    dv_section = "ventral"  # High Y = ventral
-                else:
-                    dv_section = "dorsal"  # Low Y = dorsal
-                
-                segment_name = f"{ap_section}_{dv_section}"
-                segments[segment_name][int(x), int(y), int(z)] = 1
+            segments[position][int(x), int(y), int(z)] = 1
         
         # Save each segment
         print(f"\n  Segment voxel counts for {hemi}:")
-        for seg_name, seg_data in segments.items():
-            count = int(np.sum(seg_data))
-            print(f"    {seg_name}: {count} voxels")
+        for pos in positions:
+            count = int(np.sum(segments[pos]))
+            print(f"    {pos}: {count} voxels")
             
             if count > 0:
-                out_path = output_dir / f"isocortex_{hemi}_{seg_name}.nii.gz"
-                out_img = nib.Nifti1Image(seg_data.astype(np.float32), affine)
+                out_path = output_dir / f"isocortex_{hemi}_{pos}.nii.gz"
+                out_img = nib.Nifti1Image(segments[pos].astype(np.float32), affine)
                 nib.save(out_img, str(out_path))
     
     print(f"\n  ✓ Done! Segments saved to: {output_dir}")
@@ -174,7 +179,7 @@ def segment_isocortex(subject, session):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Segment isocortex ROI for CTRL subjects',
+        description='Segment isocortex ROI into 5 A-P segments for CTRL subjects',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('--group', type=str, default='CTRL', 

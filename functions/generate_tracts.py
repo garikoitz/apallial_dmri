@@ -2,7 +2,7 @@
 """
 Tractography generation script for flip1 pipeline.
 
-Generates streamlines from graft segments (AP/APTR) or isocortex segments (CTRL)
+Generates streamlines from seed segments (Graft or Isocortex)
 to target ROIs (thalamus, striatum, etc.) using tckgen.
 
 All parameters are read from config1.yaml via config_loader.
@@ -28,17 +28,26 @@ Pipeline: flip1 (config1.yaml)
 """
 
 import os
-import subprocess
-import argparse
-from pathlib import Path
-
-# Set pipeline to flip1
+# Set pipeline to flip1 *before* any other imports that might load config
 os.environ['MBRAIN_PIPELINE'] = 'flip1'
 
-from config_loader import (
+import subprocess
+import argparse
+import sys
+from pathlib import Path
+import logging
+
+# Add parent dir to path to import utils
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.logger import setup_logger
+
+from functions.config_loader import (
     load_config, get_paths, get_subject_groups,
     get_tractography_params, get_matlab_cleaning_params
 )
+
+# Global logger initialization
+logger = logging.getLogger(__name__)
 
 
 def get_config():
@@ -79,39 +88,107 @@ def get_subjects_from_config():
     return subjects
 
 
-# Segment names for 6-segment mode (default)
+# Segment definitions
 SEGMENTS_6 = [
-    "anterior_dorsal",
-    "anterior_ventral",
-    "central_dorsal",
-    "central_ventral",
-    "posterior_dorsal",
-    "posterior_ventral",
+    "anterior_dorsal", "anterior_ventral",
+    "central_dorsal", "central_ventral",
+    "posterior_dorsal", "posterior_ventral",
 ]
 
-# Segment names for 9-segment mode
 SEGMENTS_9 = [
-    "anterior_dorsal",
-    "anterior_medial",
-    "anterior_ventral",
-    "central_dorsal",
-    "central_medial",
-    "central_ventral",
-    "posterior_dorsal",
-    "posterior_medial",
-    "posterior_ventral",
+    "anterior_dorsal", "anterior_medial", "anterior_ventral",
+    "central_dorsal", "central_medial", "central_ventral",
+    "posterior_dorsal", "posterior_medial", "posterior_ventral",
 ]
+
+SEGMENTS_5_AP = [
+    "anterior", "anterior_central", "central", "posterior_central", "posterior",
+]
+
+
+class TractographyStrategy:
+    """Base strategy for subject processing."""
+    def __init__(self, session_dir, args):
+        self.session_dir = session_dir
+        self.dwi_dir = os.path.join(session_dir, "dwi")
+        self.args = args
+
+    def get_fod_path(self):
+        return os.path.join(self.dwi_dir, "wm_fod_norm.mif")
+
+    def get_mask_path(self):
+        mask = os.path.join(self.dwi_dir, "mask_anat.mif")
+        return mask if os.path.exists(mask) else None
+
+    def get_output_dir(self):
+        return os.path.join(self.dwi_dir, "segment_tracts")
+
+    def get_segments(self):
+        raise NotImplementedError
+
+    def get_target_roi(self, target, hemi):
+        raise NotImplementedError
+
+    def get_seed_roi(self, hemi, segment):
+        raise NotImplementedError
+
+    def get_output_filename(self, seed_hemi, segment, target, target_hemi):
+        raise NotImplementedError
+
+
+class GraftStrategy(TractographyStrategy):
+    """Strategy for AP/APTR subjects with manual graft segments."""
+    def __init__(self, session_dir, args):
+        super().__init__(session_dir, args)
+        self.seg_dir = os.path.join(self.dwi_dir, "graft_segments_fod")
+        self.prefix = f"seg{args.seg_mode}"
+
+    def get_segments(self):
+        if self.args.segment:
+            return [self.args.segment]
+        return SEGMENTS_9 if self.args.seg_mode == 9 else SEGMENTS_6
+
+    def get_target_roi(self, target, hemi):
+        # Graft targets are capitalized (Thalamus/Striatum)
+        target_name = target.capitalize()
+        return os.path.join(self.session_dir, "manual_roi", "fod_space",
+                            f"roi_{target_name}_{hemi}_flip_fod.mif")
+
+    def get_seed_roi(self, hemi, segment):
+        return os.path.join(self.seg_dir, f"{self.prefix}_graft_{hemi}_{segment}_fod.mif")
+
+    def get_output_filename(self, seed_hemi, segment, target, target_hemi):
+        target_name = target.capitalize()
+        return f"tracks_{self.prefix}_graft_{seed_hemi}_{segment}_to_{target_name}_{target_hemi}.tck"
+
+
+class IsocortexStrategy(TractographyStrategy):
+    """Strategy for CTRL subjects with atlas-based isocortex segments."""
+    def __init__(self, session_dir, args):
+        super().__init__(session_dir, args)
+        self.seg_dir = os.path.join(self.dwi_dir, "isocortex_segments_v2")
+
+    def get_segments(self):
+        if self.args.segment:
+            return [self.args.segment]
+        return SEGMENTS_5_AP
+
+    def get_target_roi(self, target, hemi):
+        # Isocortex targets are lowercase (thalamus/striatum)
+        target_name = target.lower()
+        return os.path.join(self.session_dir, "atlas", "rois", "fod_space",
+                            f"roi_{target_name}_{hemi}.nii.gz")
+
+    def get_seed_roi(self, hemi, segment):
+        return os.path.join(self.seg_dir, f"isocortex_{hemi}_{segment}.nii.gz")
+
+    def get_output_filename(self, seed_hemi, segment, target, target_hemi):
+        target_name = target.lower()
+        return f"tracks_isocortex_{seed_hemi}_{segment}_to_{target_name}_{target_hemi}.tck"
 
 
 def run_tckgen(cfg, fod_path, seed_roi, include_roi, output_tck, mask_path=None, dry_run=False):
-    """Run tckgen from seed to include ROI using config parameters.
-    
-    Key options:
-        -stop: Forces algorithm to terminate streamline as soon as it enters an include region.
-               This prevents overshooting past the target ROI.
-        -seed_unidirectional: Prevents "backward" growth from seed point that often causes
-                              streamlines to overshoot in the wrong direction.
-    """
+    """Run tckgen from seed to include ROI."""
     cmd = [
         "tckgen", fod_path, output_tck,
         "-algorithm", cfg['algorithm'],
@@ -123,20 +200,38 @@ def run_tckgen(cfg, fod_path, seed_roi, include_roi, output_tck, mask_path=None,
         "-minlength", str(cfg['minlength']),
         "-step", str(cfg['step_size']),
         "-angle", str(cfg['angle']),
-        "-stop",                  # Terminate when entering include region (no overshooting)
-        "-seed_unidirectional",   # Prevent backward growth from seed (cleaner tracts)
+        "-stop",                  # Terminate when entering include region
+        "-seed_unidirectional",   # Prevent backward growth
         "-force"
     ]
-    if mask_path and os.path.exists(mask_path):
+    if mask_path:
         cmd.extend(["-mask", mask_path])
     
     if dry_run:
-        print(f"      [DRY RUN] tckgen {os.path.basename(seed_roi)} -> {os.path.basename(output_tck)}")
+        logger.info(f"      [DRY RUN] tckgen {os.path.basename(seed_roi)} -> {os.path.basename(output_tck)}")
         return True
     
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"      ERROR: {result.stderr}")
+        logger.error(f"      ERROR: {result.stderr}")
+        return False
+    return True
+
+
+def run_tcksift2(fod_path, input_tck, output_weights, dry_run=False):
+    """Run SIFT2 to compute streamline weights."""
+    cmd = [
+        "tcksift2", input_tck, fod_path, output_weights,
+        "-force"
+    ]
+    if dry_run:
+        logger.info(f"      [DRY RUN] tcksift2 {os.path.basename(input_tck)}")
+        return True
+    
+    logger.info(f"      Running SIFT2...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logger.error(f"FAILED: {result.stderr[:200]}")
         return False
     return True
 
@@ -154,32 +249,20 @@ def get_track_count(tck_path):
 
 
 def run_matlab_cleaning(cfg, input_tck, output_tck, dry_run=False):
-    """Run MATLAB AFQ cleaning on a tract file.
-    
-    Uses AFQ_removeFiberOutliers from vistasoft to remove outlier streamlines.
-    All parameters are read from config1.yaml matlab_cleaning section.
-    
-    Args:
-        cfg: Config dictionary with MATLAB parameters
-        input_tck: Input tract file
-        output_tck: Output cleaned tract file
-        dry_run: If True, show commands without executing
-    """
-    # Check streamline count first
+    """Run MATLAB AFQ cleaning on a tract file."""
     count = get_track_count(input_tck)
     if count < cfg['min_streamlines']:
-        print(f"      SKIP cleaning (only {count} fibers, need ≥{cfg['min_streamlines']})")
+        logger.info(f"      SKIP cleaning (only {count} fibers, need ≥{cfg['min_streamlines']})")
         return False
     
     if dry_run:
-        print(f"      [DRY RUN] Would run MATLAB AFQ cleaning")
+        logger.info(f"      [DRY RUN] Would run MATLAB AFQ cleaning")
         return True
     
     dwidir = os.path.dirname(input_tck)
     tckfilename = os.path.basename(input_tck)
     output_name = os.path.basename(output_tck)
     
-    # MATLAB command using AFQ_removeFiberOutliers
     matlab_cmd = (
         f"addpath(genpath('{cfg['afq_path']}')); "
         f"dwidir='{dwidir}'; "
@@ -197,269 +280,111 @@ def run_matlab_cleaning(cfg, input_tck, output_tck, dry_run=False):
     
     cmd = [cfg['matlab_bin'], "-nodisplay", "-nosplash", "-batch", matlab_cmd]
     
-    print(f"      Cleaning with MATLAB AFQ...", end=" ", flush=True)
+    logger.info(f"      Cleaning with MATLAB AFQ...")
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=cfg['matlab_timeout'])
-        
         if result.returncode != 0:
-            print(f"FAILED")
-            if result.stderr:
-                print(f"      STDERR: {result.stderr[:300]}")
+            logger.error(f"FAILED MATLAB: {result.stderr[:300]}")
             return False
         
         if os.path.exists(output_tck):
             cleaned_count = get_track_count(output_tck)
-            print(f"→ {cleaned_count} streamlines (was {count})")
+            logger.info(f"      → {cleaned_count} streamlines (was {count})")
             return True
         else:
-            print(f"FAILED (no output)")
+            logger.error(f"FAILED (no output)")
             return False
     except subprocess.TimeoutExpired:
-        print(f"TIMEOUT after {cfg['matlab_timeout']}s")
+        logger.error(f"TIMEOUT after {cfg['matlab_timeout']}s")
         return False
 
 
-def process_graft_subject(cfg, sub, ses, group, targets=None, hemispheres=None, 
-                          seg_filter=None, seg_mode=6, clean=False, dry_run=False):
-    """Process AP/APTR subject - tractography from graft segments to target ROIs.
-    
-    Paths for flip1 pipeline:
-        FOD: dwi/wm_fod_norm.mif
-        Mask: dwi/mask.mif
-        Segments: dwi/graft_segments_fod/seg{6,9}_graft_{hemi}_{segment}_fod.mif
-        Target ROIs: manual_roi/fod_space/roi_{Target}_{hemi}_flip_fod.mif
-    """
-    print(f"\n{'='*60}")
-    print(f"Tractography {group}: {sub}/{ses} (seg{seg_mode} mode)")
-    print(f"{'='*60}")
-    
-    if targets is None:
-        targets = ["Thalamus", "Striatum"]
-    if hemispheres is None:
-        hemispheres = ["left", "right"]
-    
-    # Choose segment list based on mode
-    segments = SEGMENTS_9 if seg_mode == 9 else SEGMENTS_6
-    prefix = f"seg{seg_mode}"
-    
+def process_subject_tractography(cfg, sub, ses, group, args):
+    """Unified tractography processing using Strategy pattern."""
+    logger.info(f"{'='*60}")
+    logger.info(f"Tractography {group}: {sub}/{ses}")
+    logger.info(f"{'='*60}")
+
     session_dir = os.path.join(cfg['base_path'], sub, ses)
-    dwi_dir = os.path.join(session_dir, "dwi")
     
-    # FOD image (flip1 pipeline uses wm_fod_norm.mif)
-    fod_path = os.path.join(dwi_dir, "wm_fod_norm.mif")
+    # Initialize strategy based on group
+    if group in ["AP", "APTR"]:
+        strategy = GraftStrategy(session_dir, args)
+    else:
+        strategy = IsocortexStrategy(session_dir, args)
+
+    fod_path = strategy.get_fod_path()
     if not os.path.exists(fod_path):
-        print(f"  ERROR: FOD not found: {fod_path}")
+        logger.error(f"  ERROR: FOD not found: {fod_path}")
         return
-    
-    # Mask for tractography (flip1 uses mask.mif)
-    mask_path = os.path.join(dwi_dir, "mask.mif")
-    if not os.path.exists(mask_path):
-        mask_path = None
-        print(f"  WARNING: mask.mif not found, proceeding without mask")
-    
-    # Output directory
-    output_dir = os.path.join(dwi_dir, "segment_tracts")
+
+    mask_path = strategy.get_mask_path()
+    output_dir = strategy.get_output_dir()
     os.makedirs(output_dir, exist_ok=True)
     
-    # Graft segments directory (flip1)
-    seg_dir = os.path.join(dwi_dir, "graft_segments_fod")
-    if not os.path.exists(seg_dir):
-        print(f"  ERROR: Graft segments not found: {seg_dir}")
-        return
-    
+    segments = strategy.get_segments()
+    targets = [args.target] if args.target != "all" else ["thalamus", "striatum"]
+    hemispheres = [args.hemisphere] if args.hemisphere != "both" else ["left", "right"]
+
     total_tracts = 0
     total_streamlines = 0
-    
-    # Process each target
+
     for target in targets:
-        # Process each hemisphere
         for seed_hemi in hemispheres:
             target_hemi = seed_hemi  # Ipsilateral
             
-            # Target ROI (flip1 uses roi_{Target}_{hemi}_flip_fod.mif)
-            target_roi = os.path.join(session_dir, "manual_roi", "fod_space",
-                                      f"roi_{target}_{target_hemi}_flip_fod.mif")
-            
+            target_roi = strategy.get_target_roi(target, seed_hemi)
             if not os.path.exists(target_roi):
-                print(f"  WARNING: {target} ROI not found for {target_hemi}: {target_roi}")
+                logger.warning(f"  WARNING: Target ROI not found: {target_roi}")
                 continue
             
-            print(f"\n  {seed_hemi.upper()} graft → {target_hemi.upper()} {target}:")
+            logger.info(f"  {seed_hemi.upper()} seed → {target_hemi.upper()} {target}:")
             
-            # Process segments (filter if specified)
-            segs_to_process = [seg_filter] if seg_filter else segments
-            
-            for seg in segs_to_process:
-                # Flip1 naming: seg6_graft_{hemi}_{segment}_fod.mif
-                seed_roi = os.path.join(seg_dir, f"{prefix}_graft_{seed_hemi}_{seg}_fod.mif")
-                
+            for seg in segments:
+                seed_roi = strategy.get_seed_roi(seed_hemi, seg)
                 if not os.path.exists(seed_roi):
-                    print(f"    {seg}: SKIP (no segment)")
+                    logger.info(f"    {seg}: SKIP (no seed segment)")
                     continue
                 
-                # Output filename
-                output_tck = os.path.join(output_dir,
-                    f"tracks_{prefix}_graft_{seed_hemi}_{seg}_to_{target}_{target_hemi}.tck")
+                output_filename = strategy.get_output_filename(seed_hemi, seg, target, target_hemi)
+                output_tck = os.path.join(output_dir, output_filename)
                 
-                print(f"    {seg}...", end=" ", flush=True)
+                logger.info(f"    {seg}...")
                 
-                if run_tckgen(cfg, fod_path, seed_roi, target_roi, output_tck,
-                              mask_path=mask_path, dry_run=dry_run):
-                    if not dry_run:
+                if run_tckgen(cfg, fod_path, seed_roi, target_roi, output_tck, mask_path, args.dry_run):
+                    if not args.dry_run:
                         count = get_track_count(output_tck)
-                        print(f"{count} streamlines")
+                        logger.info(f"      -> {count} streamlines")
                         total_tracts += 1
                         total_streamlines += count
                         
-                        # Run MATLAB cleaning if requested
-                        if clean and count > 0:
+                        # SIFT2
+                        if args.sift2 and count > 0:
+                            weights_txt = output_tck.replace('.tck', '_sift2_weights.txt')
+                            run_tcksift2(fod_path, output_tck, weights_txt, dry_run=args.dry_run)
+                            
+                        # Cleaning
+                        if args.clean and count > 0:
                             output_cleaned = output_tck.replace('.tck', '_cleaned.tck')
-                            run_matlab_cleaning(cfg, output_tck, output_cleaned, dry_run=dry_run)
+                            run_matlab_cleaning(cfg, output_tck, output_cleaned, dry_run=args.dry_run)
                     else:
-                        print("OK")
-                        if clean:
-                            print(f"      [DRY RUN] Would run MATLAB cleaning")
+                        if args.sift2: logger.info(f"      [DRY RUN] Would run SIFT2")
+                        if args.clean: logger.info(f"      [DRY RUN] Would run MATLAB cleaning")
                 else:
-                    print("FAILED")
-    
-    if not dry_run:
-        print(f"\n  SUMMARY: {total_tracts} tract files, {total_streamlines} total streamlines")
+                    logger.error("FAILED")
 
-
-def process_isocortex_subject(cfg, sub, ses, targets=None, hemispheres=None, 
-                              seg_filter=None, clean=False, dry_run=False):
-    """Process CTRL subject - tractography from isocortex segments to target ROIs.
-    
-    Paths for flip1 pipeline:
-        FOD: dwi/wm_fod_norm.mif
-        Mask: dwi/mask.mif
-        Segments: dwi/isocortex_segments_fod/isocortex_{hemi}_{segment}_fod.mif
-        Target ROIs: dwi/atlas/rois/fod_space/roi_{target}_{hemi}_fod.mif
-    """
-    print(f"\n{'='*60}")
-    print(f"Tractography CTRL: {sub}/{ses}")
-    print(f"{'='*60}")
-    
-    if targets is None:
-        targets = ["thalamus", "striatum"]
-    if hemispheres is None:
-        hemispheres = ["left", "right"]
-    
-    # Use 6-segment mode for isocortex
-    segments = SEGMENTS_6
-    
-    session_dir = os.path.join(cfg['base_path'], sub, ses)
-    dwi_dir = os.path.join(session_dir, "dwi")
-    
-    # FOD image (flip1 pipeline)
-    fod_path = os.path.join(dwi_dir, "wm_fod_norm.mif")
-    if not os.path.exists(fod_path):
-        print(f"  ERROR: FOD not found: {fod_path}")
-        return
-    
-    # Mask for tractography
-    mask_path = os.path.join(dwi_dir, "mask.mif")
-    if not os.path.exists(mask_path):
-        mask_path = None
-    
-    # Output directory
-    output_dir = os.path.join(dwi_dir, "segment_tracts")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Isocortex segments directory
-    seg_dir = os.path.join(dwi_dir, "isocortex_segments_fod")
-    if not os.path.exists(seg_dir):
-        print(f"  ERROR: Isocortex segments not found: {seg_dir}")
-        return
-    
-    total_tracts = 0
-    total_streamlines = 0
-    
-    # Process each target
-    for target in targets:
-        # Process each hemisphere
-        for seed_hemi in hemispheres:
-            target_hemi = seed_hemi  # Ipsilateral
-            
-            # Target ROI
-            target_roi = os.path.join(dwi_dir, "atlas", "rois", "fod_space",
-                                      f"roi_{target}_{target_hemi}_fod.mif")
-            
-            if not os.path.exists(target_roi):
-                print(f"  WARNING: {target} ROI not found for {target_hemi}")
-                continue
-            
-            print(f"\n  {seed_hemi.upper()} isocortex → {target_hemi.upper()} {target}:")
-            
-            # Process segments (filter if specified)
-            segs_to_process = [seg_filter] if seg_filter else segments
-            
-            for seg in segs_to_process:
-                seed_roi = os.path.join(seg_dir, f"isocortex_{seed_hemi}_{seg}_fod.mif")
-                
-                if not os.path.exists(seed_roi):
-                    print(f"    {seg}: SKIP (no segment)")
-                    continue
-                
-                output_tck = os.path.join(output_dir,
-                    f"tracks_isocortex_{seed_hemi}_{seg}_to_{target}_{target_hemi}.tck")
-                
-                print(f"    {seg}...", end=" ", flush=True)
-                
-                if run_tckgen(cfg, fod_path, seed_roi, target_roi, output_tck,
-                              mask_path=mask_path, dry_run=dry_run):
-                    if not dry_run:
-                        count = get_track_count(output_tck)
-                        print(f"{count} streamlines")
-                        total_tracts += 1
-                        total_streamlines += count
-                        
-                        # Run MATLAB cleaning if requested
-                        if clean and count > 0:
-                            output_cleaned = output_tck.replace('.tck', '_cleaned.tck')
-                            run_matlab_cleaning(cfg, output_tck, output_cleaned, dry_run=dry_run)
-                    else:
-                        print("OK")
-                        if clean:
-                            print(f"      [DRY RUN] Would run MATLAB cleaning")
-                else:
-                    print("FAILED")
-    
-    if not dry_run:
-        print(f"\n  SUMMARY: {total_tracts} tract files, {total_streamlines} total streamlines")
+    if not args.dry_run:
+        logger.info(f"  SUMMARY: {total_tracts} tract files, {total_streamlines} total streamlines")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Tractography generation for flip1 pipeline",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Process single subject (APTR):
-  python functions/generate_tracts.py --subject sub-Apallial17NmF
-  
-  # Process all subjects in a group:
-  python functions/generate_tracts.py --group APTR
-  
-  # Specific target and hemisphere:
-  python functions/generate_tracts.py --subject sub-Apallial17NmF --target Thalamus --hemisphere left
-  
-  # Use 9-segment mode:
-  python functions/generate_tracts.py --subject sub-Apallial17NmF --seg-mode 9
-  
-  # Dry run to preview:
-  python functions/generate_tracts.py --group AP --dry-run
-  
-  # Run with MATLAB cleaning:
-  python functions/generate_tracts.py --subject sub-Apallial17NmF --segment anterior_dorsal --clean
-"""
-    )
+    parser = argparse.ArgumentParser(description="Tractography generation for flip1 pipeline")
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running")
     parser.add_argument("--group", choices=["APTR", "AP", "CTRL", "all"], default=None,
                        help="Process all subjects in group")
     parser.add_argument("--subject", help="Process specific subject (sub-xxx)")
     parser.add_argument("--target", default="all",
-                       help="Target ROI (Thalamus, Striatum, or all)")
+                       help="Target ROI (thalamus, striatum, or all)")
     parser.add_argument("--hemisphere", choices=["left", "right", "both"], default="both",
                        help="Hemisphere to process (default: both)")
     parser.add_argument("--segment", help="Specific segment (e.g., anterior_dorsal)")
@@ -467,83 +392,55 @@ Examples:
                        help="Segmentation mode: 6 (3x2) or 9 (3x3) segments (default: 6)")
     parser.add_argument("--clean", action="store_true",
                        help="Run MATLAB AFQ cleaning after tractography")
+    parser.add_argument("--sift2", action="store_true",
+                       help="Apply SIFT2 filtering to tractography output")
+    parser.add_argument("--log-file", help="Path to log file")
+    
     args = parser.parse_args()
     
-    # Require either --subject or --group
+    # Setup Logger
+    global logger
+    logger = setup_logger(__name__, args.log_file)
+    
     if not args.subject and not args.group:
         parser.error("Either --subject or --group is required")
     
-    # Load config
     cfg = get_config()
     subjects = get_subjects_from_config()
     
-    # Parse hemispheres
-    hemispheres = ["left", "right"] if args.hemisphere == "both" else [args.hemisphere]
-    
-    # Parse targets (capitalize for AP/APTR manual ROI naming)
-    if args.target == "all":
-        targets_aptr = ["Thalamus", "Striatum"]
-        targets_ctrl = ["thalamus", "striatum"]
-    else:
-        targets_aptr = [args.target.capitalize()]
-        targets_ctrl = [args.target.lower()]
-    
-    print("="*60)
-    print("TRACTOGRAPHY: flip1 Pipeline")
-    print("="*60)
-    print(f"Config: config1.yaml")
-    print(f"Parameters:")
-    print(f"  algorithm:  {cfg['algorithm']}")
-    print(f"  select:     {cfg['streamlines']} streamlines")
-    print(f"  step_size:  {cfg['step_size']}mm")
-    print(f"  angle:      {cfg['angle']}°")
-    print(f"  cutoff:     {cfg['cutoff']}")
-    print(f"  minlength:  {cfg['minlength']}mm")
-    print(f"  maxlength:  {cfg['maxlength']}mm")
-    print(f"Base path:    {cfg['base_path']}")
-    print(f"Hemispheres:  {hemispheres}")
-    print(f"Targets:      {targets_aptr}")
-    print(f"Seg mode:     {args.seg_mode} segments")
-    print(f"Clean:        {args.clean}")
+    logger.info("="*60)
+    logger.info("TRACTOGRAPHY: flip1 Pipeline")
+    logger.info("="*60)
     
     if args.dry_run:
-        print("\n*** DRY RUN MODE - No actual tractography will run ***\n")
+        logger.info("*** DRY RUN MODE ***")
     
-    # Build list of subjects to process
+    # Build list of subjects
     subjects_to_process = []
-    
     if args.subject:
-        # Find subject in any group
+        found = False
         for group_name in ["APTR", "AP", "CTRL"]:
-            for sub, ses in subjects.get(group_name, []):
-                if sub == args.subject:
-                    subjects_to_process.append((sub, ses, group_name))
-                    break
-        if not subjects_to_process:
-            print(f"ERROR: Subject {args.subject} not found in config1.yaml")
+            if group_name in subjects:
+                for sub, ses in subjects.get(group_name, []):
+                    if sub == args.subject:
+                        subjects_to_process.append((sub, ses, group_name))
+                        found = True
+                        break
+            if found: break
+        if not found:
+            logger.error(f"Subject {args.subject} not found in config")
             return
     else:
-        # Process all subjects in specified groups
-        groups_to_process = ["APTR", "AP", "CTRL"] if args.group == "all" else [args.group]
-        for group_name in groups_to_process:
+        groups = ["APTR", "AP", "CTRL"] if args.group == "all" else [args.group]
+        for group_name in groups:
             for sub, ses in subjects.get(group_name, []):
                 subjects_to_process.append((sub, ses, group_name))
-    
-    # Process subjects
-    for sub, ses, group_name in subjects_to_process:
-        if group_name in ["APTR", "AP"]:
-            process_graft_subject(cfg, sub, ses, group_name, targets=targets_aptr,
-                                  hemispheres=hemispheres, seg_filter=args.segment,
-                                  seg_mode=args.seg_mode, clean=args.clean, dry_run=args.dry_run)
-        else:  # CTRL
-            process_isocortex_subject(cfg, sub, ses, targets=targets_ctrl,
-                                      hemispheres=hemispheres, seg_filter=args.segment,
-                                      clean=args.clean, dry_run=args.dry_run)
-    
-    print("\n" + "="*60)
-    print("TRACTOGRAPHY COMPLETE!")
-    print("="*60)
 
+    for sub, ses, group_name in subjects_to_process:
+        process_subject_tractography(cfg, sub, ses, group_name, args)
+    
+    logger.info("="*60)
+    logger.info("COMPLETED")
 
 if __name__ == "__main__":
     main()

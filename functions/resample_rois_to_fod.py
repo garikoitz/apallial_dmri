@@ -149,9 +149,17 @@ def process_graft_segments(subject, session, deriv, template, force):
 
 
 def process_atlas_rois(subject, session, deriv, template, force):
-    """Resample atlas ROIs for CTRL subjects."""
+    """Resample atlas ROIs for CTRL subjects.
     
-    atlas_dir = deriv / subject / session / "dwi" / "atlas" / "rois"
+    Atlas ROIs are in {subject}/{session}/atlas/rois/ (not dwi/atlas/rois/)
+    Output goes to {subject}/{session}/atlas/rois/fod_space/
+    """
+    
+    # Try new location first (atlas/rois/), then legacy (dwi/atlas/rois/)
+    atlas_dir = deriv / subject / session / "atlas" / "rois"
+    if not atlas_dir.exists():
+        atlas_dir = deriv / subject / session / "dwi" / "atlas" / "rois"
+    
     out_dir = atlas_dir / "fod_space"
     
     if not atlas_dir.exists():
@@ -165,16 +173,18 @@ def process_atlas_rois(subject, session, deriv, template, force):
     
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    print(f"\n  Atlas ROIs ({len(roi_files)} files):")
+    print(f"\n  Atlas ROIs ({len(roi_files)} files) from {atlas_dir.name}/:")
     success_count = 0
     for roi_file in sorted(roi_files):
         out_file = out_dir / roi_file.name
         
         if out_file.exists() and not force:
-            print(f"    + {roi_file.name} (exists)")
+            count = get_roi_voxel_count(out_file)
+            print(f"    + {roi_file.name} (exists, {count} voxels)")
             success_count += 1
         elif resample_roi(roi_file, out_file, template):
-            print(f"    + {roi_file.name}")
+            count = get_roi_voxel_count(out_file)
+            print(f"    + {roi_file.name} ({count} voxels)")
             success_count += 1
         else:
             print(f"    X {roi_file.name} FAILED")
@@ -226,11 +236,19 @@ def process_subject(subject, session, group, cfg, force=False):
     print(f"Processing: {subject}/{session} (Group: {group})")
     print(f"{'='*60}")
     
-    template = dwi_dir / "wm_fod_norm.mif"
+    # Try different FOD template names (group-normalized takes precedence)
+    template = dwi_dir / "wm_fod_norm_group.mif"
     if not template.exists():
-        print(f"  ERROR: FOD template not found: {template}")
-        print(f"  Run dwi_fod.py first to generate FOD")
+        template = dwi_dir / "wm_fod_flip1.mif"
+    if not template.exists():
+        template = dwi_dir / "wm_fod_norm.mif"
+    if not template.exists():
+        print(f"  ERROR: FOD template not found")
+        print(f"  Looked for: wm_fod_norm_group.mif, wm_fod_flip1.mif or wm_fod_norm.mif in {dwi_dir}")
+        print(f"  Run compute_group_response.py first to generate group-normalized FOD")
         return False
+    
+    print(f"  Using FOD template: {template.name}")
     
     success = True
     

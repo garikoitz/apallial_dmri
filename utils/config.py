@@ -2,7 +2,7 @@
 Configuration settings for the mbrain project.
 
 This module provides backward-compatible Config class that now loads
-settings from config.yaml via config_loader.
+settings from config1.yaml via config_loader.
 """
 
 import os
@@ -24,7 +24,7 @@ except ImportError:
 class Config:
     """Configuration class for mbrain project."""
     
-    # Project paths - load from config.yaml if available
+    # Project paths - load from config1.yaml if available
     PROJECT_ROOT = Path(__file__).parent.parent
     
     if _USE_CONFIG:

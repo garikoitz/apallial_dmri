@@ -3,10 +3,10 @@
 Generic atlas coregistration script.
 
 Coregisters Allen CCF atlas to subject T2w images using ANTs.
-Supports manual shift corrections defined in config.yaml.
+Supports manual shift corrections defined in config1.yaml.
 
 ROI extraction uses Allen CCF structure hierarchy to get all child IDs
-for each parent structure ID defined in config.yaml. This is necessary
+for each parent structure ID defined in config1.yaml. This is necessary
 because the annotation volume contains leaf node IDs, not parent IDs.
 
 Usage:
@@ -229,7 +229,7 @@ def extract_rois(annotation_file, output_dir, subject_id, structures_file):
     """Extract ROIs from warped annotation based on config definitions.
     
     Uses Allen CCF hierarchy to get all child structure IDs for each parent ID
-    defined in config.yaml. This is necessary because the annotation volume
+    defined in config1.yaml. This is necessary because the annotation volume
     contains leaf node IDs, not parent structure IDs.
     """
     roi_defs = get_roi_definitions()
@@ -239,7 +239,7 @@ def extract_rois(annotation_file, output_dir, subject_id, structures_file):
     data = img.get_fdata().astype(np.int32)
     affine = img.affine
     
-    # FLIP2 ORIENTATION (after axes 2,1,0 permutation + flip 1 + flip 2):
+    # FLIP1 ORIENTATION (after axes 2,1,0 permutation + flip 1):
     # - Axis 0 (X): Anterior-Posterior (A→P)
     # - Axis 1 (Y): Dorsal-Ventral (D→V)  
     # - Axis 2 (Z): Medial-Lateral (Left-Right)

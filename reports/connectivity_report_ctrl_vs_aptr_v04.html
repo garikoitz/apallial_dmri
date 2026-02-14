@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBRAIN Connectivity Report - CTRL vs APTR</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --bg-color: #f5f6fa;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #dcdde1;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1, h2, h3 {
+            color: var(--primary-color);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.95em;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .metric-highlight {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 450px;
+            margin: 20px 0;
+        }
+        
+        .methodology-note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .methodology-note h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 20px;
+            min-width: 150px;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .group-ctrl { color: #3498db; }
+        .group-aptr { color: #e74c3c; }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        /* Screenshot gallery styles */
+        .subject-gallery {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .subject-gallery h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .screenshot-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .screenshot-item img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 3px;
+        }
+        
+        .screenshot-item p {
+            margin: 8px 0 0 0;
+            font-size: 0.85em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 MBRAIN Connectivity Analysis Report</h1>
+        <p class="subtitle">CTRL vs APTR Group Comparison | Cortex → Thalamus Projection</p>
+        
+        <div class="card">
+            <h2>📋 Study Overview</h2>
+            <div class="summary-stats">
+                <div class="stat-box">
+                    <div class="stat-value group-ctrl">4</div>
+                    <div class="stat-label">CTRL Subjects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value group-aptr">4</div>
+                    <div class="stat-label">APTR Subjects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">CTRL Segments</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">APTR Segments<br>(dorsal only)</div>
+                </div>
+            </div>
+            
+            <div class="methodology-note">
+                <h4>🔄 Tractography Direction</h4>
+                <p><strong>SEED:</strong> Isocortex (CTRL) or Graft (APTR) segments - cortical regions</p>
+                <p><strong>TARGET:</strong> Thalamus - subcortical inclusion region</p>
+                <p><strong>Direction:</strong> CORTEX → THALAMUS (cortico-thalamic projection)</p>
+                <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                    Command: <code>tckgen -seed_image SEGMENT_ROI -include THALAMUS_ROI ...</code><br>
+                    Note: Tractography is bidirectional by nature, but seeding determines where streamlines originate.
+                </p>
+            </div>
+            
+            <div class="methodology-note">
+                <h4>⚠️ SIFT2 Methodology</h4>
+                <p><strong>SIFT2-weighted connectivity</strong> is used for all cross-subject comparisons. 
+                Per MRtrix documentation, raw streamline counts are only valid for within-subject comparisons. 
+                SIFT2 weights combined with FOD normalization (mtnormalise) enable valid between-subject comparisons 
+                by accounting for differences in FOD amplitude and tissue properties.</p>
+                <p><strong>Connectivity Density</strong> = SIFT2_sum / ROI_voxels × 1000 (controls for ROI size bias)</p>
+                <p>Reference: <a href="https://mrtrix.readthedocs.io/en/latest/quantitative_structural_connectivity/sift.html" target="_blank">MRtrix SIFT Documentation</a></p>
+            </div>
+        </div>
+        
+        <!-- Subject Details -->
+        <div class="grid-2">
+            <div class="card">
+                <h2>🔵 CTRL Subjects</h2>
+                <table>
+                    <tr><th>Subject</th><th>Session</th></tr>
+                    <tr><td>sub-129-921-R1F</td><td>ses-260115121231</td></tr><tr><td>sub-129-921-R1L1F</td><td>ses-260116085433</td></tr><tr><td>sub-129-1014-L1M</td><td>ses-260115113814</td></tr><tr><td>sub-138-1010-L1F</td><td>ses-260115101441</td></tr>
+                </table>
+                <p><strong>Segments:</strong> anterior, anterior_central, central, posterior_central, posterior</p>
+                <p><strong>Source:</strong> Isocortex (Allen Atlas)</p>
+            </div>
+            <div class="card">
+                <h2>🔴 APTR Subjects</h2>
+                <table>
+                    <tr><th>Subject</th><th>Session</th></tr>
+                    <tr><td>sub-AP72-862-901-NmF</td><td>ses-251210093342</td></tr><tr><td>sub-AP72-862-901-R1M</td><td>ses-251210100043</td></tr><tr><td>sub-Apallial17NmF</td><td>ses-240816091633</td></tr><tr><td>sub-Apallial20R1F</td><td>ses-240909094232</td></tr>
+                </table>
+                <p><strong>Segments:</strong> anterior_dorsal, central_dorsal, posterior_dorsal</p>
+                <p><strong>Source:</strong> Graft (Manual ROI)</p>
+            </div>
+        </div>
+        
+        <!-- ROI Voxel Counts Section -->
+        <div class="card">
+            <h2>📊 ROI Voxel Counts per Subject</h2>
+            <p style="color: #666; margin-bottom: 15px;">Voxel counts in FOD space (0.5×0.15×0.15 mm). 
+            Larger ROIs generate more streamlines - use Connectivity Density to normalize.</p>
+            
+            <div class="grid-2">
+                <div>
+                    <h3 class="group-ctrl">CTRL - Isocortex Segments</h3>
+                    <table>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Anterior</th>
+                            <th>Ant-Cent</th>
+                            <th>Central</th>
+                            <th>Post-Cent</th>
+                            <th>Posterior</th>
+                            <th>Sum</th>
+                            <th>Thalamus</th>
+                        </tr>
+                        <tr>
+            <td>129-921-R1F</td>
+            <td>347</td>
+            <td>1046</td>
+            <td>1445</td>
+            <td>877</td>
+            <td>568</td>
+            <td class="metric-highlight">4283</td>
+            <td>584</td>
+        </tr><tr>
+            <td>129-921-R1L1F</td>
+            <td>669</td>
+            <td>1005</td>
+            <td>1496</td>
+            <td>881</td>
+            <td>502</td>
+            <td class="metric-highlight">4553</td>
+            <td>769</td>
+        </tr><tr>
+            <td>129-1014-L1M</td>
+            <td>543</td>
+            <td>884</td>
+            <td>876</td>
+            <td>717</td>
+            <td>591</td>
+            <td class="metric-highlight">3611</td>
+            <td>512</td>
+        </tr><tr>
+            <td>138-1010-L1F</td>
+            <td>449</td>
+            <td>1260</td>
+            <td>1020</td>
+            <td>1124</td>
+            <td>489</td>
+            <td class="metric-highlight">4342</td>
+            <td>728</td>
+        </tr>
+                    </table>
+                </div>
+                <div>
+                    <h3 class="group-aptr">APTR - Graft Segments</h3>
+                    <table>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Ant-Dorsal</th>
+                            <th>Cent-Dorsal</th>
+                            <th>Post-Dorsal</th>
+                            <th>Sum</th>
+                            <th>Thalamus</th>
+                        </tr>
+                        <tr>
+            <td>AP72-862-901-NmF</td>
+            <td>545</td>
+            <td>881</td>
+            <td>620</td>
+            <td class="metric-highlight">2046</td>
+            <td>409</td>
+        </tr><tr>
+            <td>AP72-862-901-R1M</td>
+            <td>438</td>
+            <td>1236</td>
+            <td>702</td>
+            <td class="metric-highlight">2376</td>
+            <td>241</td>
+        </tr><tr>
+            <td>Apallial17NmF</td>
+            <td>1044</td>
+            <td>1445</td>
+            <td>1136</td>
+            <td class="metric-highlight">3625</td>
+            <td>157</td>
+        </tr><tr>
+            <td>Apallial20R1F</td>
+            <td>862</td>
+            <td>1229</td>
+            <td>850</td>
+            <td class="metric-highlight">2941</td>
+            <td>240</td>
+        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Comparison Chart -->
+        <div class="card">
+            <h2>📊 Normalized Connectivity Density Comparison</h2>
+            <p>Connectivity Density = SIFT2 weight / ROI voxels × 1000. This normalizes for ROI size differences.</p>
+            <div id="comparison-chart" class="chart-container"></div>
+        </div>
+        
+        <!-- Group Statistics Tables -->
+        <div class="card">
+            <h2>📈 Group Statistics - Normalized Connectivity Density</h2>
+            <p style="color: #666;">Connectivity Density controls for ROI size bias - larger ROIs don't artificially inflate connectivity.</p>
+            
+            <h3>CTRL - 5 Isocortex Segments</h3>
+            <table>
+                <tr>
+                    <th>Segment</th>
+                    <th>Density Mean ± SD</th>
+                    <th>n</th>
+                </tr>
+                
+            <tr>
+                <td>Anterior</td>
+                <td>38.62 ± 15.01</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Anterior Central</td>
+                <td>19.02 ± 5.13</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Central</td>
+                <td>23.50 ± 13.60</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Posterior Central</td>
+                <td>24.59 ± 6.86</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Posterior</td>
+                <td>28.73 ± 9.88</td>
+                <td>4</td>
+            </tr>
+        
+            </table>
+            
+            <h3 style="margin-top: 25px;">APTR - 3 Dorsal Graft Segments</h3>
+            <table>
+                <tr>
+                    <th>Segment</th>
+                    <th>Density Mean ± SD</th>
+                    <th>n</th>
+                </tr>
+                
+            <tr>
+                <td>Anterior Dorsal</td>
+                <td>25.10 ± 14.75</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Central Dorsal</td>
+                <td>15.32 ± 9.26</td>
+                <td>4</td>
+            </tr>
+        
+            <tr>
+                <td>Posterior Dorsal</td>
+                <td>11.44 ± 7.51</td>
+                <td>4</td>
+            </tr>
+        
+            </table>
+        </div>
+        
+        <!-- Individual Subject Data -->
+        <div class="card">
+            <h2>📋 Individual Subject Data - CTRL (5 Segments)</h2>
+            <p>Connectivity Density per segment (SIFT2 / voxels × 1000)</p>
+            <table>
+                <tr>
+                    <th>Subject</th>
+                    <th>Anterior</th>
+                    <th>Ant-Central</th>
+                    <th>Central</th>
+                    <th>Post-Central</th>
+                    <th>Posterior</th>
+                </tr>
+                
+            <tr>
+                <td>129-921-R1F</td>
+                <td>62.59</td><td>16.97</td><td>16.37</td><td>19.69</td><td>27.48</td>
+            </tr>
+        
+            <tr>
+                <td>129-921-R1L1F</td>
+                <td>34.14</td><td>11.73</td><td>7.30</td><td>31.99</td><td>36.51</td>
+            </tr>
+        
+            <tr>
+                <td>129-1014-L1M</td>
+                <td>21.24</td><td>25.18</td><td>43.97</td><td>30.62</td><td>13.08</td>
+            </tr>
+        
+            <tr>
+                <td>138-1010-L1F</td>
+                <td>36.51</td><td>22.19</td><td>26.35</td><td>16.05</td><td>37.88</td>
+            </tr>
+        
+            </table>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Individual Subject Data - APTR (3 Dorsal Segments)</h2>
+            <p>Connectivity Density per segment (SIFT2 / voxels × 1000)</p>
+            <table>
+                <tr>
+                    <th>Subject</th>
+                    <th>Anterior Dorsal</th>
+                    <th>Central Dorsal</th>
+                    <th>Posterior Dorsal</th>
+                </tr>
+                
+            <tr>
+                <td>AP72-862-901-NmF</td>
+                <td>10.18</td><td>27.34</td><td>13.18</td>
+            </tr>
+        
+            <tr>
+                <td>AP72-862-901-R1M</td>
+                <td>41.42</td><td>8.11</td><td>22.91</td>
+            </tr>
+        
+            <tr>
+                <td>Apallial17NmF</td>
+                <td>10.62</td><td>4.69</td><td>3.50</td>
+            </tr>
+        
+            <tr>
+                <td>Apallial20R1F</td>
+                <td>38.18</td><td>21.14</td><td>6.16</td>
+            </tr>
+        
+            </table>
+        </div>
+        
+        <!-- Individual Subject Chart -->
+        <div class="card">
+            <h2>📊 Individual Subject Comparison - Connectivity Density</h2>
+            <div id="individual-chart" class="chart-container"></div>
+        </div>
+        
+        <!-- Screenshots not included -->
+        
+        <footer>
+            <p>Generated: 2026-01-31 11:17:49 | MBRAIN Project</p>
+            <p>Pipeline: mrtrix_preproc_flip1 | Tractography: iFOD2 | Cleaning: MATLAB AFQ</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Comparison Chart Data
+        
+        // ========== CHART 1: CTRL Scatter Plot by Segment ==========
+        // Individual data points (dots) with group mean ± SD overlay
+        var ctrlScatterData = [];
+        
+        // Add individual points for each CTRL segment
+        var ctrlIndividual = {"anterior": [62.58760563755042, 34.144710004249625, 21.2392738084512, 36.50780401776169], "anterior_central": [16.973377140114724, 11.734163900712437, 25.182935031355203, 22.194194185079365], "central": [16.371035224394465, 7.304555082447192, 43.96819538189497, 26.345886700565686], "posterior_central": [19.688959623888255, 31.99264111738933, 30.623158118331936, 16.048236069643238], "posterior": [27.477321931035213, 36.506678097758964, 13.076902532989848, 37.87807938977505]};
+        var ctrlLabels = ["Anterior", "Ant-Central", "Central", "Post-Central", "Posterior"];
+        var ctrlSegments = ["anterior", "anterior_central", "central", "posterior_central", "posterior"];
+        
+        ctrlSegments.forEach(function(seg, i) {
+            var values = ctrlIndividual[seg] || [];
+            // Add jitter for visibility
+            var xPositions = values.map(function() { return i + (Math.random() - 0.5) * 0.3; });
+            
+            ctrlScatterData.push({
+                x: xPositions,
+                y: values,
+                mode: 'markers',
+                type: 'scatter',
+                name: ctrlLabels[i],
+                marker: {
+                    color: '#3498db',
+                    size: 12,
+                    opacity: 0.7,
+                    line: { color: '#2980b9', width: 1 }
+                },
+                showlegend: false,
+                hovertemplate: ctrlLabels[i] + ': %{y:.2f}<extra></extra>'
+            });
+        });
+        
+        // Add mean ± SD as error bars (separate trace)
+        var ctrlMeans = [38.619848367003236, 19.021167564315434, 23.49741809732558, 24.58824873231319, 28.734745487889768];
+        var ctrlStds = [15.008542194898592, 5.131504269431087, 13.602946753261858, 6.858935922140638, 9.883732231998128];
+        
+        ctrlScatterData.push({
+            x: [0, 1, 2, 3, 4],
+            y: ctrlMeans,
+            error_y: {
+                type: 'data',
+                array: ctrlStds,
+                visible: true,
+                color: '#2c3e50',
+                thickness: 2,
+                width: 8
+            },
+            mode: 'markers',
+            type: 'scatter',
+            name: 'Mean ± SD',
+            marker: {
+                color: '#2c3e50',
+                size: 16,
+                symbol: 'diamond',
+                line: { color: '#1a252f', width: 2 }
+            },
+            showlegend: true,
+            hovertemplate: 'Mean: %{y:.2f} ± SD<extra></extra>'
+        });
+        
+        var ctrlLayout = {
+            title: 'CTRL Connectivity Density by Segment (n=4)',
+            yaxis: { title: 'Connectivity Density (SIFT2/voxels×1000)', zeroline: true, rangemode: 'tozero' },
+            xaxis: {
+                title: 'Isocortex Segment',
+                ticktext: ctrlLabels,
+                tickvals: [0, 1, 2, 3, 4],
+                range: [-0.5, 4.5]
+            },
+            legend: { x: 0.8, y: 1.1 },
+            hovermode: 'closest'
+        };
+        
+        Plotly.newPlot('comparison-chart', ctrlScatterData, ctrlLayout);
+        
+        // ========== CHART 2: Individual Subject Comparison (Scatter) ==========
+        // CTRL subjects on left, APTR on right - show mean density per subject
+        
+        var ctrlSubjects = ["129-921-R1F", "129-921-R1L1F", "129-1014-L1M", "138-1010-L1F"];
+        var aptrSubjects = ["AP72-862-901-NmF", "AP72-862-901-R1M", "Apallial17NmF", "Apallial20R1F"];
+        var ctrlMeanDensities = [28.619659911396617, 24.33654964051151, 26.81809297460463, 27.794840072565005];
+        var aptrMeanDensities = [16.90107462046423, 24.14905159232826, 6.271464053664558, 21.827377352862058];
+        
+        // Calculate group means and SDs
+        var ctrlGroupMean = ctrlMeanDensities.reduce((a, b) => a + b, 0) / ctrlMeanDensities.length;
+        var aptrGroupMean = aptrMeanDensities.reduce((a, b) => a + b, 0) / aptrMeanDensities.length;
+        
+        var ctrlGroupSD = Math.sqrt(ctrlMeanDensities.map(x => Math.pow(x - ctrlGroupMean, 2)).reduce((a, b) => a + b, 0) / ctrlMeanDensities.length);
+        var aptrGroupSD = Math.sqrt(aptrMeanDensities.map(x => Math.pow(x - aptrGroupMean, 2)).reduce((a, b) => a + b, 0) / aptrMeanDensities.length);
+        
+        var individualData = [
+            // CTRL individual points
+            {
+                x: ctrlSubjects.map(function(_, i) { return i + (Math.random() - 0.5) * 0.2; }),
+                y: ctrlMeanDensities,
+                mode: 'markers',
+                type: 'scatter',
+                name: 'CTRL subjects',
+                marker: {
+                    color: '#3498db',
+                    size: 14,
+                    opacity: 0.8,
+                    line: { color: '#2980b9', width: 1 }
+                },
+                text: ctrlSubjects,
+                hovertemplate: '%{text}: %{y:.2f}<extra></extra>'
+            },
+            // CTRL group mean with error bar
+            {
+                x: [ctrlSubjects.length / 2 - 0.5],
+                y: [ctrlGroupMean],
+                error_y: {
+                    type: 'data',
+                    array: [ctrlGroupSD],
+                    visible: true,
+                    color: '#2c3e50',
+                    thickness: 3,
+                    width: 20
+                },
+                mode: 'markers',
+                type: 'scatter',
+                name: 'CTRL Mean ± SD',
+                marker: {
+                    color: '#2c3e50',
+                    size: 18,
+                    symbol: 'diamond'
+                },
+                hovertemplate: 'CTRL Mean: %{y:.2f} ± ' + ctrlGroupSD.toFixed(2) + '<extra></extra>'
+            },
+            // APTR individual points (offset to right side)
+            {
+                x: aptrSubjects.map(function(_, i) { return i + ctrlSubjects.length + 1 + (Math.random() - 0.5) * 0.2; }),
+                y: aptrMeanDensities,
+                mode: 'markers',
+                type: 'scatter',
+                name: 'APTR subjects',
+                marker: {
+                    color: '#e74c3c',
+                    size: 14,
+                    opacity: 0.8,
+                    line: { color: '#c0392b', width: 1 }
+                },
+                text: aptrSubjects,
+                hovertemplate: '%{text}: %{y:.2f}<extra></extra>'
+            },
+            // APTR group mean with error bar
+            {
+                x: [ctrlSubjects.length + 1 + aptrSubjects.length / 2 - 0.5],
+                y: [aptrGroupMean],
+                error_y: {
+                    type: 'data',
+                    array: [aptrGroupSD],
+                    visible: true,
+                    color: '#2c3e50',
+                    thickness: 3,
+                    width: 20
+                },
+                mode: 'markers',
+                type: 'scatter',
+                name: 'APTR Mean ± SD',
+                marker: {
+                    color: '#2c3e50',
+                    size: 18,
+                    symbol: 'diamond'
+                },
+                hovertemplate: 'APTR Mean: %{y:.2f} ± ' + aptrGroupSD.toFixed(2) + '<extra></extra>'
+            }
+        ];
+        
+        var allLabels = ctrlSubjects.concat([''], aptrSubjects);
+        var tickVals = [];
+        for (var i = 0; i < ctrlSubjects.length; i++) tickVals.push(i);
+        tickVals.push(ctrlSubjects.length); // gap
+        for (var i = 0; i < aptrSubjects.length; i++) tickVals.push(ctrlSubjects.length + 1 + i);
+        
+        var individualLayout = {
+            title: 'Mean Connectivity Density by Subject (CTRL vs APTR)',
+            yaxis: { title: 'Mean Connectivity Density', zeroline: true, rangemode: 'tozero' },
+            xaxis: {
+                ticktext: allLabels,
+                tickvals: tickVals,
+                tickangle: -45
+            },
+            showlegend: true,
+            legend: { x: 0.75, y: 1.1 },
+            hovermode: 'closest',
+            annotations: [
+                {
+                    x: ctrlSubjects.length / 2 - 0.5,
+                    y: -0.15,
+                    xref: 'x',
+                    yref: 'paper',
+                    text: '<b>CTRL</b>',
+                    showarrow: false,
+                    font: { size: 14, color: '#3498db' }
+                },
+                {
+                    x: ctrlSubjects.length + 1 + aptrSubjects.length / 2 - 0.5,
+                    y: -0.15,
+                    xref: 'x',
+                    yref: 'paper',
+                    text: '<b>APTR</b>',
+                    showarrow: false,
+                    font: { size: 14, color: '#e74c3c' }
+                }
+            ]
+        };
+        
+        Plotly.newPlot('individual-chart', individualData, individualLayout);
+    
+    </script>
+</body>
+</html>

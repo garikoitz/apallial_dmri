@@ -48,7 +48,7 @@ subject = args.subject
 session = args.session
 num_segments = args.segments
 
-# Use flip2 derivatives folder from config
+# Use flip1 derivatives folder from config
 derivatives_dir = config['paths']['derivatives_dir']
 base_dir = os.path.join(derivatives_dir, subject, session)
 dwi_dir = os.path.join(base_dir, "dwi")
@@ -188,7 +188,7 @@ for hemi in hemispheres:
                 ap_section = "anterior"
             
             # Determine dorsal/ventral (or dorsal/medial/ventral)
-            # Note: In flip2 orientation, LOW Y = dorsal, HIGH Y = ventral
+            # Note: In flip1 orientation, LOW Y = dorsal, HIGH Y = ventral
             if num_segments == 6:
                 if y < y_mid:
                     dv_section = "dorsal"

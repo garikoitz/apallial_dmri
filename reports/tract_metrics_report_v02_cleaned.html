@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBRAIN Per-Tract Metrics Report (3-Segment Comparison)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           margin: 0; padding: 20px; background: #f5f5f5; color: #333; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+    h2 { color: #34495e; margin-top: 30px; }
+    h3 { color: #7f8c8d; }
+    .summary-box { background: white; border-radius: 8px; padding: 20px;
+                    margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .mapping-box { background: #fdf6e3; border-left: 4px solid #f39c12; padding: 12px 18px;
+                    margin: 10px 0; font-size: 13px; }
+    .mapping-box code { background: #eee; padding: 1px 5px; border-radius: 3px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: right; }
+    th { background: #3498db; color: white; position: sticky; top: 0; }
+    td:first-child, td:nth-child(2) { text-align: left; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    tr:hover { background: #e8f4fd; }
+    .chart-container { background: white; border-radius: 8px; padding: 20px;
+                       margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .group-ctrl { color: #2ecc71; } .group-ap { color: #e74c3c; } .group-aptr { color: #f39c12; }
+    .metric-high { background: #d4edda; } .metric-low { background: #f8d7da; }
+    .zero { color: #ccc; }
+    .tabs { display: flex; gap: 5px; margin: 20px 0 10px; }
+    .tab { padding: 8px 16px; background: #ecf0f1; border: none; border-radius: 5px 5px 0 0;
+            cursor: pointer; font-size: 14px; }
+    .tab.active { background: #3498db; color: white; }
+    .tab-content { display: none; } .tab-content.active { display: block; }
+    .footer { text-align: center; color: #95a5a6; margin-top: 40px; padding: 20px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>MBRAIN Per-Tract Metrics Report</h1>
+<p>Generated: 2026-02-11 01:17:32</p>
+
+<div class="mapping-box" style="border-left-color: #27ae60;"><strong>&#x2705; CLEANED TRACTS:</strong> Tracts processed with MATLAB AFQ_removeFiberOutliers (maxDist=3, maxLen=3, numNodes=100). Outlier streamlines removed before computing metrics. Falls back to raw .tck if _cleaned.tck not available or &lt;20 streamlines.</div>
+
+<div class="mapping-box">
+<strong>Segment alignment (3-segment comparison):</strong><br>
+CTRL uses <code>isocortex_segments_v2/</code> with 5 AP segments &mdash; only 3 kept for comparison:<br>
+<code>anterior</code> &harr; AP/APTR <code>seg9_graft_*_anterior_dorsal</code>
+&emsp;|&emsp; <code>central</code> &harr; <code>seg9_graft_*_central_dorsal</code>
+&emsp;|&emsp; <code>posterior</code> &harr; <code>seg9_graft_*_posterior_dorsal</code><br>
+<strong>Target alignment:</strong> CTRL <code>olfactory_cortex</code> = AP/APTR <code>Palecortex</code> (piriform complex)
+</div>
+<div class="mapping-box" style="border-left-color: #3498db;">
+<strong>Metric definitions:</strong><br>
+<b>Count</b>: Raw number of streamlines in each passthrough tract. Least meaningful &mdash; driven by tractography parameters, not biology.<br>
+<b>SIFT2</b>: Sum of SIFT2 weights for matched streamlines. Biologically-corrected total connection strength (SIFT2 adjusts weights to fit the FOD). Useful for absolute connectivity, but confounded by segment ROI size.<br>
+<b>Density</b>: SIFT2 sum normalized by seed ROI voxel count (&times;1000). Most useful for cross-group connectivity comparison &mdash; controls for differences in segment ROI size.<br>
+<b>AFD</b>: Mean Apparent Fiber Density along each tract (fixel2voxel &rarr; tcksample). Measures microstructural fiber integrity along the tract path, independent of streamline count.
+</div>
+<div class="summary-box">
+<h2>Summary</h2>
+<h3 class="group-ctrl">CTRL (4 subjects)</h3>
+<p>Subjects: sub-129-1014-L1M, sub-129-921-R1F, sub-129-921-R1L1F, sub-138-1010-L1F<br>Total streamlines: 316,075 | Total SIFT2: 22.18 | Mean AFD: 1.4535</p>
+<h3 class="group-ap">AP (4 subjects)</h3>
+<p>Subjects: sub-596-C-OO-NmM, sub-769-C-O5-R1M, sub-769-C-OO-NmM, sub-875-C-OO-NM<br>Total streamlines: 54,498 | Total SIFT2: 238.71 | Mean AFD: 1.1035</p>
+<h3 class="group-aptr">APTR (4 subjects)</h3>
+<p>Subjects: sub-AP72-862-901-NmF, sub-AP72-862-901-R1M, sub-Apallial17NmF, sub-Apallial20R1F<br>Total streamlines: 183,668 | Total SIFT2: 29.28 | Mean AFD: 1.0918</p>
+</div>
+<div class="tabs">
+<button class="tab active" onclick="showTab('left')">Left Hemisphere</button>
+<button class="tab" onclick="showTab('right')">Right Hemisphere</button>
+</div>
+<div id="tab-left" class="tab-content active">
+<h2>Left Hemisphere</h2>
+<div class="summary-box">
+<h3>Target: Cerebellum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>1</td><td>0.43</td><td>0.97</td><td>1.1846</td><td>4</td><td>1.55</td><td>3.80</td><td>1.1101</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>4</td><td>1.12</td><td>1.66</td><td>1.0609</td><td>4</td><td>1.00</td><td>0.75</td><td>1.0629</td><td>433</td><td>0.00</td><td>0.00</td><td>0.9347</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>1</td><td>0.31</td><td>0.81</td><td>1.3184</td><td>12</td><td>4.84</td><td>4.31</td><td>1.1965</td><td>65</td><td>0.00</td><td>0.00</td><td>1.2057</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>4</td><td>1.15</td><td>3.18</td><td>1.2048</td><td>17</td><td>5.55</td><td>6.17</td><td>1.1863</td><td>2</td><td>2.03</td><td>2.53</td><td>1.1828</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>64</td><td>0.00</td><td>0.00</td><td>1.2374</td><td>58</td><td>0.00</td><td>0.00</td><td>1.1882</td><td>16</td><td>8.23</td><td>17.89</td><td>1.1768</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>19</td><td>0.00</td><td>0.00</td><td>1.1837</td><td>19</td><td>0.00</td><td>0.00</td><td>1.1913</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>14</td><td>6.63</td><td>7.19</td><td>1.1860</td><td>20</td><td>0.00</td><td>0.00</td><td>1.1749</td><td>18</td><td>8.89</td><td>6.01</td><td>1.1171</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>8</td><td>5.27</td><td>9.13</td><td>1.4815</td><td>89</td><td>0.00</td><td>0.00</td><td>1.7460</td><td>1,962</td><td>0.00</td><td>0.00</td><td>1.5391</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>17</td><td>6.43</td><td>21.93</td><td>1.4392</td><td>76</td><td>0.00</td><td>0.00</td><td>1.4650</td><td>523</td><td>0.00</td><td>0.00</td><td>1.4221</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>62</td><td>0.00</td><td>0.00</td><td>1.6461</td><td>1,480</td><td>0.00</td><td>0.00</td><td>1.5177</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>30</td><td>0.00</td><td>0.00</td><td>1.3930</td><td>157</td><td>0.00</td><td>0.00</td><td>1.4600</td><td>5,653</td><td>0.00</td><td>0.00</td><td>1.4606</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>14</td><td>2.92</td><td>7.77</td><td>1.4379</td><td>96</td><td>0.00</td><td>0.00</td><td>1.5792</td><td>2404</td><td>0.00</td><td>0.00</td><td>1.4849</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>2</td><td>0.65</td><td>1.41</td><td>1.1947</td><td>8</td><td>2.95</td><td>3.05</td><td>1.1576</td><td>126</td><td>0.90</td><td>1.58</td><td>1.1083</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>24</td><td>1.66</td><td>1.80</td><td>1.2024</td><td>24</td><td>0.00</td><td>0.00</td><td>1.1848</td><td>8</td><td>4.28</td><td>5.97</td><td>1.1469</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_cerebellum_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_cerebellum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_cerebellum_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_cerebellum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_cerebellum_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 8.0}, {"x": -0.22, "y": 17.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 30.0}, {"x": 0.74, "y": 89.0}, {"x": 0.78, "y": 76.0}, {"x": 0.82, "y": 62.0}, {"x": 0.86, "y": 157.0}, {"x": 1.74, "y": 1962.0}, {"x": 1.78, "y": 523.0}, {"x": 1.82, "y": 1480.0}, {"x": 1.86, "y": 5653.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 13.75}, {"x": 0.8, "y": 96.0}, {"x": 1.8, "y": 2404.5}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 4.0}, {"x": 0.02, "y": 1.0}, {"x": 0.06, "y": 4.0}, {"x": 0.94, "y": 1.0}, {"x": 0.98, "y": 4.0}, {"x": 1.02, "y": 12.0}, {"x": 1.06, "y": 17.0}, {"x": 1.94, "y": 4.0}, {"x": 1.98, "y": 433.0}, {"x": 2.02, "y": 65.0}, {"x": 2.06, "y": 2.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 2.25}, {"x": 1.0, "y": 8.5}, {"x": 2.0, "y": 126.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 64.0}, {"x": 0.18, "y": 19.0}, {"x": 0.22, "y": 14.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 58.0}, {"x": 1.18, "y": 19.0}, {"x": 1.22, "y": 20.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 16.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 18.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 24.25}, {"x": 1.2, "y": 24.25}, {"x": 2.2, "y": 8.5}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Cerebellum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_cerebellum_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 5.2688}, {"x": -0.22, "y": 6.4262}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 2.9238}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 1.1214}, {"x": 0.02, "y": 0.3136}, {"x": 0.06, "y": 1.1467}, {"x": 0.94, "y": 0.4266}, {"x": 0.98, "y": 0.9993}, {"x": 1.02, "y": 4.8369}, {"x": 1.06, "y": 5.55}, {"x": 1.94, "y": 1.5488}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 2.0346}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.6454}, {"x": 1.0, "y": 2.9532}, {"x": 2.0, "y": 0.8959}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 6.6323}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 8.2272}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 8.8898}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.6581}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 4.2792}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Cerebellum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_cerebellum_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 9.1313}, {"x": -0.22, "y": 21.9325}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 7.766}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 1.6638}, {"x": 0.02, "y": 0.8145}, {"x": 0.06, "y": 3.1766}, {"x": 0.94, "y": 0.9696}, {"x": 0.98, "y": 0.7458}, {"x": 1.02, "y": 4.3071}, {"x": 1.06, "y": 6.1667}, {"x": 1.94, "y": 3.7961}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 2.5306}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.4137}, {"x": 1.0, "y": 3.0473}, {"x": 2.0, "y": 1.5817}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 7.1933}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 17.8853}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 6.0066}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.7983}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 5.973}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Cerebellum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_cerebellum_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.4815}, {"x": -0.22, "y": 1.4392}, {"x": -0.14, "y": 1.393}, {"x": 0.74, "y": 1.746}, {"x": 0.78, "y": 1.465}, {"x": 0.82, "y": 1.6461}, {"x": 0.86, "y": 1.46}, {"x": 1.74, "y": 1.5391}, {"x": 1.78, "y": 1.4221}, {"x": 1.82, "y": 1.5177}, {"x": 1.86, "y": 1.4606}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4379}, {"x": 0.8, "y": 1.5792}, {"x": 1.8, "y": 1.4849}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.02, "y": 1.0609}, {"x": 0.02, "y": 1.3184}, {"x": 0.06, "y": 1.2048}, {"x": 0.94, "y": 1.1846}, {"x": 0.98, "y": 1.0629}, {"x": 1.02, "y": 1.1965}, {"x": 1.06, "y": 1.1863}, {"x": 1.94, "y": 1.1101}, {"x": 1.98, "y": 0.9347}, {"x": 2.02, "y": 1.2057}, {"x": 2.06, "y": 1.1828}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.1947}, {"x": 1.0, "y": 1.1576}, {"x": 2.0, "y": 1.1083}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.2374}, {"x": 0.18, "y": 1.1837}, {"x": 0.22, "y": 1.186}, {"x": 1.14, "y": 1.1882}, {"x": 1.18, "y": 1.1913}, {"x": 1.22, "y": 1.1749}, {"x": 2.14, "y": 1.1768}, {"x": 2.22, "y": 1.1171}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.2024}, {"x": 1.2, "y": 1.1848}, {"x": 2.2, "y": 1.1469}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Cerebellum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Olfactory_cortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>4,694</td><td>0.00</td><td>0.00</td><td>1.0989</td><td>6,130</td><td>0.00</td><td>0.00</td><td>1.2171</td><td>335</td><td>0.00</td><td>0.00</td><td>1.0967</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>738</td><td>0.00</td><td>0.00</td><td>0.9820</td><td>285</td><td>0.00</td><td>0.00</td><td>0.9092</td><td>2</td><td>1.37</td><td>1.37</td><td>1.0911</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>884</td><td>0.00</td><td>0.00</td><td>0.9289</td><td>773</td><td>0.00</td><td>0.00</td><td>0.9665</td><td>16</td><td>7.67</td><td>9.07</td><td>1.1498</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>1,492</td><td>0.00</td><td>0.00</td><td>1.0589</td><td>6,209</td><td>0.00</td><td>0.00</td><td>1.1095</td><td>1,526</td><td>0.00</td><td>0.00</td><td>1.0012</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>503</td><td>0.00</td><td>0.00</td><td>1.0073</td><td>4,392</td><td>0.00</td><td>0.00</td><td>1.2513</td><td>533</td><td>0.00</td><td>0.00</td><td>1.2782</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>692</td><td>0.00</td><td>0.00</td><td>1.0756</td><td>577</td><td>0.00</td><td>0.00</td><td>0.9475</td><td>25</td><td>0.00</td><td>0.00</td><td>0.9622</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>376</td><td>0.00</td><td>0.00</td><td>0.9335</td><td>11,222</td><td>0.00</td><td>0.00</td><td>0.9039</td><td>7,726</td><td>0.00</td><td>0.00</td><td>0.9011</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>1,509</td><td>0.00</td><td>0.00</td><td>1.0147</td><td>4,069</td><td>0.00</td><td>0.00</td><td>1.0423</td><td>724</td><td>0.00</td><td>0.00</td><td>1.0940</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>3,654</td><td>0.00</td><td>0.00</td><td>1.4509</td><td>4,404</td><td>0.00</td><td>0.00</td><td>1.7017</td><td>6,659</td><td>0.00</td><td>0.00</td><td>1.6843</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>903</td><td>0.00</td><td>0.00</td><td>1.3754</td><td>5,450</td><td>0.00</td><td>0.00</td><td>1.5150</td><td>5,542</td><td>0.00</td><td>0.00</td><td>1.5565</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>2,242</td><td>0.00</td><td>0.00</td><td>1.3219</td><td>5,165</td><td>0.00</td><td>0.00</td><td>1.5682</td><td>10,194</td><td>0.00</td><td>0.00</td><td>1.5603</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>5,254</td><td>0.00</td><td>0.00</td><td>1.4979</td><td>5,431</td><td>0.00</td><td>0.00</td><td>1.6390</td><td>5,772</td><td>0.00</td><td>0.00</td><td>1.5829</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>3013</td><td>0.00</td><td>0.00</td><td>1.4115</td><td>5112</td><td>0.00</td><td>0.00</td><td>1.6059</td><td>7042</td><td>0.00</td><td>0.00</td><td>1.5960</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>1952</td><td>0.00</td><td>0.00</td><td>1.0172</td><td>3349</td><td>0.00</td><td>0.00</td><td>1.0506</td><td>470</td><td>2.26</td><td>2.61</td><td>1.0847</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>770</td><td>0.00</td><td>0.00</td><td>1.0078</td><td>5065</td><td>0.00</td><td>0.00</td><td>1.0362</td><td>2252</td><td>0.00</td><td>0.00</td><td>1.0589</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 3654.0}, {"x": -0.22, "y": 903.0}, {"x": -0.18, "y": 2242.0}, {"x": -0.14, "y": 5254.0}, {"x": 0.74, "y": 4404.0}, {"x": 0.78, "y": 5450.0}, {"x": 0.82, "y": 5165.0}, {"x": 0.86, "y": 5431.0}, {"x": 1.74, "y": 6659.0}, {"x": 1.78, "y": 5542.0}, {"x": 1.82, "y": 10194.0}, {"x": 1.86, "y": 5772.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 3013.25}, {"x": 0.8, "y": 5112.5}, {"x": 1.8, "y": 7041.75}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 4694.0}, {"x": -0.02, "y": 738.0}, {"x": 0.02, "y": 884.0}, {"x": 0.06, "y": 1492.0}, {"x": 0.94, "y": 6130.0}, {"x": 0.98, "y": 285.0}, {"x": 1.02, "y": 773.0}, {"x": 1.06, "y": 6209.0}, {"x": 1.94, "y": 335.0}, {"x": 1.98, "y": 2.0}, {"x": 2.02, "y": 16.0}, {"x": 2.06, "y": 1526.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1952.0}, {"x": 1.0, "y": 3349.25}, {"x": 2.0, "y": 469.75}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 503.0}, {"x": 0.18, "y": 692.0}, {"x": 0.22, "y": 376.0}, {"x": 0.26, "y": 1509.0}, {"x": 1.14, "y": 4392.0}, {"x": 1.18, "y": 577.0}, {"x": 1.22, "y": 11222.0}, {"x": 1.26, "y": 4069.0}, {"x": 2.14, "y": 533.0}, {"x": 2.18, "y": 25.0}, {"x": 2.22, "y": 7726.0}, {"x": 2.26, "y": 724.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 770.0}, {"x": 1.2, "y": 5065.0}, {"x": 2.2, "y": 2252.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Olfactory_cortex (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 1.3688}, {"x": 2.02, "y": 7.6715}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 2.2601}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Olfactory_cortex (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 1.3688}, {"x": 2.02, "y": 9.068}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 2.6092}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Olfactory_cortex (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.4509}, {"x": -0.22, "y": 1.3754}, {"x": -0.18, "y": 1.3219}, {"x": -0.14, "y": 1.4979}, {"x": 0.74, "y": 1.7017}, {"x": 0.78, "y": 1.515}, {"x": 0.82, "y": 1.5682}, {"x": 0.86, "y": 1.639}, {"x": 1.74, "y": 1.6843}, {"x": 1.78, "y": 1.5565}, {"x": 1.82, "y": 1.5603}, {"x": 1.86, "y": 1.5829}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4115}, {"x": 0.8, "y": 1.6059}, {"x": 1.8, "y": 1.596}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.0989}, {"x": -0.02, "y": 0.982}, {"x": 0.02, "y": 0.9289}, {"x": 0.06, "y": 1.0589}, {"x": 0.94, "y": 1.2171}, {"x": 0.98, "y": 0.9092}, {"x": 1.02, "y": 0.9665}, {"x": 1.06, "y": 1.1095}, {"x": 1.94, "y": 1.0967}, {"x": 1.98, "y": 1.0911}, {"x": 2.02, "y": 1.1498}, {"x": 2.06, "y": 1.0012}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.0172}, {"x": 1.0, "y": 1.0506}, {"x": 2.0, "y": 1.0847}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.0073}, {"x": 0.18, "y": 1.0756}, {"x": 0.22, "y": 0.9335}, {"x": 0.26, "y": 1.0147}, {"x": 1.14, "y": 1.2513}, {"x": 1.18, "y": 0.9475}, {"x": 1.22, "y": 0.9039}, {"x": 1.26, "y": 1.0423}, {"x": 2.14, "y": 1.2782}, {"x": 2.18, "y": 0.9622}, {"x": 2.22, "y": 0.9011}, {"x": 2.26, "y": 1.094}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.0078}, {"x": 1.2, "y": 1.0362}, {"x": 2.2, "y": 1.0589}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Olfactory_cortex (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Striatum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>3,663</td><td>0.00</td><td>0.00</td><td>1.2007</td><td>8,679</td><td>0.00</td><td>0.00</td><td>1.2006</td><td>127</td><td>0.00</td><td>0.00</td><td>1.2029</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>238</td><td>0.00</td><td>0.00</td><td>1.0928</td><td>309</td><td>0.00</td><td>0.00</td><td>0.9860</td><td>7</td><td>5.26</td><td>5.26</td><td>1.1627</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>548</td><td>0.00</td><td>0.00</td><td>1.0710</td><td>796</td><td>0.00</td><td>0.00</td><td>1.0681</td><td>30</td><td>0.00</td><td>0.00</td><td>1.0236</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>1,476</td><td>0.00</td><td>0.00</td><td>1.1196</td><td>5,215</td><td>0.00</td><td>0.00</td><td>1.0761</td><td>658</td><td>0.00</td><td>0.00</td><td>1.0951</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>756</td><td>0.00</td><td>0.00</td><td>1.1933</td><td>6,995</td><td>0.00</td><td>0.00</td><td>1.2578</td><td>2,751</td><td>0.00</td><td>0.00</td><td>1.2381</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>335</td><td>0.00</td><td>0.00</td><td>1.0960</td><td>804</td><td>0.00</td><td>0.00</td><td>1.0391</td><td>68</td><td>0.00</td><td>0.00</td><td>1.0391</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>813</td><td>0.00</td><td>0.00</td><td>1.1124</td><td>6,169</td><td>0.00</td><td>0.00</td><td>1.0546</td><td>4,028</td><td>0.00</td><td>0.00</td><td>0.9961</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>3,056</td><td>0.00</td><td>0.00</td><td>1.0599</td><td>8,543</td><td>0.00</td><td>0.00</td><td>1.0506</td><td>1,265</td><td>0.00</td><td>0.00</td><td>1.1110</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>4,974</td><td>0.00</td><td>0.00</td><td>1.5424</td><td>7,162</td><td>0.00</td><td>0.00</td><td>1.5458</td><td>1,048</td><td>0.00</td><td>0.00</td><td>1.6511</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>1,544</td><td>0.00</td><td>0.00</td><td>1.4676</td><td>606</td><td>0.00</td><td>0.00</td><td>1.2623</td><td>71</td><td>0.00</td><td>0.00</td><td>1.2922</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>3,543</td><td>0.00</td><td>0.00</td><td>1.3610</td><td>3,539</td><td>0.00</td><td>0.00</td><td>1.4291</td><td>2,728</td><td>0.00</td><td>0.00</td><td>1.5087</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>8,104</td><td>0.00</td><td>0.00</td><td>1.4300</td><td>13,922</td><td>0.00</td><td>0.00</td><td>1.4794</td><td>567</td><td>0.00</td><td>0.00</td><td>1.5745</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>4541</td><td>0.00</td><td>0.00</td><td>1.4503</td><td>6307</td><td>0.00</td><td>0.00</td><td>1.4292</td><td>1104</td><td>0.00</td><td>0.00</td><td>1.5066</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>1481</td><td>0.00</td><td>0.00</td><td>1.1210</td><td>3750</td><td>0.00</td><td>0.00</td><td>1.0827</td><td>206</td><td>1.32</td><td>1.32</td><td>1.1211</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>1240</td><td>0.00</td><td>0.00</td><td>1.1154</td><td>5628</td><td>0.00</td><td>0.00</td><td>1.1005</td><td>2028</td><td>0.00</td><td>0.00</td><td>1.0961</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_striatum_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_striatum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_striatum_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_striatum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_striatum_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 4974.0}, {"x": -0.22, "y": 1544.0}, {"x": -0.18, "y": 3543.0}, {"x": -0.14, "y": 8104.0}, {"x": 0.74, "y": 7162.0}, {"x": 0.78, "y": 606.0}, {"x": 0.82, "y": 3539.0}, {"x": 0.86, "y": 13922.0}, {"x": 1.74, "y": 1048.0}, {"x": 1.78, "y": 71.0}, {"x": 1.82, "y": 2728.0}, {"x": 1.86, "y": 567.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 4541.25}, {"x": 0.8, "y": 6307.25}, {"x": 1.8, "y": 1103.5}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 3663.0}, {"x": -0.02, "y": 238.0}, {"x": 0.02, "y": 548.0}, {"x": 0.06, "y": 1476.0}, {"x": 0.94, "y": 8679.0}, {"x": 0.98, "y": 309.0}, {"x": 1.02, "y": 796.0}, {"x": 1.06, "y": 5215.0}, {"x": 1.94, "y": 127.0}, {"x": 1.98, "y": 7.0}, {"x": 2.02, "y": 30.0}, {"x": 2.06, "y": 658.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1481.25}, {"x": 1.0, "y": 3749.75}, {"x": 2.0, "y": 205.5}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 756.0}, {"x": 0.18, "y": 335.0}, {"x": 0.22, "y": 813.0}, {"x": 0.26, "y": 3056.0}, {"x": 1.14, "y": 6995.0}, {"x": 1.18, "y": 804.0}, {"x": 1.22, "y": 6169.0}, {"x": 1.26, "y": 8543.0}, {"x": 2.14, "y": 2751.0}, {"x": 2.18, "y": 68.0}, {"x": 2.22, "y": 4028.0}, {"x": 2.26, "y": 1265.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1240.0}, {"x": 1.2, "y": 5627.75}, {"x": 2.2, "y": 2028.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Striatum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_striatum_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 5.2617}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 1.3154}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Striatum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_striatum_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 5.2617}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 1.3154}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Striatum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_striatum_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.5424}, {"x": -0.22, "y": 1.4676}, {"x": -0.18, "y": 1.361}, {"x": -0.14, "y": 1.43}, {"x": 0.74, "y": 1.5458}, {"x": 0.78, "y": 1.2623}, {"x": 0.82, "y": 1.4291}, {"x": 0.86, "y": 1.4794}, {"x": 1.74, "y": 1.6511}, {"x": 1.78, "y": 1.2922}, {"x": 1.82, "y": 1.5087}, {"x": 1.86, "y": 1.5745}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4503}, {"x": 0.8, "y": 1.4292}, {"x": 1.8, "y": 1.5066}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.2007}, {"x": -0.02, "y": 1.0928}, {"x": 0.02, "y": 1.071}, {"x": 0.06, "y": 1.1196}, {"x": 0.94, "y": 1.2006}, {"x": 0.98, "y": 0.986}, {"x": 1.02, "y": 1.0681}, {"x": 1.06, "y": 1.0761}, {"x": 1.94, "y": 1.2029}, {"x": 1.98, "y": 1.1627}, {"x": 2.02, "y": 1.0236}, {"x": 2.06, "y": 1.0951}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.121}, {"x": 1.0, "y": 1.0827}, {"x": 2.0, "y": 1.1211}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.1933}, {"x": 0.18, "y": 1.096}, {"x": 0.22, "y": 1.1124}, {"x": 0.26, "y": 1.0599}, {"x": 1.14, "y": 1.2578}, {"x": 1.18, "y": 1.0391}, {"x": 1.22, "y": 1.0546}, {"x": 1.26, "y": 1.0506}, {"x": 2.14, "y": 1.2381}, {"x": 2.18, "y": 1.0391}, {"x": 2.22, "y": 0.9961}, {"x": 2.26, "y": 1.111}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.1154}, {"x": 1.2, "y": 1.1005}, {"x": 2.2, "y": 1.0961}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Striatum (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Thalamus</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>83</td><td>0.00</td><td>0.00</td><td>1.1428</td><td>322</td><td>0.00</td><td>0.00</td><td>1.0914</td><td>218</td><td>0.00</td><td>0.00</td><td>0.8439</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>20</td><td>0.00</td><td>0.00</td><td>1.1623</td><td>18</td><td>0.00</td><td>0.00</td><td>1.1354</td><td>117</td><td>0.00</td><td>0.00</td><td>1.0560</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>23</td><td>0.00</td><td>0.00</td><td>1.1884</td><td>44</td><td>0.00</td><td>0.00</td><td>1.1395</td><td>466</td><td>0.00</td><td>0.00</td><td>1.0689</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>54</td><td>0.00</td><td>0.00</td><td>1.1745</td><td>338</td><td>0.00</td><td>0.00</td><td>1.0636</td><td>56</td><td>0.00</td><td>0.00</td><td>1.0918</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>545</td><td>0.00</td><td>0.00</td><td>1.1463</td><td>1,444</td><td>0.00</td><td>0.00</td><td>1.1231</td><td>322</td><td>0.00</td><td>0.00</td><td>1.2154</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>823</td><td>0.00</td><td>0.00</td><td>1.1234</td><td>669</td><td>0.00</td><td>0.00</td><td>1.0821</td><td>38</td><td>0.00</td><td>0.00</td><td>1.0184</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>729</td><td>0.00</td><td>0.00</td><td>1.1943</td><td>772</td><td>0.00</td><td>0.00</td><td>1.1148</td><td>417</td><td>0.00</td><td>0.00</td><td>1.0499</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>4,872</td><td>0.00</td><td>0.00</td><td>0.9767</td><td>2,757</td><td>0.00</td><td>0.00</td><td>1.0212</td><td>227</td><td>0.00</td><td>0.00</td><td>1.0850</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>403</td><td>0.00</td><td>0.00</td><td>1.4069</td><td>3,055</td><td>0.00</td><td>0.00</td><td>1.4563</td><td>2,454</td><td>0.00</td><td>0.00</td><td>1.4299</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>716</td><td>0.00</td><td>0.00</td><td>1.4217</td><td>978</td><td>0.00</td><td>0.00</td><td>1.3577</td><td>473</td><td>0.00</td><td>0.00</td><td>1.3685</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>122</td><td>0.00</td><td>0.00</td><td>1.2298</td><td>1,285</td><td>0.00</td><td>0.00</td><td>1.2828</td><td>2,522</td><td>0.00</td><td>0.00</td><td>1.3917</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>1,883</td><td>0.00</td><td>0.00</td><td>1.3972</td><td>2,680</td><td>0.00</td><td>0.00</td><td>1.3267</td><td>710</td><td>0.00</td><td>0.00</td><td>1.4444</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>781</td><td>0.00</td><td>0.00</td><td>1.3639</td><td>2000</td><td>0.00</td><td>0.00</td><td>1.3559</td><td>1540</td><td>0.00</td><td>0.00</td><td>1.4086</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>45</td><td>0.00</td><td>0.00</td><td>1.1670</td><td>180</td><td>0.00</td><td>0.00</td><td>1.1075</td><td>214</td><td>0.00</td><td>0.00</td><td>1.0152</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>1742</td><td>0.00</td><td>0.00</td><td>1.1102</td><td>1410</td><td>0.00</td><td>0.00</td><td>1.0853</td><td>251</td><td>0.00</td><td>0.00</td><td>1.0922</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_thalamus_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_thalamus_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_thalamus_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_thalamus_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_thalamus_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 403.0}, {"x": -0.22, "y": 716.0}, {"x": -0.18, "y": 122.0}, {"x": -0.14, "y": 1883.0}, {"x": 0.74, "y": 3055.0}, {"x": 0.78, "y": 978.0}, {"x": 0.82, "y": 1285.0}, {"x": 0.86, "y": 2680.0}, {"x": 1.74, "y": 2454.0}, {"x": 1.78, "y": 473.0}, {"x": 1.82, "y": 2522.0}, {"x": 1.86, "y": 710.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 781.0}, {"x": 0.8, "y": 1999.5}, {"x": 1.8, "y": 1539.75}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 83.0}, {"x": -0.02, "y": 20.0}, {"x": 0.02, "y": 23.0}, {"x": 0.06, "y": 54.0}, {"x": 0.94, "y": 322.0}, {"x": 0.98, "y": 18.0}, {"x": 1.02, "y": 44.0}, {"x": 1.06, "y": 338.0}, {"x": 1.94, "y": 218.0}, {"x": 1.98, "y": 117.0}, {"x": 2.02, "y": 466.0}, {"x": 2.06, "y": 56.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 45.0}, {"x": 1.0, "y": 180.5}, {"x": 2.0, "y": 214.25}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 545.0}, {"x": 0.18, "y": 823.0}, {"x": 0.22, "y": 729.0}, {"x": 0.26, "y": 4872.0}, {"x": 1.14, "y": 1444.0}, {"x": 1.18, "y": 669.0}, {"x": 1.22, "y": 772.0}, {"x": 1.26, "y": 2757.0}, {"x": 2.14, "y": 322.0}, {"x": 2.18, "y": 38.0}, {"x": 2.22, "y": 417.0}, {"x": 2.26, "y": 227.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1742.25}, {"x": 1.2, "y": 1410.5}, {"x": 2.2, "y": 251.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Thalamus (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_thalamus_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Thalamus (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_thalamus_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Thalamus (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_left_thalamus_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.4069}, {"x": -0.22, "y": 1.4217}, {"x": -0.18, "y": 1.2298}, {"x": -0.14, "y": 1.3972}, {"x": 0.74, "y": 1.4563}, {"x": 0.78, "y": 1.3577}, {"x": 0.82, "y": 1.2828}, {"x": 0.86, "y": 1.3267}, {"x": 1.74, "y": 1.4299}, {"x": 1.78, "y": 1.3685}, {"x": 1.82, "y": 1.3917}, {"x": 1.86, "y": 1.4444}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.3639}, {"x": 0.8, "y": 1.3559}, {"x": 1.8, "y": 1.4086}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.1428}, {"x": -0.02, "y": 1.1623}, {"x": 0.02, "y": 1.1884}, {"x": 0.06, "y": 1.1745}, {"x": 0.94, "y": 1.0914}, {"x": 0.98, "y": 1.1354}, {"x": 1.02, "y": 1.1395}, {"x": 1.06, "y": 1.0636}, {"x": 1.94, "y": 0.8439}, {"x": 1.98, "y": 1.056}, {"x": 2.02, "y": 1.0689}, {"x": 2.06, "y": 1.0918}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.167}, {"x": 1.0, "y": 1.1075}, {"x": 2.0, "y": 1.0152}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.1463}, {"x": 0.18, "y": 1.1234}, {"x": 0.22, "y": 1.1943}, {"x": 0.26, "y": 0.9767}, {"x": 1.14, "y": 1.1231}, {"x": 1.18, "y": 1.0821}, {"x": 1.22, "y": 1.1148}, {"x": 1.26, "y": 1.0212}, {"x": 2.14, "y": 1.2154}, {"x": 2.18, "y": 1.0184}, {"x": 2.22, "y": 1.0499}, {"x": 2.26, "y": 1.085}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.1102}, {"x": 1.2, "y": 1.0853}, {"x": 2.2, "y": 1.0922}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Thalamus (left)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+</div>
+<div id="tab-right" class="tab-content">
+<h2>Right Hemisphere</h2>
+<div class="summary-box">
+<h3>Target: Cerebellum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>9</td><td>3.67</td><td>9.50</td><td>1.1631</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>1</td><td>0.35</td><td>0.24</td><td>1.1883</td><td>599</td><td>0.00</td><td>0.00</td><td>0.9630</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>7</td><td>3.16</td><td>2.90</td><td>1.2353</td><td>74</td><td>0.00</td><td>0.00</td><td>1.1915</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>22</td><td>0.00</td><td>0.00</td><td>1.2051</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>157</td><td>0.00</td><td>0.00</td><td>1.1205</td><td>476</td><td>0.00</td><td>0.00</td><td>1.1176</td><td>36</td><td>0.00</td><td>0.00</td><td>1.1049</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>31</td><td>0.00</td><td>0.00</td><td>1.0690</td><td>56</td><td>0.00</td><td>0.00</td><td>1.1287</td><td>29</td><td>0.00</td><td>0.00</td><td>1.0664</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>56</td><td>0.00</td><td>0.00</td><td>1.0154</td><td>94</td><td>0.00</td><td>0.00</td><td>1.0893</td><td>112</td><td>0.00</td><td>0.00</td><td>1.1297</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>8</td><td>5.53</td><td>6.42</td><td>1.0851</td><td>19</td><td>0.00</td><td>0.00</td><td>1.0766</td><td>14</td><td>0.00</td><td>0.00</td><td>1.0833</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>8</td><td>3.79</td><td>6.98</td><td>1.5302</td><td>26</td><td>0.00</td><td>0.00</td><td>1.5506</td><td>2,504</td><td>0.00</td><td>0.00</td><td>1.5069</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>14</td><td>6.19</td><td>17.83</td><td>1.4581</td><td>78</td><td>0.00</td><td>0.00</td><td>1.4589</td><td>223</td><td>0.00</td><td>0.00</td><td>1.4045</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>2</td><td>0.51</td><td>0.77</td><td>1.3686</td><td>17</td><td>0.00</td><td>0.00</td><td>1.3908</td><td>2,459</td><td>0.00</td><td>0.00</td><td>1.4109</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>144</td><td>0.00</td><td>0.00</td><td>1.3980</td><td>3,441</td><td>0.00</td><td>0.00</td><td>1.3695</td><td>13,502</td><td>0.00</td><td>0.00</td><td>1.4507</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>42</td><td>2.62</td><td>6.39</td><td>1.4387</td><td>890</td><td>0.00</td><td>0.00</td><td>1.4424</td><td>4672</td><td>0.00</td><td>0.00</td><td>1.4432</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>0</td><td>0.00</td><td>0.00</td><td>-</td><td>2</td><td>0.88</td><td>0.78</td><td>1.2118</td><td>176</td><td>0.92</td><td>2.37</td><td>1.1307</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>63</td><td>1.38</td><td>1.60</td><td>1.0725</td><td>161</td><td>0.00</td><td>0.00</td><td>1.1031</td><td>48</td><td>0.00</td><td>0.00</td><td>1.0961</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_cerebellum_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_cerebellum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_cerebellum_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_cerebellum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_cerebellum_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 8.0}, {"x": -0.22, "y": 14.0}, {"x": -0.18, "y": 2.0}, {"x": -0.14, "y": 144.0}, {"x": 0.74, "y": 26.0}, {"x": 0.78, "y": 78.0}, {"x": 0.82, "y": 17.0}, {"x": 0.86, "y": 3441.0}, {"x": 1.74, "y": 2504.0}, {"x": 1.78, "y": 223.0}, {"x": 1.82, "y": 2459.0}, {"x": 1.86, "y": 13502.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 42.0}, {"x": 0.8, "y": 890.5}, {"x": 1.8, "y": 4672.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 1.0}, {"x": 1.02, "y": 7.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 9.0}, {"x": 1.98, "y": 599.0}, {"x": 2.02, "y": 74.0}, {"x": 2.06, "y": 22.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 2.0}, {"x": 2.0, "y": 176.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 157.0}, {"x": 0.18, "y": 31.0}, {"x": 0.22, "y": 56.0}, {"x": 0.26, "y": 8.0}, {"x": 1.14, "y": 476.0}, {"x": 1.18, "y": 56.0}, {"x": 1.22, "y": 94.0}, {"x": 1.26, "y": 19.0}, {"x": 2.14, "y": 36.0}, {"x": 2.18, "y": 29.0}, {"x": 2.22, "y": 112.0}, {"x": 2.26, "y": 14.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 63.0}, {"x": 1.2, "y": 161.25}, {"x": 2.2, "y": 47.75}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Cerebellum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_cerebellum_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 3.7881}, {"x": -0.22, "y": 6.1874}, {"x": -0.18, "y": 0.5121}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 2.6219}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.3517}, {"x": 1.02, "y": 3.1571}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 3.667}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.8772}, {"x": 2.0, "y": 0.9167}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 5.5303}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.3826}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Cerebellum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_cerebellum_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 6.9763}, {"x": -0.22, "y": 17.8311}, {"x": -0.18, "y": 0.7655}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 6.3932}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.2368}, {"x": 1.02, "y": 2.9018}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 9.4999}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.7847}, {"x": 2.0, "y": 2.375}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 6.4156}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.6039}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Cerebellum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_cerebellum_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.5302}, {"x": -0.22, "y": 1.4581}, {"x": -0.18, "y": 1.3686}, {"x": -0.14, "y": 1.398}, {"x": 0.74, "y": 1.5506}, {"x": 0.78, "y": 1.4589}, {"x": 0.82, "y": 1.3908}, {"x": 0.86, "y": 1.3695}, {"x": 1.74, "y": 1.5069}, {"x": 1.78, "y": 1.4045}, {"x": 1.82, "y": 1.4109}, {"x": 1.86, "y": 1.4507}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4387}, {"x": 0.8, "y": 1.4424}, {"x": 1.8, "y": 1.4432}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": 0.98, "y": 1.1883}, {"x": 1.02, "y": 1.2353}, {"x": 1.94, "y": 1.1631}, {"x": 1.98, "y": 0.963}, {"x": 2.02, "y": 1.1915}, {"x": 2.06, "y": 1.2051}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 1.0, "y": 1.2118}, {"x": 2.0, "y": 1.1307}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.1205}, {"x": 0.18, "y": 1.069}, {"x": 0.22, "y": 1.0154}, {"x": 0.26, "y": 1.0851}, {"x": 1.14, "y": 1.1176}, {"x": 1.18, "y": 1.1287}, {"x": 1.22, "y": 1.0893}, {"x": 1.26, "y": 1.0766}, {"x": 2.14, "y": 1.1049}, {"x": 2.18, "y": 1.0664}, {"x": 2.22, "y": 1.1297}, {"x": 2.26, "y": 1.0833}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.0725}, {"x": 1.2, "y": 1.1031}, {"x": 2.2, "y": 1.0961}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Cerebellum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Olfactory_cortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>749</td><td>0.00</td><td>0.00</td><td>0.9150</td><td>574</td><td>0.00</td><td>0.00</td><td>1.2171</td><td>572</td><td>0.00</td><td>0.00</td><td>1.2181</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>14</td><td>35.17</td><td>50.46</td><td>0.7030</td><td>288</td><td>0.00</td><td>0.00</td><td>0.8904</td><td>35</td><td>0.00</td><td>0.00</td><td>1.1534</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>68</td><td>161.85</td><td>336.49</td><td>0.8261</td><td>49</td><td>0.00</td><td>0.00</td><td>0.8777</td><td>70</td><td>0.00</td><td>0.00</td><td>1.1178</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>138</td><td>0.00</td><td>0.00</td><td>1.0466</td><td>214</td><td>0.00</td><td>0.00</td><td>0.9658</td><td>19</td><td>0.00</td><td>0.00</td><td>1.1159</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>2,393</td><td>0.00</td><td>0.00</td><td>1.1141</td><td>5,737</td><td>0.00</td><td>0.00</td><td>1.1591</td><td>1,426</td><td>0.00</td><td>0.00</td><td>1.3032</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>2,753</td><td>0.00</td><td>0.00</td><td>1.0128</td><td>4,047</td><td>0.00</td><td>0.00</td><td>1.1159</td><td>2,497</td><td>0.00</td><td>0.00</td><td>1.2014</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>1,076</td><td>0.00</td><td>0.00</td><td>1.2007</td><td>7,487</td><td>0.00</td><td>0.00</td><td>0.9835</td><td>5,758</td><td>0.00</td><td>0.00</td><td>1.0233</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>1,657</td><td>0.00</td><td>0.00</td><td>1.0393</td><td>10,157</td><td>0.00</td><td>0.00</td><td>1.0177</td><td>2,820</td><td>0.00</td><td>0.00</td><td>1.0725</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>3,935</td><td>0.00</td><td>0.00</td><td>1.4733</td><td>6,224</td><td>0.00</td><td>0.00</td><td>1.5712</td><td>6,224</td><td>0.00</td><td>0.00</td><td>1.6114</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>1,284</td><td>0.00</td><td>0.00</td><td>1.3518</td><td>7,061</td><td>0.00</td><td>0.00</td><td>1.7066</td><td>6,347</td><td>0.00</td><td>0.00</td><td>1.6076</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>2,606</td><td>0.00</td><td>0.00</td><td>1.3424</td><td>8,891</td><td>0.00</td><td>0.00</td><td>1.4711</td><td>10,454</td><td>0.00</td><td>0.00</td><td>1.4870</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>3,087</td><td>0.00</td><td>0.00</td><td>1.2132</td><td>6,522</td><td>0.00</td><td>0.00</td><td>1.4347</td><td>4,347</td><td>0.00</td><td>0.00</td><td>1.3752</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>2728</td><td>0.00</td><td>0.00</td><td>1.3452</td><td>7174</td><td>0.00</td><td>0.00</td><td>1.5459</td><td>6843</td><td>0.00</td><td>0.00</td><td>1.5203</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>242</td><td>49.26</td><td>96.74</td><td>0.8727</td><td>281</td><td>0.00</td><td>0.00</td><td>0.9877</td><td>174</td><td>0.00</td><td>0.00</td><td>1.1513</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>1970</td><td>0.00</td><td>0.00</td><td>1.0917</td><td>6857</td><td>0.00</td><td>0.00</td><td>1.0691</td><td>3125</td><td>0.00</td><td>0.00</td><td>1.1501</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 3935.0}, {"x": -0.22, "y": 1284.0}, {"x": -0.18, "y": 2606.0}, {"x": -0.14, "y": 3087.0}, {"x": 0.74, "y": 6224.0}, {"x": 0.78, "y": 7061.0}, {"x": 0.82, "y": 8891.0}, {"x": 0.86, "y": 6522.0}, {"x": 1.74, "y": 6224.0}, {"x": 1.78, "y": 6347.0}, {"x": 1.82, "y": 10454.0}, {"x": 1.86, "y": 4347.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 2728.0}, {"x": 0.8, "y": 7174.5}, {"x": 1.8, "y": 6843.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 749.0}, {"x": -0.02, "y": 14.0}, {"x": 0.02, "y": 68.0}, {"x": 0.06, "y": 138.0}, {"x": 0.94, "y": 574.0}, {"x": 0.98, "y": 288.0}, {"x": 1.02, "y": 49.0}, {"x": 1.06, "y": 214.0}, {"x": 1.94, "y": 572.0}, {"x": 1.98, "y": 35.0}, {"x": 2.02, "y": 70.0}, {"x": 2.06, "y": 19.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 242.25}, {"x": 1.0, "y": 281.25}, {"x": 2.0, "y": 174.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 2393.0}, {"x": 0.18, "y": 2753.0}, {"x": 0.22, "y": 1076.0}, {"x": 0.26, "y": 1657.0}, {"x": 1.14, "y": 5737.0}, {"x": 1.18, "y": 4047.0}, {"x": 1.22, "y": 7487.0}, {"x": 1.26, "y": 10157.0}, {"x": 2.14, "y": 1426.0}, {"x": 2.18, "y": 2497.0}, {"x": 2.22, "y": 5758.0}, {"x": 2.26, "y": 2820.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1969.75}, {"x": 1.2, "y": 6857.0}, {"x": 2.2, "y": 3125.25}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Olfactory_cortex (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 35.1714}, {"x": 0.02, "y": 161.852}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 49.2559}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Olfactory_cortex (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 50.461}, {"x": 0.02, "y": 336.4907}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 96.7379}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Olfactory_cortex (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.4733}, {"x": -0.22, "y": 1.3518}, {"x": -0.18, "y": 1.3424}, {"x": -0.14, "y": 1.2132}, {"x": 0.74, "y": 1.5712}, {"x": 0.78, "y": 1.7066}, {"x": 0.82, "y": 1.4711}, {"x": 0.86, "y": 1.4347}, {"x": 1.74, "y": 1.6114}, {"x": 1.78, "y": 1.6076}, {"x": 1.82, "y": 1.487}, {"x": 1.86, "y": 1.3752}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.3452}, {"x": 0.8, "y": 1.5459}, {"x": 1.8, "y": 1.5203}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.915}, {"x": -0.02, "y": 0.703}, {"x": 0.02, "y": 0.8261}, {"x": 0.06, "y": 1.0466}, {"x": 0.94, "y": 1.2171}, {"x": 0.98, "y": 0.8904}, {"x": 1.02, "y": 0.8777}, {"x": 1.06, "y": 0.9658}, {"x": 1.94, "y": 1.2181}, {"x": 1.98, "y": 1.1534}, {"x": 2.02, "y": 1.1178}, {"x": 2.06, "y": 1.1159}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.8727}, {"x": 1.0, "y": 0.9877}, {"x": 2.0, "y": 1.1513}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.1141}, {"x": 0.18, "y": 1.0128}, {"x": 0.22, "y": 1.2007}, {"x": 0.26, "y": 1.0393}, {"x": 1.14, "y": 1.1591}, {"x": 1.18, "y": 1.1159}, {"x": 1.22, "y": 0.9835}, {"x": 1.26, "y": 1.0177}, {"x": 2.14, "y": 1.3032}, {"x": 2.18, "y": 1.2014}, {"x": 2.22, "y": 1.0233}, {"x": 2.26, "y": 1.0725}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.0917}, {"x": 1.2, "y": 1.0691}, {"x": 2.2, "y": 1.1501}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Olfactory_cortex (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Striatum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>78</td><td>0.00</td><td>0.00</td><td>1.1918</td><td>704</td><td>0.00</td><td>0.00</td><td>1.1914</td><td>212</td><td>0.00</td><td>0.00</td><td>1.1168</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>31</td><td>0.00</td><td>0.00</td><td>1.0944</td><td>193</td><td>0.00</td><td>0.00</td><td>1.1334</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>20</td><td>0.00</td><td>0.00</td><td>1.1152</td><td>157</td><td>0.00</td><td>0.00</td><td>1.1157</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>48</td><td>0.00</td><td>0.00</td><td>1.1953</td><td>19</td><td>0.00</td><td>0.00</td><td>1.1072</td><td>29</td><td>0.00</td><td>0.00</td><td>1.1207</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>7,014</td><td>0.00</td><td>0.00</td><td>1.1284</td><td>11,885</td><td>0.00</td><td>0.00</td><td>1.0904</td><td>1,525</td><td>0.00</td><td>0.00</td><td>1.0677</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>1,579</td><td>0.00</td><td>0.00</td><td>1.0366</td><td>2,276</td><td>0.00</td><td>0.00</td><td>1.1022</td><td>1,555</td><td>0.00</td><td>0.00</td><td>1.1224</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>1,726</td><td>0.00</td><td>0.00</td><td>1.1835</td><td>1,462</td><td>0.00</td><td>0.00</td><td>1.0409</td><td>2,440</td><td>0.00</td><td>0.00</td><td>1.0985</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>839</td><td>0.00</td><td>0.00</td><td>1.0559</td><td>2,400</td><td>0.00</td><td>0.00</td><td>1.0649</td><td>705</td><td>0.00</td><td>0.00</td><td>1.0976</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>4,310</td><td>0.00</td><td>0.00</td><td>1.5488</td><td>9,222</td><td>0.00</td><td>0.00</td><td>1.5668</td><td>1,628</td><td>0.00</td><td>0.00</td><td>1.5430</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>312</td><td>0.00</td><td>0.00</td><td>1.3409</td><td>1,105</td><td>0.00</td><td>0.00</td><td>1.2892</td><td>47</td><td>0.00</td><td>0.00</td><td>1.3340</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>3,042</td><td>0.00</td><td>0.00</td><td>1.3975</td><td>11,558</td><td>0.00</td><td>0.00</td><td>1.4497</td><td>1,397</td><td>0.00</td><td>0.00</td><td>1.4634</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>13,965</td><td>0.00</td><td>0.00</td><td>1.3522</td><td>14,431</td><td>0.00</td><td>0.00</td><td>1.3962</td><td>311</td><td>0.00</td><td>0.00</td><td>1.4099</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>5407</td><td>0.00</td><td>0.00</td><td>1.4098</td><td>9079</td><td>0.00</td><td>0.00</td><td>1.4255</td><td>846</td><td>0.00</td><td>0.00</td><td>1.4376</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>32</td><td>0.00</td><td>0.00</td><td>1.1935</td><td>194</td><td>0.00</td><td>0.00</td><td>1.1271</td><td>148</td><td>0.00</td><td>0.00</td><td>1.1217</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>2790</td><td>0.00</td><td>0.00</td><td>1.1011</td><td>4506</td><td>0.00</td><td>0.00</td><td>1.0746</td><td>1556</td><td>0.00</td><td>0.00</td><td>1.0966</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_striatum_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_striatum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_striatum_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_striatum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_striatum_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 4310.0}, {"x": -0.22, "y": 312.0}, {"x": -0.18, "y": 3042.0}, {"x": -0.14, "y": 13965.0}, {"x": 0.74, "y": 9222.0}, {"x": 0.78, "y": 1105.0}, {"x": 0.82, "y": 11558.0}, {"x": 0.86, "y": 14431.0}, {"x": 1.74, "y": 1628.0}, {"x": 1.78, "y": 47.0}, {"x": 1.82, "y": 1397.0}, {"x": 1.86, "y": 311.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 5407.25}, {"x": 0.8, "y": 9079.0}, {"x": 1.8, "y": 845.75}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 78.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 48.0}, {"x": 0.94, "y": 704.0}, {"x": 0.98, "y": 31.0}, {"x": 1.02, "y": 20.0}, {"x": 1.06, "y": 19.0}, {"x": 1.94, "y": 212.0}, {"x": 1.98, "y": 193.0}, {"x": 2.02, "y": 157.0}, {"x": 2.06, "y": 29.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 31.5}, {"x": 1.0, "y": 193.5}, {"x": 2.0, "y": 147.75}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 7014.0}, {"x": 0.18, "y": 1579.0}, {"x": 0.22, "y": 1726.0}, {"x": 0.26, "y": 839.0}, {"x": 1.14, "y": 11885.0}, {"x": 1.18, "y": 2276.0}, {"x": 1.22, "y": 1462.0}, {"x": 1.26, "y": 2400.0}, {"x": 2.14, "y": 1525.0}, {"x": 2.18, "y": 1555.0}, {"x": 2.22, "y": 2440.0}, {"x": 2.26, "y": 705.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 2789.5}, {"x": 1.2, "y": 4505.75}, {"x": 2.2, "y": 1556.25}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Striatum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_striatum_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Striatum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_striatum_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 0.0}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.0}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 0.0}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Striatum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_striatum_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.5488}, {"x": -0.22, "y": 1.3409}, {"x": -0.18, "y": 1.3975}, {"x": -0.14, "y": 1.3522}, {"x": 0.74, "y": 1.5668}, {"x": 0.78, "y": 1.2892}, {"x": 0.82, "y": 1.4497}, {"x": 0.86, "y": 1.3962}, {"x": 1.74, "y": 1.543}, {"x": 1.78, "y": 1.334}, {"x": 1.82, "y": 1.4634}, {"x": 1.86, "y": 1.4099}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4098}, {"x": 0.8, "y": 1.4255}, {"x": 1.8, "y": 1.4376}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.1918}, {"x": 0.06, "y": 1.1953}, {"x": 0.94, "y": 1.1914}, {"x": 0.98, "y": 1.0944}, {"x": 1.02, "y": 1.1152}, {"x": 1.06, "y": 1.1072}, {"x": 1.94, "y": 1.1168}, {"x": 1.98, "y": 1.1334}, {"x": 2.02, "y": 1.1157}, {"x": 2.06, "y": 1.1207}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.1935}, {"x": 1.0, "y": 1.1271}, {"x": 2.0, "y": 1.1217}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.1284}, {"x": 0.18, "y": 1.0366}, {"x": 0.22, "y": 1.1835}, {"x": 0.26, "y": 1.0559}, {"x": 1.14, "y": 1.0904}, {"x": 1.18, "y": 1.1022}, {"x": 1.22, "y": 1.0409}, {"x": 1.26, "y": 1.0649}, {"x": 2.14, "y": 1.0677}, {"x": 2.18, "y": 1.1224}, {"x": 2.22, "y": 1.0985}, {"x": 2.26, "y": 1.0976}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.1011}, {"x": 1.2, "y": 1.0746}, {"x": 2.2, "y": 1.0966}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Striatum (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Thalamus</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">central</th><th colspan="4">posterior</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>1</td><td>0.26</td><td>0.97</td><td>1.3182</td><td>18</td><td>0.00</td><td>0.00</td><td>1.1752</td><td>405</td><td>0.00</td><td>0.00</td><td>1.1085</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>1</td><td>0.27</td><td>0.18</td><td>1.1828</td><td>771</td><td>0.00</td><td>0.00</td><td>1.1276</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>23</td><td>0.00</td><td>0.00</td><td>1.0924</td><td>910</td><td>0.00</td><td>0.00</td><td>1.1394</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>1</td><td>1.69</td><td>4.30</td><td>1.3097</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>239</td><td>0.00</td><td>0.00</td><td>1.1462</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>1,753</td><td>0.00</td><td>0.00</td><td>1.0832</td><td>6,426</td><td>0.00</td><td>0.00</td><td>1.0842</td><td>735</td><td>0.00</td><td>0.00</td><td>1.0422</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>1,159</td><td>0.00</td><td>0.00</td><td>1.0518</td><td>1,442</td><td>0.00</td><td>0.00</td><td>1.0470</td><td>127</td><td>0.00</td><td>0.00</td><td>1.0974</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>747</td><td>0.00</td><td>0.00</td><td>1.1670</td><td>326</td><td>0.00</td><td>0.00</td><td>1.0637</td><td>261</td><td>0.00</td><td>0.00</td><td>1.1302</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>1,685</td><td>0.00</td><td>0.00</td><td>0.9824</td><td>2,436</td><td>0.00</td><td>0.00</td><td>1.0118</td><td>495</td><td>0.00</td><td>0.00</td><td>1.0036</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>188</td><td>0.00</td><td>0.00</td><td>1.4847</td><td>941</td><td>0.00</td><td>0.00</td><td>1.4911</td><td>4,534</td><td>0.00</td><td>0.00</td><td>1.5718</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>75</td><td>0.00</td><td>0.00</td><td>1.4364</td><td>216</td><td>0.00</td><td>0.00</td><td>1.2828</td><td>85</td><td>0.00</td><td>0.00</td><td>1.3958</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>142</td><td>0.00</td><td>0.00</td><td>1.3674</td><td>1,499</td><td>0.00</td><td>0.00</td><td>1.3124</td><td>6,149</td><td>0.00</td><td>0.00</td><td>1.4280</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>6,843</td><td>0.00</td><td>0.00</td><td>1.3750</td><td>7,349</td><td>0.00</td><td>0.00</td><td>1.3768</td><td>1,510</td><td>0.00</td><td>0.00</td><td>1.4398</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>1812</td><td>0.00</td><td>0.00</td><td>1.4159</td><td>2501</td><td>0.00</td><td>0.00</td><td>1.3658</td><td>3070</td><td>0.00</td><td>0.00</td><td>1.4588</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>0</td><td>0.49</td><td>1.32</td><td>1.3139</td><td>10</td><td>0.07</td><td>0.05</td><td>1.1502</td><td>581</td><td>0.00</td><td>0.00</td><td>1.1304</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>1336</td><td>0.00</td><td>0.00</td><td>1.0711</td><td>2658</td><td>0.00</td><td>0.00</td><td>1.0517</td><td>404</td><td>0.00</td><td>0.00</td><td>1.0683</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_thalamus_count"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_thalamus_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_thalamus_density"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_thalamus_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_thalamus_count'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 188.0}, {"x": -0.22, "y": 75.0}, {"x": -0.18, "y": 142.0}, {"x": -0.14, "y": 6843.0}, {"x": 0.74, "y": 941.0}, {"x": 0.78, "y": 216.0}, {"x": 0.82, "y": 1499.0}, {"x": 0.86, "y": 7349.0}, {"x": 1.74, "y": 4534.0}, {"x": 1.78, "y": 85.0}, {"x": 1.82, "y": 6149.0}, {"x": 1.86, "y": 1510.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1812.0}, {"x": 0.8, "y": 2501.25}, {"x": 1.8, "y": 3069.5}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.0}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 1.0}, {"x": 0.94, "y": 18.0}, {"x": 0.98, "y": 1.0}, {"x": 1.02, "y": 23.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 405.0}, {"x": 1.98, "y": 771.0}, {"x": 2.02, "y": 910.0}, {"x": 2.06, "y": 239.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.5}, {"x": 1.0, "y": 10.5}, {"x": 2.0, "y": 581.25}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1753.0}, {"x": 0.18, "y": 1159.0}, {"x": 0.22, "y": 747.0}, {"x": 0.26, "y": 1685.0}, {"x": 1.14, "y": 6426.0}, {"x": 1.18, "y": 1442.0}, {"x": 1.22, "y": 326.0}, {"x": 1.26, "y": 2436.0}, {"x": 2.14, "y": 735.0}, {"x": 2.18, "y": 127.0}, {"x": 2.22, "y": 261.0}, {"x": 2.26, "y": 495.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1336.0}, {"x": 1.2, "y": 2657.5}, {"x": 2.2, "y": 404.5}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Streamline Count → Thalamus (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Count' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_thalamus_sift2'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.2643}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 1.693}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.2697}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 0.4893}, {"x": 1.0, "y": 0.0674}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Sum → Thalamus (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'SIFT2 Sum' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_thalamus_density'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 0.0}, {"x": -0.22, "y": 0.0}, {"x": -0.18, "y": 0.0}, {"x": -0.14, "y": 0.0}, {"x": 0.74, "y": 0.0}, {"x": 0.78, "y": 0.0}, {"x": 0.82, "y": 0.0}, {"x": 0.86, "y": 0.0}, {"x": 1.74, "y": 0.0}, {"x": 1.78, "y": 0.0}, {"x": 1.82, "y": 0.0}, {"x": 1.86, "y": 0.0}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 0.0}, {"x": 0.8, "y": 0.0}, {"x": 1.8, "y": 0.0}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 0.9719}, {"x": -0.02, "y": 0.0}, {"x": 0.02, "y": 0.0}, {"x": 0.06, "y": 4.2969}, {"x": 0.94, "y": 0.0}, {"x": 0.98, "y": 0.1816}, {"x": 1.02, "y": 0.0}, {"x": 1.06, "y": 0.0}, {"x": 1.94, "y": 0.0}, {"x": 1.98, "y": 0.0}, {"x": 2.02, "y": 0.0}, {"x": 2.06, "y": 0.0}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.3172}, {"x": 1.0, "y": 0.0454}, {"x": 2.0, "y": 0.0}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 0.0}, {"x": 0.18, "y": 0.0}, {"x": 0.22, "y": 0.0}, {"x": 0.26, "y": 0.0}, {"x": 1.14, "y": 0.0}, {"x": 1.18, "y": 0.0}, {"x": 1.22, "y": 0.0}, {"x": 1.26, "y": 0.0}, {"x": 2.14, "y": 0.0}, {"x": 2.18, "y": 0.0}, {"x": 2.22, "y": 0.0}, {"x": 2.26, "y": 0.0}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 0.0}, {"x": 1.2, "y": 0.0}, {"x": 2.2, "y": 0.0}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'SIFT2 Density → Thalamus (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Density (×1000)' }
+            }
+        }
+    }
+});
+
+new Chart(document.getElementById('chart_right_thalamus_afd'), {
+    type: 'scatter',
+    data: { datasets: [{"label": "CTRL", "data": [{"x": -0.26, "y": 1.4847}, {"x": -0.22, "y": 1.4364}, {"x": -0.18, "y": 1.3674}, {"x": -0.14, "y": 1.375}, {"x": 0.74, "y": 1.4911}, {"x": 0.78, "y": 1.2828}, {"x": 0.82, "y": 1.3124}, {"x": 0.86, "y": 1.3768}, {"x": 1.74, "y": 1.5718}, {"x": 1.78, "y": 1.3958}, {"x": 1.82, "y": 1.428}, {"x": 1.86, "y": 1.4398}], "backgroundColor": "rgba(46,204,113,0.4)", "borderColor": "#2ecc71", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "CTRL mean", "data": [{"x": -0.2, "y": 1.4159}, {"x": 0.8, "y": 1.3658}, {"x": 1.8, "y": 1.4588}], "backgroundColor": "#2ecc71", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "AP", "data": [{"x": -0.06, "y": 1.3182}, {"x": 0.06, "y": 1.3097}, {"x": 0.94, "y": 1.1752}, {"x": 0.98, "y": 1.1828}, {"x": 1.02, "y": 1.0924}, {"x": 1.94, "y": 1.1085}, {"x": 1.98, "y": 1.1276}, {"x": 2.02, "y": 1.1394}, {"x": 2.06, "y": 1.1462}], "backgroundColor": "rgba(231,76,60,0.4)", "borderColor": "#e74c3c", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "AP mean", "data": [{"x": 0.0, "y": 1.3139}, {"x": 1.0, "y": 1.1502}, {"x": 2.0, "y": 1.1304}], "backgroundColor": "#e74c3c", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}, {"label": "APTR", "data": [{"x": 0.14, "y": 1.0832}, {"x": 0.18, "y": 1.0518}, {"x": 0.22, "y": 1.167}, {"x": 0.26, "y": 0.9824}, {"x": 1.14, "y": 1.0842}, {"x": 1.18, "y": 1.047}, {"x": 1.22, "y": 1.0637}, {"x": 1.26, "y": 1.0118}, {"x": 2.14, "y": 1.0422}, {"x": 2.18, "y": 1.0974}, {"x": 2.22, "y": 1.1302}, {"x": 2.26, "y": 1.0036}], "backgroundColor": "rgba(243,156,18,0.4)", "borderColor": "#f39c12", "borderWidth": 1, "pointRadius": 5, "pointStyle": "circle", "showLine": false}, {"label": "APTR mean", "data": [{"x": 0.2, "y": 1.0711}, {"x": 1.2, "y": 1.0517}, {"x": 2.2, "y": 1.0683}], "backgroundColor": "#f39c12", "borderColor": "#333", "borderWidth": 2, "pointRadius": 9, "pointStyle": "rectRot", "showLine": false}] },
+    options: {
+        responsive: true,
+        plugins: {
+            title: { display: true, text: 'Mean AFD → Thalamus (right)' },
+            legend: {
+                labels: {
+                    filter: function(item) { return !item.text.includes('mean'); }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        var lbl = ctx.dataset.label || '';
+                        return lbl + ': ' + ctx.parsed.y.toFixed(4);
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'linear',
+                min: -0.5,
+                max: 2.5,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        var labels = ["anterior", "central", "posterior"];
+                        return labels[value] || '';
+                    }
+                },
+                title: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Mean AFD' }
+            }
+        }
+    }
+});
+</script>
+</div>
+</div>
+
+<script>
+function showTab(hemi) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + hemi).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+
+<div class="footer">
+    <p>MBRAIN Per-Tract Metrics Report | Generated 2026-02-11 01:17:32</p>
+    <p>Pipeline: mrtrix_preproc_flip1 | SIFT2 + Fixel AFD Analysis</p>
+</div>
+</div>
+</body>
+</html>

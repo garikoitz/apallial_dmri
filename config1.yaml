@@ -4,45 +4,133 @@
 # This file contains all configurable parameters for the mouse brain
 # tractography pipeline. Edit values here to change pipeline behavior.
 # All scripts should read from this file - no hardcoded values elsewhere.
+#
+# IMPORTANT: ALL GROUPS NOW USE FLIP1 PIPELINE (2026-01-29)
+# The flip2 pipeline is OBSOLETE and should not be used.
+# All processing happens in: data/derivatives/mrtrix_preproc_flip1/
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# GROUPWISE TEMPLATE CREATION (FLIP2)
+# GROUPWISE TEMPLATE CREATION (FLIP1 - UPDATED 2026-01-29)
 # -----------------------------------------------------------------------------
-# Templates are created per group (CTRL, AP, APTR) using only flip2 pipeline subjects.
+# Templates are created per group (CTRL, AP, APTR) using flip1 pipeline subjects.
 # For each group:
 #   1. List all subject FOD images in a text file (one per line)
 #   2. Run population_template with the list:
 #        population_template <subjects.txt> <output_template.mif> -voxel_size 0.15 -force
-#   3. Save all transforms and template images in: data/derivatives/mrtrix_preproc_flip2/templates/<GROUP>/
+#   3. Save all transforms and template images in: data/derivatives/mrtrix_preproc_flip1/templates/<GROUP>/
 #
 # Example (CTRL):
 #   subjects_CTRL.txt:
-#     sub-129-921-R1F/ses-260115121231/dwi/wm_fod_flip2.mif
-#     sub-129-921-R1L1F/ses-260116085433/dwi/wm_fod_flip2.mif
-#     sub-129-1014-L1M/ses-260115113814/dwi/wm_fod_flip2.mif
-#     sub-138-1010-L1F/ses-260115101441/dwi/wm_fod_flip2.mif
+#     sub-129-921-R1F/ses-260115121231/dwi/wm_fod_flip1.mif
+#     sub-129-921-R1L1F/ses-260116085433/dwi/wm_fod_flip1.mif
+#     sub-129-1014-L1M/ses-260115113814/dwi/wm_fod_flip1.mif
+#     sub-138-1010-L1F/ses-260115101441/dwi/wm_fod_flip1.mif
 #   population_template templates/CTRL/subjects_CTRL.txt templates/CTRL/wm_fod_template.mif -voxel_size 0.15 -force
 #
-# Random subject for ROI visualization (2026-01-26):
+# Random subject for ROI visualization (2026-01-29):
 #   CTRL: sub-129-1014-L1M
 #   AP:   sub-596-C-OO-NmM
 #   APTR: sub-Apallial17NmF
 #
 # All template creation steps, subject lists, and transform files are tracked here for reproducibility.
 
+# The correspondence in ROIs between manual ROIs and Allen ROIs is the following (left is manual ROIs, right is Allen ROIs):
+# Graft:Isocortex
+# Paleocortex:Piriform cortex + Entorhinal area + Piriform amygdalar area + Postpiriform transition area
+# Striatum:Striatum dorsal region
+# Thalamus:Thalamus
+# Cerebellum:Cerebellum
+
+# =============================================================================
+# BIOLOGICAL AND METHODOLOGICAL DIFFERENCES BETWEEN GROUPS
+# =============================================================================
+# 
+# This project studies three groups of mice with different cortical conditions:
+#
+# 1. CTRL (Control) - Wild-type mice with NORMAL cortex
+#    - These mice have a fully developed, normal isocortex
+#    - NO graft - they have never received any transplant
+#    - ROI source: Allen CCF Atlas (automated extraction)
+#    - Seed region: Isocortex (the normal cortex)
+#    - Segmentation: Isocortex divided into 3 segments:
+#        * anterior (front third)
+#        * central (middle third)
+#        * posterior (back third)
+#    - Purpose: Establish baseline connectivity patterns in normal mice
+#
+# 2. AP (Apallial) - Mice with APALLIAL MUTATION, no transplant
+#    - These mice have the Emx1-Cre;Lhx2loxP/loxP mutation
+#    - This mutation causes absence/severe reduction of dorsal telencephalon (cortex)
+#    - They develop an abnormal cortical region instead of normal isocortex
+#    - NO transplant - they show the natural phenotype of the mutation
+#    - ROI source: Manual segmentation (drawn by expert in 3D Slicer)
+#    - Seed region: Graft (actually the abnormal cortical tissue, but called "Graft"
+#                   for consistency with APTR naming)
+#    - Segmentation: Graft divided into 6 segments (seg6) or 9 segments (seg9):
+#        * seg6: anterior/central/posterior × dorsal/ventral = 6 segments
+#        * seg9: anterior/central/posterior × dorsal/medial/ventral = 9 segments
+#    - Purpose: Study connectivity in mutant mice without intervention
+#
+# 3. APTR (Apallial + Transplant) - Mice with mutation that RECEIVED cortical transplant
+#    - Same Emx1-Cre;Lhx2loxP/loxP mutation as AP mice
+#    - RECEIVED embryonic cortical tissue transplant to restore cortical function
+#    - The transplanted tissue is called the "Graft"
+#    - ROI source: Manual segmentation (drawn by expert in 3D Slicer)
+#    - Seed region: Graft (the transplanted cortical tissue)
+#    - Segmentation: Graft divided into 6 or 9 segments (same as AP)
+#    - Purpose: Study if transplanted cortex establishes normal-like connectivity
+#
+# KEY METHODOLOGICAL DIFFERENCES:
+# ===============================
+# 
+# | Aspect           | CTRL              | AP                | APTR              |
+# |------------------|-------------------|-------------------|-------------------|
+# | Cortex status    | Normal isocortex  | Abnormal/reduced  | Transplanted      |
+# | ROI source       | Allen CCF Atlas   | Manual (Slicer)   | Manual (Slicer)   |
+# | Seed ROI name    | Isocortex         | Graft             | Graft             |
+# | Target ROIs      | Atlas-derived     | Manual-drawn      | Manual-drawn      |
+# | Seed segments    | 3 (A/C/P only)    | 6 or 9            | 6 or 9            |
+# | Pipeline         | flip1             | flip1             | flip1             |
+#
+# ROI CORRESPONDENCE (CTRL Atlas ↔ AP/APTR Manual):
+# =================================================
+# | CTRL (Atlas)       | AP/APTR (Manual)  | Description                        |
+# |--------------------|-------------------|------------------------------------|
+# | Isocortex          | Graft             | Cortical tissue (seed for tracts)  |
+# | Striatum           | Striatum          | Target region                      |
+# | Thalamus           | Thalamus          | Target region                      |
+# | Piriform_Complex   | Paleocortex       | Olfactory cortex                   |
+# | Cerebellum         | cerebellum        | Cerebellar region                  |
+#
+# =============================================================================
+
 # MBRAIN Instructions
-# 0. We will NEVER mix different pipelines, this means that we will recreate all the files required to fullfill our goals based on the derivatives/mrtrix_preproc_flip2, derivatives/mrtrix_preproc_flip1 or derivatives/mrtrix_preproc pipeline, and they will never mix
+# 0. ALL GROUPS NOW USE FLIP1 PIPELINE ONLY (2026-01-29). The flip2 pipeline is OBSOLETE.
+#    All processing happens in: derivatives/mrtrix_preproc_flip1/
+#    We will NEVER mix different pipelines - all data for a subject must be in the same pipeline.
 # 1. We always use matlab cleaning after we do tractography. Then we do sift2 to further select tracts. 
 # 2. When visualizing, first we use the fibers that have been cleaned with matlab and then selected with sift2.
-# 3. When visualizing we don't cd to the subject folder, we do it from the derivatives/mrtrix_preproc folder.
+# 3. When visualizing we don't cd to the subject folder, we do it from the derivatives/mrtrix_preproc_flip1 folder.
 # 4. AP and APTR group use manual ROIs for everything. CTRL use the roi coming from Allen atlas. 
 # 5. We use this environment: micromamba activate mbrain
 # 6. For matlab cleaning, we use the matlab specified in the config file.
 # 7. We do not create new python or matlab scripts, we just edit the existing ones to make them more general and we pass them variables, such as subject and session name, tract to be processed, etc. So for example we do not create clean_dorsal_striatum.py, we just pass variables to clean_tracts.py and if cannot take the variable we edit it to make it more general every time. 
 # 8. All the paths are specified in this config file. No hardcoded paths in the scripts.
 # 9. For visualization, we use T2w_highres_flip.mif as background image by default
-# 10. FLIP2 METHOD (OLD - HAD ALIGNMENT ISSUES):
+# 10. NEVER INTERRUPT RUNNING COMMANDS (2026-01-31):
+#     When checking progress on a long-running command (like tckgen generating 1M streamlines),
+#     NEVER run another command in the same terminal that would interrupt the process.
+#     If you cannot check progress without interrupting, just tell the user you cannot check
+#     and let the command continue running. Use get_terminal_output only, do NOT run new commands.
+# 10b. ALWAYS USE PYTHON SCRIPTS, NEVER INLINE CODE (2026-02-12):
+#     - NEVER use python -c "..." in the terminal — it breaks with quoting/multiline issues.
+#     - Always write a proper .py file with docstring, then run it with `python path/to/script.py`.
+#     - Temporary/diagnostic scripts go in utils/ (NOT /tmp), with a clear docstring.
+#     - After running, ask the user if the script should be kept for future use.
+#     - If kept, add it to the functions: section of this config. If not, delete it.
+#     - All scripts must be documented with: purpose, usage example, and what it outputs.
+# 11. FLIP2 METHOD (OLD - OBSOLETE - HAD ALIGNMENT ISSUES):
 #     To match Allen atlas orientation AND preserve left/right hemisphere labeling, we used FLIP2:
 #       Step 1: mrconvert input output -axes 2,1,0 -strides 1,2,3  (axis permutation)
 #       Step 2: mrtransform input output -flip 1  (Y axis flip)
@@ -51,7 +139,7 @@
 #     The manual_preprocessing_commands.md shows a DWI→T2w ANTs registration step that
 #     was MISSING from the flip2 pipeline. This caused b0 and T2w to not align properly.
 #
-# 10b. FLIP1 METHOD (NEW - VALIDATED 2026-01-28):
+# 11b. FLIP1 METHOD (NEW - VALIDATED 2026-01-28):
 #     For mrtrix_preproc_flip1, we use only flip 1 (matching docs/manual_preprocessing_commands.md):
 #       Step 1: mrconvert input output -axes 2,1,0 -strides 1,2,3  (axis permutation)
 #       Step 2: mrtransform input output -flip 1  (Y axis flip)
@@ -304,6 +392,56 @@
 #     ROIs: Graft, Striatum, Thalamus, Palecortex, cerebellum (left and right for each)
 #     NOTE: For flip1 pipeline, use manual_roi_flip/ as source, NOT manual_roi/
 #
+# 10d. FLIP1 PIPELINE PROGRESS (CTRL GROUP - 2026-01-29):
+#     ====================================================
+#     CTRL subjects use preprocessed data from old pipeline (mrtrix_preproc).
+#     The old pipeline already has flip1 transformation applied!
+#     Unlike AP/APTR, CTRL uses Allen Atlas ROIs instead of manual ROIs.
+#     
+#     CRITICAL DISCOVERY (2026-01-29): The old pipeline (mrtrix_preproc) already
+#     applied flip1 transformation (axes 2,1,0 + flip 1). The data is ALREADY
+#     correctly preprocessed and coregistered to T2w. We just need to copy it
+#     to the flip1 folder structure.
+#     
+#     CTRL SUBJECTS:
+#       - sub-129-921-R1F/ses-260115121231
+#       - sub-129-921-R1L1F/ses-260116085433
+#       - sub-129-1014-L1M/ses-260115113814
+#       - sub-138-1010-L1F/ses-260115101441
+#
+#     CTRL PREPROCESSING STEPS (UPDATED 2026-01-29):
+#       [DONE] Step 1: Migrate preprocessed data from old pipeline
+#              Script: /tmp/migrate_ctrl_to_flip1.sh
+#              Files copied: dwi_preproc.mif, mask.mif, b0.mif, t2w_highres_flip.mif
+#       [DONE] Step 2: Regenerate FOD using same method as AP/APTR
+#              Script: /tmp/regenerate_ctrl_fod.sh
+#              Method: dhollander (response) + msmt_csd (FOD) + mtnormalise (WM+CSF)
+#              Files: response_{wm,gm,csf}.txt, {wm,gm,csf}_fod.mif, {wm,csf}_fod_norm.mif
+#       [DONE] Step 3: Register Allen atlas to flip1 T2w
+#              Script: python functions/atlas_roi_extraction.py --subject <subj>
+#       [DONE] Step 4: Extract atlas ROIs (Isocortex, Striatum, Thalamus, etc.)
+#       [DONE] Step 5: Split ROIs into left/right hemispheres (L/R convention validated)
+#       [DONE] Step 6: Resample ROIs to FOD space
+#              Script: python functions/resample_rois_to_fod.py --group CTRL --force
+#       [    ] Step 7: Segment isocortex into 3 parts (anterior/central/posterior)
+#       [    ] Step 8: Validate alignment with mrview
+#       [    ] Step 9: Generate tractography
+#
+#     KEY DIFFERENCES FROM AP/APTR:
+#       - ROI source: Allen Atlas (not manual segmentation)
+#       - Seed region: Isocortex (not Graft)
+#       - Segmentation: 3 segments only (A/C/P), NOT 6/9 (no dorsal/ventral split)
+#
+#     FILE NAMING IN FLIP1 PIPELINE (CONSISTENT ACROSS ALL GROUPS):
+#       - dwi_preproc.mif = Preprocessed DWI (coregistered to T2w)
+#       - response_{wm,gm,csf}.txt = Multi-tissue response functions (dhollander)
+#       - {wm,gm,csf}_fod.mif = Multi-tissue FODs (msmt_csd)
+#       - wm_fod_norm.mif = Normalized WM FOD for tractography
+#       - csf_fod_norm.mif = Normalized CSF FOD
+#       - mask.mif = Brain mask
+#       - b0.mif = Mean b0 for visualization
+#       - t2w_highres_flip.mif = T2w anatomical
+#
 # 11. Now everything needs to be in the new derivatives/mrtrix_preproc_flip1 pipeline, we can never combine two pipelines as the old pipeline will be deleted. 
 # 12. All parameters need to be in this config file, no hardcoded parameters in the scripts. Always read from this config file and pass the parameters to the scripts.
 # =============================================================================
@@ -340,184 +478,14 @@
 #   Graft_left world Z = 73.9 (LOW world Z → HIGH voxel Z → LEFT ✓)
 #   Graft_right world Z = 107.7 (HIGH world Z → LOW voxel Z → RIGHT ✓)
 #
+# VALIDATED for CTRL Allen atlas ROIs (2026-01-29):
+#   Same convention applies to atlas-derived ROIs after warping to flip1 space.
+#   Script: /tmp/mbrain_atlas/extract_rois.py uses this convention.
+#
 # IMPORTANT: Do NOT use axis 0 (X) for hemisphere splitting - that's A-P!
 # =============================================================================
-# 
-# =============================================================================
-# FLIP2 PIPELINE - DETAILED STEPS (for all subjects)
-# =============================================================================
-# Test subjects: CTRL=sub-129-921-R1F, AP=sub-596-C-OO-NmM
 #
-# PROGRESS (Updated 2026-01-23):
-#   [DONE] Step 1: Create folder structure (2026-01-23)
-#   [DONE] Step 2: Flip T2w images using flip2 method (2026-01-23) - ALL CTRL done
-#   [DONE] Step 3a: Get manual ROIs for AP/APTR (2026-01-23) - flip2 applied
-#   [DONE] Step 3b: Get Allen atlas ROIs for ALL 4 CTRL subjects (2026-01-23)
-#         - sub-129-921-R1F: ✓ (isocortex 32735, striatum 8323, thalamus 4628)
-#         - sub-129-921-R1L1F: ✓ (isocortex 34972, striatum 9088, thalamus 5484)
-#         - sub-129-1014-L1M: ✓ (isocortex 29624, striatum 8155, thalamus 4502)
-#         - sub-138-1010-L1F: ✓ REDONE (2026-01-25) - see CRITICAL FIX below
-#
-# CRITICAL FIX FOR sub-138-1010-L1F (2026-01-25):
-#   PROBLEM: Atlas ROIs in fod_space were empty (552B files, max=0)
-#   ROOT CAUSE: The t2w_highres_flip.mif was incorrectly created from the OLD
-#     pipeline's already-transformed T2w, causing a SPACE MISMATCH with atlas.
-#   SOLUTION: Recreate T2w flip2 from ORIGINAL BIDS T2w (not old pipeline):
-#     1. Start with BIDS: sub-138-1010-L1F_ses-260115101441_acq-highres_T2w.nii.gz
-#     2. Apply FULL flip2 transformation:
-#        mrconvert {bids_t2w} temp_perm.mif -axes 2,1,0 -strides 1,2,3 -force
-#        mrtransform temp_perm.mif temp_flip1.mif -flip 1 -force
-#        mrtransform temp_flip1.mif t2w_highres_flip.mif -flip 2 -force
-#     3. Run atlas_coregistration.py --subject sub-138-1010-L1F
-#     4. Resample ROIs to FOD space
-#   RESULT: Proper ROIs (thalamus 5317, striatum ~4000, isocortex ~33000 voxels)
-#   [DONE] Step 4a: Segment graft for AP/APTR subjects (2026-01-23)
-#   [DONE] Step 4b: Segment isocortex for ALL 4 CTRL subjects (2026-01-23)
-#         - Used segment_isocortex_slicewise.py
-#         - 6 segments per hemisphere: anterior/central/posterior x dorsal/ventral
-#   [DONE] Step 5-7: DWI flip2 + FOD for ALL 4 CTRL subjects (2026-01-23) - CORRECTED
-#         - CRITICAL BUG FOUND & FIXED: dwi_flip2_fod.py was applying FULL flip2 
-#           (permutation + flip1 + flip2) to old pipeline data that ALREADY had 
-#           permutation + flip1 applied → DOUBLE TRANSFORMATION → WRONG DIMS
-#         - CORRECT METHOD: Old pipeline DWI (mrtrix_preproc) already has 
-#           permutation (axes 2,1,0) + flip 1. To get flip2, apply ONLY flip 2:
-#             mrtransform old_pipeline_dwi.mif new_dwi_flip2.mif -flip 2 -reorient_fod no -force
-#         - Then regenerate mask, response functions, FOD
-#         - sub-129-921-R1F: ✓ Validated with mrview (2026-01-23)
-#         - sub-129-1014-L1M: ✓ Processed
-#         - sub-129-921-R1L1F: ✓ Processed
-#         - sub-138-1010-L1F: ✓ Processed
-#   [DONE] Step 8: Resample ROIs to FOD space for ALL 4 CTRL subjects (2026-01-23)
-#         - Used mrtransform with -template wm_fod_flip2.mif -interp nearest
-#         - Output in: atlas/rois/fod_space/
-#         - sub-129-921-R1F: ✓ Validated with mrview (2026-01-23)
-#   [    ] Step 9: Run tractography
-#
-# HEMISPHERE SPLITTING FIX (2026-01-23):
-#   The Allen CCF atlas ROIs are split into left/right using axis 2 (Z).
-#   CRITICAL: The affine has negative Z direction (affine[2,2] < 0), which
-#   inverts the voxel-to-world coordinate mapping. See FLIP2 AXIS ORIENTATION
-#   section above for details. This was validated against AP manual ROI
-#   centroids (Graft_left Z=73.9, Graft_right Z=107.7).
-#
-# -----------------------------------------------------------------------------
-# STEP 1: CREATE FOLDER STRUCTURE
-# -----------------------------------------------------------------------------
-# For each subject/session:
-#   mkdir -p {derivatives_dir}/{subject}/{session}/dwi
-#   mkdir -p {derivatives_dir}/{subject}/{session}/manual_roi  # AP/APTR only
-#   mkdir -p {derivatives_dir}/{subject}/{session}/manual_roi/flipped  # AP/APTR only
-#
-# -----------------------------------------------------------------------------
-# STEP 2: FLIP T2W IMAGES
-# -----------------------------------------------------------------------------
-# Input: {bids_dir}/{subject}/{session}/anat/{subject}_{session}_acq-highres_T2w.nii.gz
-# Output: {derivatives_dir}/{subject}/{session}/dwi/t2w_highres_flip.mif
-# Commands:
-#   mrconvert {input} {temp}_perm.mif -axes 2,1,0 -strides 1,2,3 -force
-#   mrtransform {temp}_perm.mif {temp}_flip1.mif -flip 1 -force
-#   mrtransform {temp}_flip1.mif {output} -flip 2 -force
-#   rm {temp}_perm.mif {temp}_flip1.mif
-#
-# -----------------------------------------------------------------------------
-# STEP 3: GET ROIs
-# -----------------------------------------------------------------------------
-# FOR AP/APTR SUBJECTS (manual ROIs):
-#   Input: {derivatives_dir_old}/{subject}/{session}/manual_roi/roi_{Name}_{hemi}.nii.gz
-#   Output: {derivatives_dir}/{subject}/{session}/manual_roi/flipped/roi_{Name}_{hemi}_flip.mif
-#   ROI names: Graft, Striatum, Thalamus, Palecortex, cerebellum
-#   Hemispheres: left, right
-#   Commands (for each ROI):
-#     mrconvert {input} {temp}_perm.mif -axes 2,1,0 -strides 1,2,3 -force
-#     mrtransform {temp}_perm.mif {temp}_flip1.mif -flip 1 -force
-#     mrtransform {temp}_flip1.mif {output} -flip 2 -force
-#     rm {temp}_perm.mif {temp}_flip1.mif
-#
-# FOR CTRL SUBJECTS (Allen atlas):
-#   1. Register Allen atlas to t2w_highres_flip.mif
-#   2. Extract ROIs using Allen IDs (see rois section below)
-#   Output: {derivatives_dir}/{subject}/{session}/dwi/atlas/rois/roi_{name}_{hemi}.nii.gz
-#
-# -----------------------------------------------------------------------------
-# STEP 4: SEGMENT GRAFT/ISOCORTEX SLICE BY SLICE
-# -----------------------------------------------------------------------------
-# FOR AP/APTR: Use segment_graft_slicewise.py
-#   Input: {derivatives_dir}/{subject}/{session}/manual_roi/flipped/roi_Graft_{hemi}_flip.mif
-#   Output: {derivatives_dir}/{subject}/{session}/dwi/graft_segments_v2/graft_{hemi}_{segment}.nii.gz
-#   Segments: anterior_dorsal, anterior_ventral, central_dorsal, central_ventral, 
-#             posterior_dorsal, posterior_ventral (6 per hemisphere, 12 total)
-#
-# FOR CTRL: Use segment_isocortex_CTRL.py (modified)
-#   Input: {derivatives_dir}/{subject}/{session}/dwi/atlas/rois/roi_isocortex_{hemi}.nii.gz
-#   Output: {derivatives_dir}/{subject}/{session}/dwi/isocortex_segments_v2/isocortex_{hemi}_{segment}.nii.gz
-#   Segments: same 6 per hemisphere
-#
-# -----------------------------------------------------------------------------
-# STEP 5: PREPROCESS DWI (already done in old pipeline - mrtrix_preproc)
-# -----------------------------------------------------------------------------
-# The old pipeline (mrtrix_preproc) already preprocessed DWI with:
-#   - dwidenoise, mrdegibbs, dwibiascorrect
-#   - ALSO applied: axis permutation (2,1,0) + flip 1
-# So the old pipeline DWI is ALREADY partially transformed (permutation + flip1).
-#
-# -----------------------------------------------------------------------------
-# STEP 6: APPLY FLIP2 TO OLD PIPELINE DWI (CORRECTED METHOD)
-# -----------------------------------------------------------------------------
-# CRITICAL: Old pipeline DWI already has permutation + flip1 applied!
-# To get flip2, apply ONLY flip 2 (NOT the full flip2 transformation):
-#
-# Input: {derivatives_dir_old}/{subject}/{session}/dwi/dwi_preproc.mif (or similar)
-#        (this already has permutation + flip1)
-# Output: {derivatives_dir}/{subject}/{session}/dwi/dwi_flip2.mif
-#
-# CORRECT COMMAND:
-#   mrtransform old_pipeline_dwi.mif dwi_flip2.mif -flip 2 -reorient_fod no -force
-#
-# DO NOT USE: dwi_flip2_fod.py as-is (it applies full flip2, causing double transformation)
-#
-# After flip2 DWI is created, regenerate mask and b0:
-#   dwi2mask dwi_flip2.mif mask_flip2.mif -force
-#   dwiextract dwi_flip2.mif - -bzero | mrmath - mean b0_flip2.mif -axis 3 -force
-#
-# -----------------------------------------------------------------------------
-# STEP 7: GENERATE FOD FROM FLIP2 DWI
-# -----------------------------------------------------------------------------
-# Input: {derivatives_dir}/{subject}/{session}/dwi/dwi_flip2.mif
-# Outputs:
-#   response_wm.txt, response_gm.txt, response_csf.txt
-#   wm_fod_flip2.mif, gm_fod_flip2.mif, csf_fod_flip2.mif
-# Commands:
-#   dwi2response dhollander dwi_flip2.mif response_wm.txt response_gm.txt response_csf.txt -mask mask_flip2.mif
-#   dwi2fod msmt_csd dwi_flip2.mif response_wm.txt wm_fod_flip2.mif response_gm.txt gm_fod_flip2.mif response_csf.txt csf_fod_flip2.mif -mask mask_flip2.mif
-# NOTE: mtnormalise often fails for mouse brain - skip if errors occur
-#
-# -----------------------------------------------------------------------------
-# STEP 8: RESAMPLE ROIs TO FOD SPACE
-# -----------------------------------------------------------------------------
-# FOR CTRL (Allen atlas):
-#   Input: {derivatives_dir}/{subject}/{session}/dwi/atlas/rois/roi_{name}_{hemi}.nii.gz
-#          (T2w-space ROIs from atlas_coregistration.py)
-#   Output: {derivatives_dir}/{subject}/{session}/dwi/atlas/rois/fod_space/roi_{name}_{hemi}.nii.gz
-#   Command:
-#     mrtransform {input} {output} -template wm_fod_flip2.mif -interp nearest -force
-#
-# Also resample isocortex_segments_v2/ files to fod_space/
-#
-# VALIDATION: Open mrview with wm_fod_flip2.mif and overlay fod_space ROIs
-#   mrview wm_fod_flip2.mif -overlay.load atlas/rois/fod_space/roi_isocortex_left.nii.gz ...
-# ROIs should be inside the brain and correctly positioned.
-#
-# -----------------------------------------------------------------------------
-# STEP 9: RUN TRACTOGRAPHY
-# -----------------------------------------------------------------------------
-# Use tractography_segments.py with config parameters
-# Seed: graft_segments_v2 (AP/APTR) or isocortex_segments_v2 (CTRL)
-# Target: Thalamus (from manual ROI or atlas)
-# Output: {derivatives_dir}/{subject}/{session}/dwi/segment_tracts/
-#
-# =============================================================================
-#
-# 11. When visualizing traacts with mrview, first we do a tckinfo of the track so that on top of the T2w_highres_flip.mif we can see the tracts and then we load the corresponding roi to see where the tracts are going to.
+# 11. When visualizing tracts with mrview, first we do a tckinfo of the track so that on top of the T2w_highres_flip.mif we can see the tracts and then we load the corresponding roi to see where the tracts are going to.
 # 12. if something files, do not try to automatically run things in the background or doing weird thing, as me for help knowing why is failing. 
 # 13. Before doing tracking, check in at least one subject with mrview that everything is ok before launching the tracking for all subjects, you need to ask the user to check and when you get feedback that it is ok then you need to proceed. 
 # 14. Before saying that something is there and you are skipping it, check that the date of the _cleaned.tck file is newer than the original .tck file, otherwise it means that the cleaning was not done and you need to do it.
@@ -527,20 +495,60 @@
 # -----------------------------------------------------------------------------
 paths:
   # Base directories
+  # Note: 'data' and 'local' are symlinks pointing to Google Drive shared folder
+  # Updated 2026-01-31: Migrated to shared drive "DTI Collab" for unlimited storage
   repo_dir: "/Users/glerma/soft/mbrain"
-  data_dir: "/Users/glerma/soft/mbrain/data"
+  data_dir: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data"
   bids_dir: "/Users/glerma/soft/mbrain/data/bids"
-  derivatives_dir: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1"
-  derivatives_dir_old: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc"
+  derivatives_flip1: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1"
+  local: "/Users/glerma/soft/mbrain/local"
   
-  # Atlas paths
-  allen_atlas_dir: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf"
-  allen_template: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf/average_template_25.nii.gz"
-  allen_annotation: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf/annotation_25.nii.gz"
+  # Legacy paths (for compatibility) - updated to shared drive
+  derivatives_dir: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1"
+  derivatives_dir_old: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc"
+  
+  # Atlas paths - local workspace
+  atlas_dir: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf"
+  allen_template: "/Users/glerma/soft/mbrain/local/atlas/average_template_25.nii.gz"
+  allen_annotation: "/Users/glerma/soft/mbrain/local/atlas/annotation_25.nii.gz"
+  allen_structures: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf/structures.json"
   
   # External tools
   matlab_path: "/Applications/MATLAB_R2025b.app/bin/matlab"
   rtp2_pipeline_path: "/Users/glerma/soft/gitlab/rtp2-pipeline"
+
+# -----------------------------------------------------------------------------
+# ATLAS ROI EXTRACTION (for CTRL subjects)
+# -----------------------------------------------------------------------------
+# CTRL subjects use Allen CCF atlas ROIs instead of manual ROIs.
+# Script: python functions/atlas_roi_extraction.py --subject <subject_id>
+#
+# Process:
+#   1. ANTs SyN registration of Allen template to subject T2w (~5 min)
+#   2. Apply warp to annotation volume (NearestNeighbor interpolation)
+#   3. Extract ROIs by collecting all child IDs under parent structure IDs
+#   4. Split each ROI into left/right hemispheres
+#
+# CRITICAL L/R CONVENTION (flip1 space):
+#   - Midline is along axis 2 (Z)
+#   - Anatomical LEFT = HIGH Z voxel indices (keep [:, :, midline:])
+#   - Anatomical RIGHT = LOW Z voxel indices (keep [:, :, :midline])
+#
+# Output structure:
+#   {subject}/{session}/atlas/
+#     ├── annotation_warped.nii.gz    # Warped Allen annotation
+#     ├── atlas_coreg_0GenericAffine.mat   # ANTs affine transform
+#     ├── atlas_coreg_1Warp.nii.gz    # ANTs warp field
+#     └── rois/
+#         ├── roi_isocortex.nii.gz        # Bilateral
+#         ├── roi_isocortex_left.nii.gz   # Left hemisphere
+#         ├── roi_isocortex_right.nii.gz  # Right hemisphere
+#         └── ... (same for all ROIs)
+# -----------------------------------------------------------------------------
+atlas:
+  # Reference to main rois section - see 'rois:' below for full Allen CCF ROI definitions
+  # This section kept minimal for backward compatibility
+  use_roi_definitions_from: "rois"
 
 # -----------------------------------------------------------------------------
 # SUBJECT GROUPS
@@ -614,6 +622,136 @@ tractography:
   use_mask: true
 
 # -----------------------------------------------------------------------------
+# PASSTHROUGH TRACT EXTRACTION (Updated 2026-02-11)
+# -----------------------------------------------------------------------------
+# Passthrough tracts are extracted from whole-brain tractograms (1M streamlines)
+# using tckedit with -include flags. This is the PRIMARY analysis method.
+#
+# Script: python functions/extract_passthrough_tracts.py
+#
+# TARGETS (all groups, both hemispheres):
+#   - thalamus (ipsilateral)
+#   - striatum (ipsilateral)
+#   - cerebellum (ipsilateral) ** with thalamus as additional -include **
+#   - olfactory_cortex/Palecortex (ipsilateral)
+#
+# HEMISPHERES: BOTH left and right (run with --hemi left and --hemi right)
+#
+# SEGMENTS:
+#   CTRL: 5 isocortex A-P segments (anterior, anterior_central, central,
+#         posterior_central, posterior). For cross-group comparison, use only
+#         anterior, central, posterior (3 segments matching AP/APTR).
+#   AP/APTR: 3 dorsal seg9 graft segments (anterior_dorsal, central_dorsal,
+#            posterior_dorsal). Use SHRUNK versions as primary analysis.
+#
+# CEREBELLUM SPECIAL RULE (Added 2026-02-11):
+#   Cerebellum tracts must include thalamus as a waypoint (-include thalamus)
+#   in ADDITION to the seed and cerebellum includes. This ensures fibers pass
+#   through thalamus on the way to cerebellum, producing anatomically valid
+#   cortico-thalamo-cerebellar pathways.
+#   tckedit command: -include seed -include thalamus -include cerebellum
+#
+# OUTPUT:
+#   dwi/wholebrain/passthrough_tracts/         (regular ROIs)
+#   dwi/wholebrain/passthrough_tracts_shrink/   (shrunk ROIs, AP/APTR only)
+#
+# ALL passthrough tracts must be cleaned with MATLAB AFQ after extraction.
+# Script: python functions/clean_tracts.py --passthrough [--shrink]
+# -----------------------------------------------------------------------------
+passthrough_extraction:
+  targets:
+    CTRL: ["thalamus", "striatum", "cerebellum", "olfactory_cortex"]
+    AP_APTR: ["Thalamus", "Striatum", "cerebellum", "Palecortex"]
+  hemispheres: ["left", "right"]
+  segments:
+    CTRL: ["anterior", "anterior_central", "central", "posterior_central", "posterior"]
+    AP_APTR: ["anterior_dorsal", "central_dorsal", "posterior_dorsal"]
+  cerebellum_include_thalamus: true
+  seg_mode: 9
+
+# -----------------------------------------------------------------------------
+# SHRUNK ROI ANALYSIS (Added 2026-02-07, Updated 2026-02-11)
+# -----------------------------------------------------------------------------
+# For AP/APTR subjects, use SHRUNK (eroded by 1 voxel) graft segments as the
+# PRIMARY analysis ROIs. This ensures streamlines fully terminate inside the ROI
+# rather than touching boundaries. Regular passthrough data exists but shrunk
+# is the primary dataset for reports and analysis.
+#
+# For CTRL subjects, no shrinking is applied (atlas ROIs are already clean).
+#
+# Process:
+#   1. Erode seg9 dorsal graft segment ROIs by 1 voxel (scipy binary_erosion)
+#   2. Run passthrough tractography with eroded ROIs
+#   3. Clean with MATLAB AFQ
+#   4. Generate metrics reports from cleaned shrunk tracts
+#
+# Script: python functions/extract_passthrough_tracts.py --shrink
+# Shrink creation: python functions/extract_passthrough_tracts.py --create-shrink-segments
+# -----------------------------------------------------------------------------
+shrink_analysis:
+  enabled: true
+  erosion_voxels: 1
+  output_dir_name: "passthrough_tracts_shrink"
+  primary_for_ap_aptr: true
+
+# -----------------------------------------------------------------------------
+# WHOLE-BRAIN TRACTOGRAPHY (Added 2026-01-31)
+# -----------------------------------------------------------------------------
+# This approach generates dense whole-brain tractograms without anatomical priors.
+# Unlike ROI-to-ROI tractography, this seeds streamlines throughout the brain mask.
+#
+# WHY WHOLE-BRAIN (MASK-ONLY) INSTEAD OF ACT?
+# -------------------------------------------
+# Anatomically-Constrained Tractography (ACT) requires 5TT tissue segmentation,
+# but standard tools (5ttgen fsl/freesurfer) are designed for HUMAN brains and
+# don't work for mice. Creating accurate 5TT for mouse brain would require:
+#   1. Custom tissue segmentation pipeline
+#   2. Adaptation of tissue priors for mouse anatomy
+#   3. Validation against histology
+#
+# The mask-only approach:
+#   - Works consistently across all groups (CTRL, AP, APTR)
+#   - No need for Allen atlas (which only works for CTRL)
+#   - Simpler and more reproducible
+#   - Still produces high-quality whole-brain tractograms
+#
+# SELECTED SUBJECTS FOR WHOLE-BRAIN TRACTOGRAPHY:
+# ------------------------------------------------
+# 2 subjects per group (total 6):
+#   CTRL: sub-129-921-R1F, sub-129-1014-L1M
+#   AP:   sub-596-C-OO-NmM, sub-769-C-O5-R1M
+#   APTR: sub-Apallial17NmF, sub-AP72-862-901-R1M
+#
+# OUTPUT:
+# -------
+# Output files in: {subject}/{session}/dwi/wholebrain/
+#   - wholebrain_1000k.tck (1 million streamlines, ~800MB-1.5GB)
+#
+# USAGE:
+# ------
+# python functions/generate_wholebrain_tractogram.py --subject sub-129-921-R1F
+# python functions/generate_wholebrain_tractogram.py --all --n-subjects 2
+#
+wholebrain_tractography:
+  # Number of streamlines to generate
+  num_streamlines: 1000000
+  
+  # Use same parameters as ROI-to-ROI tractography
+  # (inherited from tractography section above)
+  
+  # Selected subjects for initial testing (2 per group)
+  test_subjects:
+    CTRL:
+      - sub-129-921-R1F
+      - sub-129-1014-L1M
+    AP:
+      - sub-596-C-OO-NmM
+      - sub-769-C-O5-R1M
+    APTR:
+      - sub-Apallial17NmF
+      - sub-AP72-862-901-R1M
+
+# -----------------------------------------------------------------------------
 # SIFT2 PARAMETERS
 # -----------------------------------------------------------------------------
 sift2:
@@ -663,7 +801,7 @@ matlab_cleaning:
   verbose: 0
   
   # Maximum cleaning iterations
-  max_iter: 3
+  max_iter: 5
   
   # Show visualization (0=no, 1=yes)
   show_viz: 0
@@ -732,8 +870,10 @@ rois:
   
   # (2) Piriform complex - 4 separate regions combined
   # PIR (961) + ENT (909) + PAA (788) + TR (566) = 45 total IDs
+  # Aliases: piriform_complex, olfactory_cortex (both refer to same regions)
   piriform_complex:
     name: "Piriform_Complex"
+    aliases: ["olfactory_cortex"]
     allen_ids: [961, 909, 788, 566]  # PIR, ENT, PAA, TR (Piriform, Entorhinal, Piriform-amygdalar, Postpiriform)
     description: "Piriform cortex + Entorhinal area + Piriform amygdalar area + Postpiriform transition area"
   
@@ -789,60 +929,6 @@ manual_rois:
     name: "Thalamus"
     description: "Manually segmented thalamus for graft targeting"
     groups: ["AP", "APTR"]
-
-# -----------------------------------------------------------------------------
-# SPHERICAL ROI DEFINITIONS (manual coordinates per subject)
-# -----------------------------------------------------------------------------
-# Coordinates are in VOXEL space of t2w_highres_flip.mif
-# Format: [x, y, z] - get coordinates from mrview crosshair position
-# Radius in mm (typical: 0.3-0.5mm for mouse brain)
-spherical_rois:
-  radius_mm: 0.4
-  
-  # CTRL group
-  CTRL:
-    sub-129-921-R1F:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [34, 108, 95]
-    sub-129-921-R1L1F:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-129-1014-L1M:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-138-1010-L1F:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-  
-  # AP group
-  AP:
-    sub-596-C-OO-NmM:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [39, 110, 102]
-    sub-769-C-O5-R1M:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-769-C-OO-NmM:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-875-C-OO-NM:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-  
-  # APTR group
-  APTR:
-    sub-AP72-862-901-NmF:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [42, 108, 79]
-    sub-AP72-862-901-R1M:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-Apallial17NmF:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
-    sub-Apallial20R1F:
-      sphere_frontal_left: [0, 0, 0]
-      sphere_frontal_right: [0, 0, 0]
 
 # -----------------------------------------------------------------------------
 # TRACT DEFINITIONS
@@ -961,7 +1047,7 @@ preprocessing:
 file_tree:
   # Base paths
   base_paths:
-    derivatives: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc"
+    derivatives: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1"
     # Pattern: {derivatives}/{subject_id}/{session}/dwi/
   
   # ---------------------------------------------------------------------------
@@ -1158,24 +1244,31 @@ file_tree:
         - "graft_left_posterior_ventral.nii.gz"
     
     # For CTRL subjects: isocortex_segments_v2/
+    # Segmentation along ANTERIOR-POSTERIOR axis only (no dorsal/ventral split)
+    # 5 equal divisions: anterior, anterior_central, central, posterior_central, posterior
     isocortex_segments:
       folder: "isocortex_segments_v2/"
-      description: "Isocortex divided into 12 segments (analogous to graft segments)"
+      description: "Isocortex divided into 10 segments (5 A-P positions × 2 hemispheres)"
       groups: ["CTRL"]
-      naming: "isocortex_{hemisphere}_{position}_{depth}.nii.gz"
+      naming: "isocortex_{hemisphere}_{position}.nii.gz"
+      num_segments: 5
+      positions:
+        - anterior           # highest X values (most anterior)
+        - anterior_central   # 
+        - central            # middle X values
+        - posterior_central  # 
+        - posterior          # lowest X values (most posterior)
       example_files:
-        - "isocortex_right_anterior_dorsal.nii.gz"
-        - "isocortex_right_anterior_ventral.nii.gz"
-        - "isocortex_right_central_dorsal.nii.gz"
-        - "isocortex_right_central_ventral.nii.gz"
-        - "isocortex_right_posterior_dorsal.nii.gz"
-        - "isocortex_right_posterior_ventral.nii.gz"
-        - "isocortex_left_anterior_dorsal.nii.gz"
-        - "isocortex_left_anterior_ventral.nii.gz"
-        - "isocortex_left_central_dorsal.nii.gz"
-        - "isocortex_left_central_ventral.nii.gz"
-        - "isocortex_left_posterior_dorsal.nii.gz"
-        - "isocortex_left_posterior_ventral.nii.gz"
+        - "isocortex_right_anterior.nii.gz"
+        - "isocortex_right_anterior_central.nii.gz"
+        - "isocortex_right_central.nii.gz"
+        - "isocortex_right_posterior_central.nii.gz"
+        - "isocortex_right_posterior.nii.gz"
+        - "isocortex_left_anterior.nii.gz"
+        - "isocortex_left_anterior_central.nii.gz"
+        - "isocortex_left_central.nii.gz"
+        - "isocortex_left_posterior_central.nii.gz"
+        - "isocortex_left_posterior.nii.gz"
 
   # ---------------------------------------------------------------------------
   # TRACT FILES (in dwi/segment_tracts/ folder)
@@ -1185,27 +1278,36 @@ file_tree:
     description: "Tractography outputs from segment-to-thalamus connections"
     
     naming_convention:
-      pattern: "tracks_{source}_{hemi}_{segment}_to_thalamus_{target_hemi}.tck"
-      cleaned_pattern: "tracks_{source}_{hemi}_{segment}_to_thalamus_{target_hemi}_cleaned.tck"
-      # source: "graft" (AP/APTR) or "isocortex" (CTRL)
-      # hemi: source hemisphere (left/right)
-      # segment: anterior_dorsal, anterior_ventral, central_dorsal, etc.
-      # target_hemi: thalamus hemisphere
-      #   - contralateral: opposite to source (right graft → left thalamus)
-      #   - ipsilateral: same as source (right graft → right thalamus)
+      # For AP/APTR subjects (graft, 6 segments: 3 A-P × 2 D-V):
+      graft_pattern: "tracks_graft_{hemi}_{segment}_to_{target}_{target_hemi}.tck"
+      graft_segments: ["anterior_dorsal", "anterior_ventral", "central_dorsal", 
+                       "central_ventral", "posterior_dorsal", "posterior_ventral"]
+      
+      # For CTRL subjects (isocortex, 5 A-P segments, no D-V split):
+      isocortex_pattern: "tracks_isocortex_{hemi}_{position}_to_{target}_{target_hemi}.tck"
+      isocortex_positions: ["anterior", "anterior_central", "central", 
+                            "posterior_central", "posterior"]
+      
+      # Suffixes for processing stages:
+      sift2_suffix: "_sift2.tck"
+      sift2_weights: "_sift2_weights.txt"
+      cleaned_suffix: "_cleaned.tck"
     
     examples:
-      contralateral:
-        - "tracks_graft_right_anterior_dorsal_to_thalamus_left.tck"
-        - "tracks_graft_right_anterior_dorsal_to_thalamus_left_cleaned.tck"
-        - "tracks_isocortex_right_anterior_dorsal_to_thalamus_left.tck"
-        - "tracks_isocortex_right_anterior_dorsal_to_thalamus_left_cleaned.tck"
+      # CTRL examples (5 A-P segments, ipsilateral connections):
+      ctrl_ipsilateral:
+        - "tracks_isocortex_left_anterior_to_thalamus_left.tck"
+        - "tracks_isocortex_left_anterior_to_thalamus_left_sift2.tck"
+        - "tracks_isocortex_left_anterior_to_thalamus_left_sift2_cleaned.tck"
+        - "tracks_isocortex_left_anterior_central_to_thalamus_left.tck"
+        - "tracks_isocortex_left_central_to_thalamus_left.tck"
+        - "tracks_isocortex_left_posterior_central_to_thalamus_left.tck"
+        - "tracks_isocortex_left_posterior_to_thalamus_left.tck"
       
-      ipsilateral:
+      # AP/APTR examples (6 D-V segments):
+      graft_ipsilateral:
         - "tracks_graft_right_anterior_dorsal_to_thalamus_right.tck"
         - "tracks_graft_right_anterior_dorsal_to_thalamus_right_cleaned.tck"
-        - "tracks_isocortex_right_anterior_dorsal_to_thalamus_right.tck"
-        - "tracks_isocortex_right_anterior_dorsal_to_thalamus_right_cleaned.tck"
 
   # ---------------------------------------------------------------------------
   # QUICK REFERENCE: FULL PATHS FOR EXAMPLE SUBJECTS
@@ -1214,7 +1316,7 @@ file_tree:
     APTR:
       subject: "sub-AP72-862-901-NmF"
       session: "ses-251210093342"
-      base: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc/sub-AP72-862-901-NmF/ses-251210093342"
+      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-AP72-862-901-NmF/ses-251210093342"
       files:
         # Visualization background (USE THIS)
         background: "dwi/t2w_highres_flip.mif"
@@ -1240,7 +1342,7 @@ file_tree:
     AP:
       subject: "sub-596-C-OO-NmM"
       session: "ses-240911103349"
-      base: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc/sub-596-C-OO-NmM/ses-240911103349"
+      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-596-C-OO-NmM/ses-240911103349"
       files:
         background: "dwi/t2w_highres_flip.mif"
         fod: "dwi/fod_wm_norm.mif"
@@ -1259,7 +1361,7 @@ file_tree:
     CTRL:
       subject: "sub-129-921-R1F"
       session: "ses-260115121231"
-      base: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc/sub-129-921-R1F/ses-260115121231"
+      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-129-921-R1F/ses-260115121231"
       files:
         background: "dwi/t2w_highres_flip.mif"
         fod: "dwi/fod_wm_norm.mif"
@@ -1308,10 +1410,55 @@ file_tree:
         segment: "anterior_dorsal, anterior_ventral, central_dorsal, etc."
 
 # =============================================================================
+# UTILS MODULE DOCUMENTATION
+# =============================================================================
+# Utility scripts are located in the utils/ folder.
+# These are helper scripts for QC, validation, and debugging.
+# =============================================================================
+
+utils:
+  # ---------------------------------------------------------------------------
+  # CHECK_ROI_OVERLAP.PY - ROI Overlap Validation
+  # ---------------------------------------------------------------------------
+  check_roi_overlap:
+    file: "utils/check_roi_overlap.py"
+    description: "Validate that segmented ROIs do not overlap."
+    purpose: |
+      Checks that ROI segments (isocortex for CTRL, graft for AP/APTR) are mutually
+      exclusive. Overlapping ROIs would cause double-counting in tractography.
+      Reports voxel counts, overlap pairs, and total unique voxels.
+    
+    usage:
+      - "python utils/check_roi_overlap.py --subject sub-129-921-R1F --session ses-260115121231 --group CTRL"
+      - "python utils/check_roi_overlap.py --subject sub-AP72-862-901-NmF --session ses-251210093342 --group APTR"
+      - "python utils/check_roi_overlap.py --all   # Check all subjects in config"
+    
+    arguments:
+      --subject: "Subject ID to check"
+      --session: "Session ID"
+      --group: "Group name (CTRL, AP, APTR)"
+      --all: "Check all subjects defined in config"
+      --quiet: "Suppress verbose output"
+    
+    outputs:
+      - "Prints voxel counts per segment"
+      - "Reports any overlapping voxel pairs"
+      - "Shows total unique vs sum (difference = overlap)"
+    
+    notes:
+      - "CTRL: checks dwi/isocortex_segments_v2/ (5 A-P segments, FOD space)"
+      - "AP/APTR: checks dwi/graft_segments_v2/fod_space/ (3 dorsal segments)"
+      - "Both hemispheres checked separately"
+      - "Run BEFORE tractography to validate ROI segmentation"
+    
+    created: "2026-01-30"
+    validated: "sub-129-921-R1F - no overlap (4283 unique = sum of 5 segments)"
+
+# =============================================================================
 # FUNCTIONS MODULE DOCUMENTATION
 # =============================================================================
 # All Python scripts are located in the functions/ folder.
-# All scripts use config_loader.py to read parameters from this config.yaml.
+# All scripts use config_loader.py to read parameters from this config1.yaml.
 # DO NOT create new scripts if functionality already exists - modify existing ones.
 # =============================================================================
 
@@ -1321,11 +1468,11 @@ functions:
   # ---------------------------------------------------------------------------
   config_loader:
     file: "functions/config_loader.py"
-    description: "Central module to load config.yaml. All other scripts import from here."
+    description: "Central module to load config1.yaml. All other scripts import from here."
     purpose: |
       Provides centralized configuration loading for the entire pipeline.
       Caches config to avoid repeated file reads.
-      All scripts should use this instead of loading config.yaml directly.
+      All scripts should use this instead of loading config1.yaml directly.
     
     usage:
       - "from config_loader import load_config"
@@ -1350,7 +1497,45 @@ functions:
       - "All paths in config are absolute or relative to repo root"
 
   # ---------------------------------------------------------------------------
-  # ATLAS_COREGISTRATION.PY - Allen Atlas Registration
+  # ATLAS_ROI_EXTRACTION.PY - Allen Atlas ROI Extraction (CTRL only)
+  # ---------------------------------------------------------------------------
+  atlas_roi_extraction:
+    file: "functions/atlas_roi_extraction.py"
+    description: "Register Allen CCF atlas to CTRL subject and extract ROIs."
+    purpose: |
+      For NEW CTRL subjects: runs ANTs registration and extracts all ROIs in one step.
+      Handles the Google Drive path issues by processing in /tmp directory.
+      Properly handles L/R hemisphere convention for flip1 space.
+    
+    usage:
+      - "python functions/atlas_roi_extraction.py --subject sub-129-921-R1F"
+      - "python functions/atlas_roi_extraction.py --subject sub-NEW-MOUSE --session ses-XXXXXX"
+    
+    arguments:
+      --subject: "Subject ID (required)"
+      --session: "Session ID (auto-detected if not provided)"
+    
+    outputs:
+      - "atlas/annotation_warped.nii.gz - Warped Allen annotation"
+      - "atlas/atlas_coreg_*.mat - ANTs affine transform"
+      - "atlas/atlas_coreg_*Warp.nii.gz - ANTs warp field"
+      - "atlas/rois/roi_{region}.nii.gz - Bilateral ROIs"
+      - "atlas/rois/roi_{region}_left.nii.gz - Left hemisphere"
+      - "atlas/rois/roi_{region}_right.nii.gz - Right hemisphere"
+    
+    config_params_used:
+      - "paths.derivatives_flip1 - Base derivatives directory"
+      - "paths.local - Local atlas directory"
+      - "atlas.roi_definitions - ROI structure IDs"
+    
+    notes:
+      - "Takes ~5 minutes for ANTs registration"
+      - "Uses temp directory to avoid Google Drive path issues"
+      - "L/R CONVENTION: In flip1 space, anatomical LEFT = HIGH Z indices"
+      - "ROIs extracted: isocortex, olfactory_cortex, striatum, thalamus, cerebellum, amygdala, anterior_cingulate"
+
+  # ---------------------------------------------------------------------------
+  # ATLAS_COREGISTRATION.PY - Allen Atlas Registration (legacy)
   # ---------------------------------------------------------------------------
   atlas_coregistration:
     file: "functions/atlas_coregistration.py"
@@ -1467,48 +1652,28 @@ functions:
       - "Creates _SF.tck files with removed fibers for inspection"
 
   # ---------------------------------------------------------------------------
-  # DWI_FLIP2_FOD.PY - Apply Flip2 and Generate FOD
+  # MIGRATE_CTRL_TO_FLIP1.SH - Migrate CTRL Data (for new subjects)
   # ---------------------------------------------------------------------------
-  dwi_flip2_fod:
-    file: "functions/dwi_flip2_fod.py"
-    description: "Apply flip2 transformation to DWI and generate FOD images."
-    purpose: |
-      Takes preprocessed DWI from old pipeline (mrtrix_preproc).
-      Applies flip2 transformation to match Allen atlas orientation.
-      Generates response functions and FOD for tractography.
-      Critical for ensuring consistent orientation across all subjects.
-    
-    usage:
-      - "python functions/dwi_flip2_fod.py --subject sub-129-921-R1F"
-      - "python functions/dwi_flip2_fod.py --group CTRL"
-    
-    arguments:
-      --subject: "Process specific subject"
-      --group: "Process all subjects in group"
-    
-    outputs:
-      - "dwi/dwi_flip2.mif - DWI with flip2 transformation"
-      - "dwi/wm_fod_flip2.mif - White matter FOD"
-      - "dwi/gm_fod_flip2.mif - Gray matter FOD"
-      - "dwi/csf_fod_flip2.mif - CSF FOD"
-      - "dwi/mask_flip2.mif - Brain mask with flip2"
-    
-    config_params_used:
-      - "paths.derivatives_dir_old - Source old pipeline directory"
-      - "paths.derivatives_dir - Output flip2 directory"
-    
-    flip2_method: |
-      Step 1: mrconvert input output -axes 2,1,0 -strides 1,2,3
-      Step 2: mrtransform input output -flip 1
-      Step 3: mrtransform input output -flip 2
-    
-    notes:
-      - "Must run AFTER preprocessing in old pipeline"
-      - "Flip2 method validated against Allen atlas (2026-01-23)"
-      - "Source: dwi_flip_gradcheck_denoise_bias.mif from old pipeline"
+  # NOTE: The old pipeline (mrtrix_preproc) already applied flip1 transformation!
+  # For CTRL subjects, simply copy the preprocessed data to flip1 folder.
+  #
+  # migrate_ctrl_to_flip1:
+  #   file: "/tmp/migrate_ctrl_to_flip1.sh"
+  #   description: "Migrate CTRL preprocessed data from old pipeline to flip1."
+  #   purpose: |
+  #     The old pipeline already has flip1 transformation applied (axes 2,1,0 + flip 1).
+  #     This script copies correctly preprocessed files to the flip1 directory:
+  #       - dwi_flip_gradcheck_denoise_bias_anat.mif → dwi_preproc.mif
+  #       - fod_wm_norm.mif → wm_fod_norm.mif
+  #       - mask.mif (copied)
+  #       - b0_final.mif → b0.mif
+  #   
+  #   usage: "bash /tmp/migrate_ctrl_to_flip1.sh"
+  #
+  #   IMPORTANT: DO NOT use dwi_flip1_fod.py - it double-applies the transformation!
 
   # ---------------------------------------------------------------------------
-  # DWI_FOD.PY - Generate FOD for Flip1 Pipeline (NEW)
+  # DWI_FOD.PY - Generate FOD for Flip1 Pipeline
   # ---------------------------------------------------------------------------
   dwi_fod:
     file: "functions/dwi_fod.py"
@@ -1642,29 +1807,45 @@ functions:
   # ---------------------------------------------------------------------------
   generate_tracts:
     file: "functions/generate_tracts.py"
-    description: "Generate fiber tracts between ROI pairs."
+    description: "Generate fiber tracts from segments to target ROIs."
     purpose: |
-      Runs tractography between seed and target ROIs.
-      Supports both atlas ROIs (CTRL) and manual ROIs (AP/APTR).
-      Uses tckgen with iFOD2 algorithm and parameters from config.
+      Runs tractography from graft segments (AP/APTR) or isocortex segments (CTRL)
+      to target ROIs (thalamus, striatum) using tckgen with iFOD2 algorithm.
+      
+      For CTRL subjects:
+        - Uses 5 A-P isocortex segments (no dorsal/ventral split)
+        - Segments: anterior, anterior_central, central, posterior_central, posterior
+        - Target ROIs from Allen atlas (in atlas/rois/fod_space/)
+        - Segments in dwi/isocortex_segments_v2/
+      
+      For AP/APTR subjects:
+        - Uses 6 graft segments (3 A-P × 2 D-V)
+        - Target ROIs from manual segmentation (in manual_roi/fod_space/)
     
     usage:
-      - "python functions/generate_tracts.py                       # All"
-      - "python functions/generate_tracts.py --group CTRL          # CTRL only"
-      - "python functions/generate_tracts.py --subject sub-129     # Specific"
-      - "python functions/generate_tracts.py --tract Isocortex_Striatum"
-      - "python functions/generate_tracts.py --hemisphere left"
-      - "python functions/generate_tracts.py --dry-run"
+      - "MBRAIN_PIPELINE=flip1 python functions/generate_tracts.py --group CTRL"
+      - "MBRAIN_PIPELINE=flip1 python functions/generate_tracts.py --group CTRL --hemisphere left --target thalamus"
+      - "MBRAIN_PIPELINE=flip1 python functions/generate_tracts.py --group CTRL --sift2 --clean"
+      - "MBRAIN_PIPELINE=flip1 python functions/generate_tracts.py --subject sub-129-921-R1F --segment anterior"
+      - "MBRAIN_PIPELINE=flip1 python functions/generate_tracts.py --dry-run"
     
     arguments:
-      --group: "Process only subjects in specified group"
+      --group: "CTRL, AP, APTR, or all"
       --subject: "Process only specified subject"
-      --tract: "Process only specified tract definition"
-      --hemisphere: "Process only left or right"
+      --hemisphere: "left, right, or both (default: both)"
+      --target: "thalamus, striatum, or all"
+      --segment: "Specific segment (e.g., anterior, central)"
+      --seg-mode: "6 or 9 segments (AP/APTR only)"
+      --sift2: "Apply SIFT2 filtering after tractography"
+      --clean: "Run MATLAB AFQ cleaning after tractography"
       --dry-run: "Preview commands without executing"
     
     outputs:
-      - "dwi/tracks_<tract_name>_<hemisphere>.tck - Raw tractography"
+      ctrl_tracts:
+        folder: "dwi/segment_tracts/"
+        pattern: "tracks_isocortex_{hemi}_{position}_to_{target}_{target_hemi}.tck"
+        sift2: "tracks_isocortex_{hemi}_{position}_to_{target}_{target_hemi}_sift2.tck"
+        cleaned: "tracks_isocortex_{hemi}_{position}_to_{target}_{target_hemi}_sift2_cleaned.tck"
     
     config_params_used:
       - "tractography.algorithm - iFOD2"
@@ -1674,12 +1855,15 @@ functions:
       - "tractography.cutoff - FOD cutoff (0.1)"
       - "tractography.min_length - Minimum tract length (2mm)"
       - "tractography.max_length - Maximum tract length (15mm)"
-      - "tract_definitions - ROI pairs to connect"
+      - "matlab_cleaning.* - AFQ outlier removal parameters"
     
     notes:
-      - "Uses -seed_image for seeding from ROI"
+      - "Uses -seed_image for seeding from segment ROI"
       - "Uses -include for target ROI inclusion"
+      - "Uses -stop to terminate at target (no overshooting)"
+      - "Uses -seed_unidirectional to prevent backward growth"
       - "Applies brain mask if available"
+      - "SIFT2 should be run before cleaning for best results"
 
   # ---------------------------------------------------------------------------
   # MATLAB_CLEAN_STANDALONE.PY - Standalone MATLAB Cleaning
@@ -1744,13 +1928,6 @@ functions:
     notes:
       - "Uses t2w_highres_flip.mif as background"
       - "Color-coded overlays for different ROI types"
-
-  # ---------------------------------------------------------------------------
-  # RESAMPLE_ROIS_TO_FOD.PY - Resample ROIs to FOD Space
-  # ---------------------------------------------------------------------------
-  resample_rois_to_fod:
-    file: "functions/resample_rois_to_fod.py"
-    description: "Resample ROIs from T2w space to FOD space for tractography."
     purpose: |
       ROIs are often in T2w resolution (higher).
       Tractography requires ROIs in FOD resolution.
@@ -1773,7 +1950,7 @@ functions:
     
     notes:
       - "Uses mrgrid regrid with nearest-neighbor interpolation"
-      - "Template is wm_fod_flip2.mif or fod_wm_norm.mif"
+      - "Template is wm_fod_norm_group.mif"
       - "Preserves binary ROI values with nearest-neighbor"
 
   # ---------------------------------------------------------------------------
@@ -1955,6 +2132,86 @@ functions:
       - "Uses t2w_highres_flip.mif as default background"
       - "Tries _cleaned_topN.tck, _cleaned.tck, then raw .tck"
 
+  # ---------------------------------------------------------------------------
+  # FOD_DIRECTION_ANALYSIS.PY - FOD Directionality Analysis with Radar Plots
+  # ---------------------------------------------------------------------------
+  fod_direction_analysis:
+    file: "functions/fod_direction_analysis.py"
+    description: "Analyze FOD directionality within graft/isocortex ROIs and create radar plots."
+    purpose: |
+      Analyzes the directional content of FODs (Fiber Orientation Distributions) within
+      graft regions for AP/APTR and isocortex for CTRL subjects. Creates comparative
+      radar plots showing the relative strength of A-P, D-V, and L-R oriented fibers.
+      
+      Key features:
+      - Samples FOD at 100 directions per voxel using spherical harmonics
+      - Calculates direction-weighted amplitudes for each axis
+      - Creates radar plots comparing all subjects in 3 groups side by side
+      - Supports shrunk (eroded by 1 voxel) graft ROIs to reduce edge effects
+      
+      The radar plots show:
+      - FOD amplitude in each direction (DV=dorsal-ventral, AP=anterior-posterior, LR=left-right)
+      - Dark red circle proportional to √(WM content / max), showing tissue quality
+      - Each subject as a different colored line, group average in black
+    
+    usage:
+      - "python functions/fod_direction_analysis.py --compare"
+      - "python functions/fod_direction_analysis.py --compare --shrink"
+      - "python functions/fod_direction_analysis.py --create-shrink-rois"
+      - "python functions/fod_direction_analysis.py --group APTR"
+    
+    arguments:
+      --group: "APTR or AP (default: APTR) - for single-group analysis"
+      --polar: "Generate 2D polar projection plots"
+      --compare: "Generate 3-group comparison (CTRL vs AP vs APTR) - MAIN MODE"
+      --shrink: "Use shrunk graft ROIs (eroded by 1 voxel) for AP/APTR"
+      --create-shrink-rois: "Create eroded graft ROIs for all AP/APTR subjects"
+    
+    outputs:
+      - "reports/fod_3group_comparison_left.png - Left hemisphere 3-group radar plots"
+      - "reports/fod_3group_comparison_right.png - Right hemisphere 3-group radar plots"
+      - "reports/fod_3group_comparison_left_shrink.png - Shrunk ROI version (left)"
+      - "reports/fod_3group_comparison_right_shrink.png - Shrunk ROI version (right)"
+      - "manual_roi/fod_space/shrink/roi_Graft_{hemi}_flip_fod_shrink.mif - Shrunk graft ROIs"
+    
+    shrunk_roi_creation: |
+      When --create-shrink-rois is used, the script creates eroded versions of graft ROIs:
+      - Uses scipy.ndimage.binary_erosion with 3D ball structuring element
+      - Erodes by 1 voxel (6-connectivity)
+      - Typical retention: 70-85% of original voxels
+      - Reduces edge voxels that may have partial volume effects
+      - Shrunk ROIs saved to manual_roi/fod_space/shrink/ folder
+    
+    interpretation: |
+      In the radar plots:
+      - CTRL mice (normal isocortex): Expect balanced directional distribution
+      - AP mice (abnormal cortex, no transplant): May show altered connectivity patterns
+      - APTR mice (transplanted cortex): Ideally should approach CTRL patterns
+      
+      DV (dorsal-ventral): Vertical fiber orientation (radial/columnar)
+      AP (anterior-posterior): Longitudinal fiber orientation
+      LR (left-right): Commissural/callosal fiber orientation
+      
+      WM circle (dark red): Proportional to overall white matter content (c₀ coefficient)
+      - Larger circle = more total WM signal in the ROI
+      - Smaller circle = less WM signal (could indicate tissue damage or different composition)
+    
+    config_params_used:
+      - "paths.derivatives_flip1 - Base derivatives directory"
+      - "paths.repo_dir - For output to reports/ folder"
+      - "groups.AP, groups.APTR, groups.CTRL - Subject lists"
+    
+    roi_locations:
+      CTRL: "atlas/rois/fod_space/roi_isocortex_{hemi}.nii.gz"
+      AP_APTR: "manual_roi/fod_space/roi_Graft_{hemi}_flip_fod.mif"
+      AP_APTR_shrink: "manual_roi/fod_space/shrink/roi_Graft_{hemi}_flip_fod_shrink.mif"
+    
+    notes:
+      - "FOD must be normalized (wm_fod_norm.mif) for valid cross-subject comparison"
+      - "Uses spherical harmonic decomposition up to lmax=8 (45 coefficients)"
+      - "Direction sampling uses Fibonacci spiral for even distribution"
+      - "Shrunk ROIs recommended for more reliable measurements"
+
 # =============================================================================
 # TYPICAL WORKFLOW EXAMPLES
 # =============================================================================
@@ -1968,9 +2225,9 @@ workflows:
     description: "Process a new subject from scratch (CTRL group)"
     steps:
       - step: 1
-        name: "Apply flip2 transformation"
-        command: "python functions/dwi_flip2_fod.py --subject sub-NEW"
-        output: "dwi/wm_fod_flip2.mif, mask_flip2.mif"
+        name: "Apply flip1 transformation and generate FOD"
+        command: "python functions/dwi_fod.py --subject sub-NEW"
+        output: "dwi/wm_fod_flip1.mif, mask_flip1.mif"
       
       - step: 2
         name: "Register Allen atlas"
@@ -2002,12 +2259,32 @@ workflows:
         command: "python functions/view_tracts.py --subject sub-NEW"
   
   # ---------------------------------------------------------------------------
+  # CTRL ATLAS ROI HEMISPHERE CORRECTION (2026-02-08)
+  # ---------------------------------------------------------------------------
+  # PROBLEM: Atlas ROI extraction produced swapped left/right hemisphere labels.
+  #          When viewing ROIs overlaid on T2w, left-labeled ROIs appeared on
+  #          anatomical right side and vice versa.
+  # SOLUTION: Ran fix_hemisphere_labels.py to swap all left/right labels for:
+  #          - atlas/rois/roi_*_left/right.nii.gz files
+  #          - dwi/isocortex_segments_v2/isocortex_left/right_*.nii.gz files
+  # AFFECTED SUBJECTS: All CTRL subjects (4 subjects)
+  # FILES CORRECTED: 173 file pairs total
+  # VALIDATION: Hemisphere labels now correctly match anatomical sides
+  # SCRIPT: fix_hemisphere_labels.py (committed to repository)
+
+  # AP/APTR HEMISPHERE VALIDATION (2026-02-08)
+  # ---------------------------------------------------------------------------
+  # VALIDATION: AP/APTR subjects had correct hemisphere labels originally.
+  #             No correction needed - labels properly match anatomical sides.
+  # STATUS: CONFIRMED - AP/APTR hemisphere labels are anatomically correct
+
+  # ---------------------------------------------------------------------------
   # VISUALIZATION ONLY
   # ---------------------------------------------------------------------------
   quick_visualization:
     description: "Quick visualization of existing processed data"
     example_ctrl: |
-      cd /Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip2
+      cd /Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1
       micromamba activate mbrain
       mrview sub-129-1014-L1M/ses-260115113814/dwi/t2w_highres_flip.mif \
         -overlay.load sub-129-1014-L1M/ses-260115113814/dwi/atlas/rois/fod_space/roi_thalamus_left.nii.gz \

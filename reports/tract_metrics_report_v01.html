@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBRAIN Per-Tract Metrics Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           margin: 0; padding: 20px; background: #f5f5f5; color: #333; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+    h2 { color: #34495e; margin-top: 30px; }
+    h3 { color: #7f8c8d; }
+    .summary-box { background: white; border-radius: 8px; padding: 20px;
+                    margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: right; }
+    th { background: #3498db; color: white; position: sticky; top: 0; }
+    td:first-child, td:nth-child(2) { text-align: left; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    tr:hover { background: #e8f4fd; }
+    .chart-container { background: white; border-radius: 8px; padding: 20px;
+                       margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .group-ctrl { color: #2ecc71; } .group-ap { color: #e74c3c; } .group-aptr { color: #f39c12; }
+    .metric-high { background: #d4edda; } .metric-low { background: #f8d7da; }
+    .zero { color: #ccc; }
+    .tabs { display: flex; gap: 5px; margin: 20px 0 10px; }
+    .tab { padding: 8px 16px; background: #ecf0f1; border: none; border-radius: 5px 5px 0 0;
+            cursor: pointer; font-size: 14px; }
+    .tab.active { background: #3498db; color: white; }
+    .tab-content { display: none; } .tab-content.active { display: block; }
+    .footer { text-align: center; color: #95a5a6; margin-top: 40px; padding: 20px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>MBRAIN Per-Tract Metrics Report</h1>
+<p>Generated: 2026-02-10 16:25:11</p>
+<div class="summary-box">
+<h2>Summary</h2>
+<h3 class="group-ctrl">CTRL (4 subjects)</h3>
+<p>Subjects: sub-129-1014-L1M, sub-129-921-R1F, sub-129-921-R1L1F, sub-138-1010-L1F<br>Total streamlines: 1,858,192 | Total SIFT2: 1323628.48 | Mean AFD: 1.4808</p>
+<h3 class="group-ap">AP (4 subjects)</h3>
+<p>Subjects: sub-596-C-OO-NmM, sub-769-C-O5-R1M, sub-769-C-OO-NmM, sub-875-C-OO-NM<br>Total streamlines: 149,743 | Total SIFT2: 109532.31 | Mean AFD: 1.1357</p>
+<h3 class="group-aptr">APTR (4 subjects)</h3>
+<p>Subjects: sub-AP72-862-901-NmF, sub-AP72-862-901-R1M, sub-Apallial17NmF, sub-Apallial20R1F<br>Total streamlines: 584,918 | Total SIFT2: 358323.84 | Mean AFD: 1.1065</p>
+</div>
+<div class="tabs">
+<button class="tab active" onclick="showTab('left')">Left Hemisphere</button>
+<button class="tab" onclick="showTab('right')">Right Hemisphere</button>
+</div>
+<div id="tab-left" class="tab-content active">
+<h2>Left Hemisphere</h2>
+<div class="summary-box">
+<h3>Target: Cerebellum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>0.43</td><td>0.97</td><td>1.1846</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4</td><td>1.55</td><td>3.80</td><td>1.1101</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4</td><td>1.12</td><td>1.66</td><td>1.0609</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4</td><td>1.00</td><td>0.75</td><td>1.0629</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,369</td><td>1063.18</td><td>1063.18</td><td>0.9929</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>0.31</td><td>0.81</td><td>1.3184</td><td>-</td><td>-</td><td>-</td><td>-</td><td>12</td><td>4.84</td><td>4.31</td><td>1.1965</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>139</td><td>96.25</td><td>113.78</td><td>1.2422</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4</td><td>1.15</td><td>3.18</td><td>1.2048</td><td>-</td><td>-</td><td>-</td><td>-</td><td>17</td><td>5.55</td><td>6.17</td><td>1.1863</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2</td><td>2.03</td><td>2.53</td><td>1.1828</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>228</td><td>92.19</td><td>217.43</td><td>1.2256</td><td>-</td><td>-</td><td>-</td><td>-</td><td>198</td><td>87.01</td><td>107.55</td><td>1.1930</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>16</td><td>8.23</td><td>17.89</td><td>1.1768</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>21</td><td>7.55</td><td>50.00</td><td>1.1862</td><td>-</td><td>-</td><td>-</td><td>-</td><td>73</td><td>26.86</td><td>79.70</td><td>1.1722</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>14</td><td>6.63</td><td>7.19</td><td>1.1860</td><td>-</td><td>-</td><td>-</td><td>-</td><td>73</td><td>48.84</td><td>31.19</td><td>1.1807</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>18</td><td>8.89</td><td>6.01</td><td>1.1171</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>8</td><td>5.27</td><td>9.13</td><td>1.4815</td><td>130</td><td>71.68</td><td>74.28</td><td>1.6131</td><td>-</td><td>-</td><td>-</td><td>-</td><td>625</td><td>437.75</td><td>347.42</td><td>1.6466</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8,135</td><td>6185.11</td><td>12858.86</td><td>1.5597</td><td>3,500</td><td>2233.02</td><td>3054.75</td><td>1.5880</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>17</td><td>6.43</td><td>21.93</td><td>1.4392</td><td>72</td><td>34.17</td><td>33.83</td><td>1.4599</td><td>-</td><td>-</td><td>-</td><td>-</td><td>350</td><td>182.87</td><td>121.75</td><td>1.4555</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,270</td><td>1207.98</td><td>1792.25</td><td>1.4449</td><td>2,565</td><td>1166.95</td><td>1248.07</td><td>1.4353</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>56</td><td>31.68</td><td>31.84</td><td>1.6005</td><td>-</td><td>-</td><td>-</td><td>-</td><td>347</td><td>240.92</td><td>225.37</td><td>1.6196</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,484</td><td>3428.50</td><td>4775.07</td><td>1.5269</td><td>1,078</td><td>755.58</td><td>831.23</td><td>1.6002</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>138</td><td>50.96</td><td>110.79</td><td>1.4021</td><td>285</td><td>132.14</td><td>105.80</td><td>1.4065</td><td>-</td><td>-</td><td>-</td><td>-</td><td>783</td><td>594.36</td><td>567.14</td><td>1.4690</td><td>-</td><td>-</td><td>-</td><td>-</td><td>17,282</td><td>16008.03</td><td>28585.76</td><td>1.4703</td><td>4,895</td><td>4227.36</td><td>3373.79</td><td>1.5039</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>41</td><td>15.66</td><td>35.46</td><td>1.4409</td><td>136</td><td>67.42</td><td>61.44</td><td>1.5200</td><td>-</td><td>-</td><td>-</td><td>-</td><td>526</td><td>363.97</td><td>315.42</td><td>1.5477</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8043</td><td>6707.40</td><td>12002.99</td><td>1.5005</td><td>3010</td><td>2095.73</td><td>2126.96</td><td>1.5319</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2</td><td>0.65</td><td>1.41</td><td>1.1947</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8</td><td>2.95</td><td>3.05</td><td>1.1576</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>378</td><td>290.75</td><td>295.82</td><td>1.1320</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>66</td><td>26.59</td><td>68.66</td><td>1.1993</td><td>-</td><td>-</td><td>-</td><td>-</td><td>86</td><td>40.68</td><td>54.61</td><td>1.1819</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8</td><td>4.28</td><td>5.97</td><td>1.1469</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_cerebellum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_cerebellum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_cerebellum_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [35.46, 61.44, 0, 315.42, 0, 12002.99, 2126.96, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.41, 0, 3.05, 0, 0, 295.82], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 68.66, 0, 54.61, 0, 0, 5.97], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Cerebellum (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_left_cerebellum_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.4409, 1.52, 0, 1.5477, 0, 1.5005, 1.5319, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.1947, 0, 1.1576, 0, 0, 1.132], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.1993, 0, 1.1819, 0, 0, 1.1469], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Cerebellum (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Olfactory_cortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">central</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>13,134</td><td>12032.24</td><td>20853.10</td><td>1.5325</td><td>19,163</td><td>17277.74</td><td>17904.39</td><td>1.5730</td><td>18,801</td><td>18140.73</td><td>14397.41</td><td>1.6545</td><td>24,065</td><td>20575.26</td><td>42776.00</td><td>1.6824</td><td>27,004</td><td>21587.08</td><td>29530.89</td><td>1.6880</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>4,576</td><td>2547.55</td><td>8694.71</td><td>1.4354</td><td>19,404</td><td>13581.39</td><td>13446.92</td><td>1.4379</td><td>19,207</td><td>16289.46</td><td>10845.18</td><td>1.5337</td><td>19,139</td><td>18154.66</td><td>26935.70</td><td>1.5704</td><td>18,814</td><td>18719.57</td><td>20020.93</td><td>1.5730</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>7,763</td><td>6860.48</td><td>10941.75</td><td>1.3912</td><td>15,408</td><td>14376.71</td><td>14448.96</td><td>1.4380</td><td>12,133</td><td>11510.58</td><td>10767.62</td><td>1.5667</td><td>28,756</td><td>23615.16</td><td>32890.19</td><td>1.5690</td><td>18,201</td><td>15510.94</td><td>17063.74</td><td>1.5994</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>13,480</td><td>7341.50</td><td>15959.78</td><td>1.4932</td><td>26,571</td><td>17611.10</td><td>14100.16</td><td>1.5209</td><td>17,610</td><td>15363.67</td><td>14659.99</td><td>1.5996</td><td>17,805</td><td>17019.98</td><td>30392.81</td><td>1.5801</td><td>23,802</td><td>23103.38</td><td>18438.45</td><td>1.6353</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>9738</td><td>7195.44</td><td>14112.34</td><td>1.4631</td><td>20136</td><td>15711.73</td><td>14975.11</td><td>1.4924</td><td>16938</td><td>15326.11</td><td>12667.55</td><td>1.5886</td><td>22441</td><td>19841.26</td><td>33248.67</td><td>1.6005</td><td>21955</td><td>19730.24</td><td>21263.50</td><td>1.6239</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_olfactory_cortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "central", "posterior", "posterior_central"],
+        datasets: [{"label": "CTRL", "data": [14112.34, 14975.11, 12667.55, 33248.67, 21263.5], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Olfactory_cortex (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_left_olfactory_cortex_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "central", "posterior", "posterior_central"],
+        datasets: [{"label": "CTRL", "data": [1.4631, 1.4924, 1.5886, 1.6005, 1.6239], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Olfactory_cortex (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Paleocortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior_dorsal</th><th colspan="4">central_dorsal</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>13,756</td><td>9952.27</td><td>32737.75</td><td>1.1525</td><td>14,810</td><td>10019.51</td><td>22771.61</td><td>1.2415</td><td>1,822</td><td>2223.46</td><td>5449.66</td><td>0.9940</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>3,207</td><td>5980.18</td><td>8872.66</td><td>1.0230</td><td>1,330</td><td>2030.66</td><td>1515.42</td><td>0.9815</td><td>2</td><td>1.37</td><td>1.37</td><td>1.0911</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>3,336</td><td>4231.20</td><td>10990.14</td><td>0.9717</td><td>3,215</td><td>4357.34</td><td>3880.09</td><td>1.0461</td><td>16</td><td>7.67</td><td>9.07</td><td>1.1498</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>4,088</td><td>3176.92</td><td>8800.32</td><td>1.1102</td><td>11,825</td><td>7906.17</td><td>8784.64</td><td>1.1250</td><td>4,250</td><td>2219.68</td><td>2760.80</td><td>0.9975</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>2,534</td><td>2138.53</td><td>5043.70</td><td>1.1364</td><td>12,284</td><td>10772.64</td><td>13315.99</td><td>1.2460</td><td>2,004</td><td>2077.12</td><td>4515.48</td><td>1.2661</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>2,212</td><td>1565.20</td><td>10365.55</td><td>1.0969</td><td>1,784</td><td>1721.78</td><td>5109.15</td><td>0.9924</td><td>79</td><td>77.97</td><td>205.73</td><td>1.0005</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>2,665</td><td>1782.79</td><td>1933.61</td><td>1.0186</td><td>33,387</td><td>21539.61</td><td>13754.54</td><td>0.9733</td><td>22,237</td><td>14122.91</td><td>9542.51</td><td>0.9428</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>3,539</td><td>3504.04</td><td>7239.74</td><td>1.0429</td><td>14,049</td><td>13847.10</td><td>13112.79</td><td>1.0444</td><td>2,632</td><td>2815.54</td><td>4716.15</td><td>1.0950</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>6097</td><td>5835.14</td><td>15350.22</td><td>1.0643</td><td>7795</td><td>6078.42</td><td>9237.94</td><td>1.0985</td><td>1522</td><td>1113.05</td><td>2055.22</td><td>1.0581</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>2738</td><td>2247.64</td><td>6145.65</td><td>1.0737</td><td>15376</td><td>11970.28</td><td>11323.12</td><td>1.0640</td><td>6738</td><td>4773.38</td><td>4744.96</td><td>1.0761</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_paleocortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_paleocortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_paleocortex_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior_dorsal", "central_dorsal", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [0, 0, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [15350.22, 9237.94, 2055.22], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [6145.65, 11323.12, 4744.96], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Paleocortex (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_left_paleocortex_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior_dorsal", "central_dorsal", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [0, 0, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [1.0643, 1.0985, 1.0581], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [1.0737, 1.064, 1.0761], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Paleocortex (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Striatum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,518</td><td>5032.28</td><td>16553.55</td><td>1.2217</td><td>-</td><td>-</td><td>-</td><td>-</td><td>18,554</td><td>10156.72</td><td>23083.45</td><td>1.2277</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>319</td><td>284.28</td><td>696.76</td><td>1.1981</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>599</td><td>659.93</td><td>979.13</td><td>1.1235</td><td>-</td><td>-</td><td>-</td><td>-</td><td>783</td><td>732.12</td><td>546.36</td><td>1.0487</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7</td><td>5.26</td><td>5.26</td><td>1.1627</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,343</td><td>1227.28</td><td>3187.75</td><td>1.1325</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,685</td><td>2631.12</td><td>2342.93</td><td>1.1238</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>169</td><td>86.48</td><td>102.22</td><td>1.1042</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,102</td><td>1676.13</td><td>4643.03</td><td>1.1599</td><td>-</td><td>-</td><td>-</td><td>-</td><td>13,761</td><td>7169.89</td><td>7966.54</td><td>1.1221</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,592</td><td>780.39</td><td>970.63</td><td>1.1135</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,794</td><td>1936.49</td><td>4567.19</td><td>1.2200</td><td>-</td><td>-</td><td>-</td><td>-</td><td>16,719</td><td>12313.96</td><td>15221.22</td><td>1.2779</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5,628</td><td>5109.98</td><td>11108.64</td><td>1.2657</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,356</td><td>734.43</td><td>4863.79</td><td>1.1194</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,342</td><td>2329.03</td><td>6911.07</td><td>1.0601</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>223</td><td>183.20</td><td>483.37</td><td>1.0328</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,462</td><td>2277.19</td><td>2469.84</td><td>1.1107</td><td>-</td><td>-</td><td>-</td><td>-</td><td>16,401</td><td>9709.42</td><td>6200.14</td><td>1.0634</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>10,423</td><td>5786.54</td><td>3909.82</td><td>1.0203</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,459</td><td>8263.19</td><td>17072.71</td><td>1.0841</td><td>-</td><td>-</td><td>-</td><td>-</td><td>24,479</td><td>19995.99</td><td>18935.60</td><td>1.0679</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5,215</td><td>4772.96</td><td>7994.92</td><td>1.1029</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>13,220</td><td>10091.73</td><td>17490.00</td><td>1.5507</td><td>28,409</td><td>19327.81</td><td>20028.82</td><td>1.5278</td><td>-</td><td>-</td><td>-</td><td>-</td><td>23,374</td><td>15515.12</td><td>12313.59</td><td>1.5429</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,938</td><td>2496.32</td><td>5189.85</td><td>1.6074</td><td>15,198</td><td>8909.59</td><td>12188.22</td><td>1.5833</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>5,506</td><td>3201.20</td><td>10925.58</td><td>1.4773</td><td>4,609</td><td>2490.90</td><td>2466.23</td><td>1.4581</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,109</td><td>1998.49</td><td>1330.55</td><td>1.3809</td><td>-</td><td>-</td><td>-</td><td>-</td><td>785</td><td>325.56</td><td>483.03</td><td>1.3842</td><td>1,918</td><td>860.89</td><td>920.74</td><td>1.3735</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>11,286</td><td>8306.82</td><td>13248.51</td><td>1.3997</td><td>22,728</td><td>16374.85</td><td>16457.13</td><td>1.4055</td><td>-</td><td>-</td><td>-</td><td>-</td><td>14,573</td><td>9663.68</td><td>9039.92</td><td>1.4669</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,000</td><td>4456.40</td><td>6206.68</td><td>1.5193</td><td>13,177</td><td>8007.76</td><td>8809.41</td><td>1.5250</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>27,763</td><td>11836.01</td><td>25730.46</td><td>1.4531</td><td>52,180</td><td>27194.85</td><td>21773.30</td><td>1.4617</td><td>-</td><td>-</td><td>-</td><td>-</td><td>35,391</td><td>21503.78</td><td>20518.87</td><td>1.4719</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,469</td><td>2882.44</td><td>5147.21</td><td>1.5706</td><td>21,123</td><td>15012.94</td><td>11981.60</td><td>1.5303</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>14444</td><td>8358.94</td><td>16848.64</td><td>1.4702</td><td>26982</td><td>16347.10</td><td>15181.37</td><td>1.4633</td><td>-</td><td>-</td><td>-</td><td>-</td><td>19362</td><td>12170.27</td><td>10800.73</td><td>1.4657</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4548</td><td>2540.18</td><td>4256.69</td><td>1.5204</td><td>12854</td><td>8197.79</td><td>8474.99</td><td>1.5030</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3640</td><td>2148.91</td><td>6340.86</td><td>1.1594</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8946</td><td>5172.46</td><td>8484.82</td><td>1.1306</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>522</td><td>289.10</td><td>443.72</td><td>1.1446</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4768</td><td>3302.83</td><td>7243.38</td><td>1.1335</td><td>-</td><td>-</td><td>-</td><td>-</td><td>15235</td><td>11087.10</td><td>11817.01</td><td>1.1173</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5372</td><td>3963.17</td><td>5874.19</td><td>1.1054</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_striatum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_striatum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_striatum_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [16848.64, 15181.37, 0, 10800.73, 0, 4256.69, 8474.99, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 6340.86, 0, 8484.82, 0, 0, 443.72], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 7243.38, 0, 11817.01, 0, 0, 5874.19], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Striatum (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_left_striatum_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.4702, 1.4633, 0, 1.4657, 0, 1.5204, 1.503, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.1594, 0, 1.1306, 0, 0, 1.1446], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.1335, 0, 1.1173, 0, 0, 1.1054], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Striatum (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Thalamus</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>203</td><td>78.31</td><td>257.61</td><td>1.1882</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,023</td><td>486.40</td><td>1105.46</td><td>1.1445</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,005</td><td>607.71</td><td>1489.49</td><td>1.0529</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>35</td><td>18.71</td><td>27.76</td><td>1.1500</td><td>-</td><td>-</td><td>-</td><td>-</td><td>39</td><td>20.40</td><td>15.22</td><td>1.1265</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>611</td><td>412.95</td><td>412.95</td><td>1.1198</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>50</td><td>27.95</td><td>72.60</td><td>1.1922</td><td>-</td><td>-</td><td>-</td><td>-</td><td>133</td><td>84.85</td><td>75.56</td><td>1.1802</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,613</td><td>916.44</td><td>1083.26</td><td>1.1452</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>144</td><td>57.59</td><td>159.53</td><td>1.1878</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,207</td><td>545.78</td><td>606.42</td><td>1.1218</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>144</td><td>93.03</td><td>115.71</td><td>1.1147</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,242</td><td>737.13</td><td>1738.52</td><td>1.1552</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,988</td><td>1929.40</td><td>2384.92</td><td>1.1579</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,266</td><td>1003.49</td><td>2181.51</td><td>1.2003</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,225</td><td>867.82</td><td>5747.14</td><td>1.1487</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,441</td><td>1480.43</td><td>4392.96</td><td>1.1090</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>183</td><td>96.88</td><td>255.63</td><td>1.0507</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,127</td><td>1299.01</td><td>1408.90</td><td>1.1823</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,767</td><td>1395.55</td><td>891.15</td><td>1.1186</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,550</td><td>733.31</td><td>495.48</td><td>1.0701</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>15,912</td><td>7266.04</td><td>15012.48</td><td>1.0474</td><td>-</td><td>-</td><td>-</td><td>-</td><td>13,563</td><td>6907.66</td><td>6541.34</td><td>1.0734</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,093</td><td>869.03</td><td>1455.67</td><td>1.0896</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>1,718</td><td>742.51</td><td>1286.85</td><td>1.4717</td><td>6,577</td><td>2502.49</td><td>2593.25</td><td>1.4441</td><td>-</td><td>-</td><td>-</td><td>-</td><td>11,171</td><td>5403.67</td><td>4288.62</td><td>1.4818</td><td>-</td><td>-</td><td>-</td><td>-</td><td>6,681</td><td>3235.79</td><td>6727.22</td><td>1.4754</td><td>14,795</td><td>7436.72</td><td>10173.35</td><td>1.4855</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>2,444</td><td>1230.71</td><td>4200.37</td><td>1.4404</td><td>4,284</td><td>2080.35</td><td>2059.75</td><td>1.4386</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,272</td><td>1530.11</td><td>1018.72</td><td>1.4003</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,888</td><td>890.48</td><td>1321.19</td><td>1.4073</td><td>2,990</td><td>1385.79</td><td>1482.12</td><td>1.3865</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>588</td><td>211.38</td><td>337.13</td><td>1.3119</td><td>2,520</td><td>837.00</td><td>841.20</td><td>1.2997</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,947</td><td>1797.80</td><td>1681.75</td><td>1.3505</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8,556</td><td>5048.54</td><td>7031.39</td><td>1.4012</td><td>8,894</td><td>4892.78</td><td>5382.60</td><td>1.4078</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>9,405</td><td>3452.83</td><td>7506.15</td><td>1.3914</td><td>15,063</td><td>6187.58</td><td>4954.02</td><td>1.3820</td><td>-</td><td>-</td><td>-</td><td>-</td><td>10,841</td><td>6068.25</td><td>5790.32</td><td>1.3687</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,446</td><td>2942.73</td><td>5254.88</td><td>1.4805</td><td>11,293</td><td>6948.86</td><td>5545.78</td><td>1.4262</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>3539</td><td>1409.36</td><td>3332.63</td><td>1.4039</td><td>7111</td><td>2901.85</td><td>2612.06</td><td>1.3911</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7308</td><td>3699.96</td><td>3194.85</td><td>1.4003</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5393</td><td>3029.39</td><td>5083.67</td><td>1.4411</td><td>9493</td><td>5166.04</td><td>5645.96</td><td>1.4265</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>108</td><td>45.64</td><td>129.38</td><td>1.1795</td><td>-</td><td>-</td><td>-</td><td>-</td><td>600</td><td>284.36</td><td>450.67</td><td>1.1433</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>843</td><td>507.53</td><td>775.35</td><td>1.1081</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5876</td><td>2542.50</td><td>5976.76</td><td>1.1334</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5940</td><td>2928.26</td><td>3552.59</td><td>1.1147</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1023</td><td>675.68</td><td>1097.07</td><td>1.1027</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_left_thalamus_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_left_thalamus_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_left_thalamus_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [3332.63, 2612.06, 0, 3194.85, 0, 5083.67, 5645.96, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 129.38, 0, 450.67, 0, 0, 775.35], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 5976.76, 0, 3552.59, 0, 0, 1097.07], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Thalamus (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_left_thalamus_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.4039, 1.3911, 0, 1.4003, 0, 1.4411, 1.4265, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.1795, 0, 1.1433, 0, 0, 1.1081], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.1334, 0, 1.1147, 0, 0, 1.1027], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Thalamus (left)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+</div>
+<div id="tab-right" class="tab-content">
+<h2>Right Hemisphere</h2>
+<div class="summary-box">
+<h3>Target: Cerebellum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9</td><td>3.67</td><td>9.50</td><td>1.1631</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>0.35</td><td>0.24</td><td>1.1883</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,090</td><td>1845.75</td><td>1499.39</td><td>1.0734</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7</td><td>3.16</td><td>2.90</td><td>1.2353</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>442</td><td>197.31</td><td>245.41</td><td>1.2457</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>82</td><td>31.60</td><td>40.05</td><td>1.2081</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>840</td><td>266.82</td><td>489.57</td><td>1.1314</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,202</td><td>712.07</td><td>808.25</td><td>1.1588</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>123</td><td>48.42</td><td>78.09</td><td>1.1161</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>66</td><td>22.21</td><td>50.72</td><td>1.0979</td><td>-</td><td>-</td><td>-</td><td>-</td><td>182</td><td>50.22</td><td>40.63</td><td>1.1114</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>96</td><td>25.70</td><td>36.61</td><td>1.0598</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>110</td><td>57.51</td><td>55.09</td><td>1.0662</td><td>-</td><td>-</td><td>-</td><td>-</td><td>482</td><td>307.34</td><td>212.69</td><td>1.0905</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>636</td><td>349.98</td><td>308.08</td><td>1.1079</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>8</td><td>5.53</td><td>6.42</td><td>1.0851</td><td>-</td><td>-</td><td>-</td><td>-</td><td>75</td><td>66.54</td><td>54.14</td><td>1.0758</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>28</td><td>30.58</td><td>35.98</td><td>1.0867</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>8</td><td>3.79</td><td>6.98</td><td>1.5302</td><td>53</td><td>30.53</td><td>34.54</td><td>1.5489</td><td>-</td><td>-</td><td>-</td><td>-</td><td>128</td><td>87.61</td><td>100.01</td><td>1.5598</td><td>-</td><td>-</td><td>-</td><td>-</td><td>10,395</td><td>8261.67</td><td>13979.13</td><td>1.5395</td><td>1,586</td><td>1083.98</td><td>1511.83</td><td>1.5563</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>14</td><td>6.19</td><td>17.83</td><td>1.4581</td><td>60</td><td>26.23</td><td>25.08</td><td>1.4644</td><td>-</td><td>-</td><td>-</td><td>-</td><td>199</td><td>91.31</td><td>63.19</td><td>1.4592</td><td>-</td><td>-</td><td>-</td><td>-</td><td>742</td><td>446.36</td><td>785.85</td><td>1.4423</td><td>778</td><td>373.81</td><td>426.24</td><td>1.4527</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>2</td><td>0.51</td><td>0.77</td><td>1.3686</td><td>7</td><td>2.19</td><td>2.17</td><td>1.3942</td><td>-</td><td>-</td><td>-</td><td>-</td><td>54</td><td>25.35</td><td>16.95</td><td>1.4222</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7,222</td><td>5869.41</td><td>11692.06</td><td>1.4582</td><td>1,405</td><td>771.31</td><td>875.50</td><td>1.4509</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>728</td><td>273.81</td><td>609.82</td><td>1.4111</td><td>3,181</td><td>1314.04</td><td>1042.89</td><td>1.4279</td><td>-</td><td>-</td><td>-</td><td>-</td><td>12,774</td><td>5937.67</td><td>5821.25</td><td>1.4149</td><td>-</td><td>-</td><td>-</td><td>-</td><td>42,995</td><td>26406.20</td><td>54000.41</td><td>1.4546</td><td>29,038</td><td>16377.02</td><td>14570.30</td><td>1.4500</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>188</td><td>71.07</td><td>158.85</td><td>1.4420</td><td>825</td><td>343.25</td><td>276.17</td><td>1.4589</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3289</td><td>1535.48</td><td>1500.35</td><td>1.4640</td><td>-</td><td>-</td><td>-</td><td>-</td><td>15338</td><td>10245.91</td><td>20114.36</td><td>1.4737</td><td>8202</td><td>4651.53</td><td>4345.97</td><td>1.4775</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0.00</td><td>0.00</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2</td><td>0.88</td><td>0.78</td><td>1.2118</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>656</td><td>519.58</td><td>448.59</td><td>1.1726</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>256</td><td>88.02</td><td>150.45</td><td>1.0952</td><td>-</td><td>-</td><td>-</td><td>-</td><td>735</td><td>284.04</td><td>278.93</td><td>1.1091</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>221</td><td>113.67</td><td>114.69</td><td>1.0926</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_cerebellum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_cerebellum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_cerebellum_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [158.85, 276.17, 0, 1500.35, 0, 20114.36, 4345.97, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0.0, 0, 0.78, 0, 0, 448.59], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 150.45, 0, 278.93, 0, 0, 114.69], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Cerebellum (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_right_cerebellum_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.442, 1.4589, 0, 1.464, 0, 1.4737, 1.4775, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0, 0, 1.2118, 0, 0, 1.1726], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.0952, 0, 1.1091, 0, 0, 1.0926], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Cerebellum (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Olfactory_cortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">central</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>13,318</td><td>13581.31</td><td>25011.62</td><td>1.5485</td><td>24,358</td><td>23968.51</td><td>27113.70</td><td>1.5897</td><td>17,153</td><td>16764.73</td><td>19137.82</td><td>1.6069</td><td>17,204</td><td>16778.28</td><td>28389.64</td><td>1.6371</td><td>15,897</td><td>14903.77</td><td>20786.29</td><td>1.6178</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>5,965</td><td>4107.96</td><td>11838.49</td><td>1.5007</td><td>20,967</td><td>15728.27</td><td>15036.59</td><td>1.5379</td><td>21,184</td><td>19465.48</td><td>13470.92</td><td>1.6595</td><td>19,306</td><td>19180.73</td><td>33768.89</td><td>1.5875</td><td>19,834</td><td>19760.51</td><td>22531.94</td><td>1.6605</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>8,634</td><td>9020.16</td><td>13483.05</td><td>1.4154</td><td>21,187</td><td>21673.53</td><td>21565.71</td><td>1.4550</td><td>21,724</td><td>21728.38</td><td>14524.32</td><td>1.5092</td><td>23,000</td><td>22293.17</td><td>44408.71</td><td>1.5171</td><td>16,827</td><td>16376.70</td><td>18588.77</td><td>1.5219</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>10,203</td><td>6708.81</td><td>14941.67</td><td>1.3491</td><td>18,191</td><td>13861.49</td><td>11001.18</td><td>1.4305</td><td>17,540</td><td>14557.39</td><td>14271.95</td><td>1.4588</td><td>15,673</td><td>14577.71</td><td>29811.27</td><td>1.4313</td><td>26,080</td><td>24300.62</td><td>21619.77</td><td>1.4510</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>9530</td><td>8354.56</td><td>16318.71</td><td>1.4534</td><td>21176</td><td>18807.95</td><td>18679.30</td><td>1.5033</td><td>19400</td><td>18129.00</td><td>15351.25</td><td>1.5586</td><td>18796</td><td>18207.47</td><td>34094.63</td><td>1.5432</td><td>19660</td><td>18835.40</td><td>20881.69</td><td>1.5628</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_olfactory_cortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "central", "posterior", "posterior_central"],
+        datasets: [{"label": "CTRL", "data": [16318.71, 18679.3, 15351.25, 34094.63, 20881.69], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Olfactory_cortex (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_right_olfactory_cortex_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "central", "posterior", "posterior_central"],
+        datasets: [{"label": "CTRL", "data": [1.4534, 1.5033, 1.5586, 1.5432, 1.5628], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 0, 0, 0], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Olfactory_cortex (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Paleocortex</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior_dorsal</th><th colspan="4">central_dorsal</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>2,908</td><td>2589.87</td><td>9521.58</td><td>1.0765</td><td>1,596</td><td>1193.84</td><td>3158.32</td><td>1.2882</td><td>2,211</td><td>2593.09</td><td>6717.85</td><td>1.2119</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>14</td><td>35.17</td><td>50.46</td><td>0.7030</td><td>1,569</td><td>1761.49</td><td>1186.19</td><td>0.9278</td><td>149</td><td>58.62</td><td>47.62</td><td>1.1715</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>68</td><td>161.85</td><td>336.49</td><td>0.8261</td><td>257</td><td>608.62</td><td>559.39</td><td>0.9825</td><td>428</td><td>179.79</td><td>223.62</td><td>1.1448</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>1,502</td><td>2502.63</td><td>6351.84</td><td>0.9414</td><td>768</td><td>1114.05</td><td>1133.31</td><td>1.0029</td><td>28</td><td>9.62</td><td>12.20</td><td>1.1458</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>6,625</td><td>4188.64</td><td>7685.58</td><td>1.1373</td><td>16,621</td><td>11403.28</td><td>12943.56</td><td>1.1719</td><td>4,495</td><td>3828.09</td><td>6174.34</td><td>1.2543</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>7,532</td><td>4694.27</td><td>10717.51</td><td>1.0413</td><td>11,199</td><td>4830.56</td><td>3908.22</td><td>1.1034</td><td>7,484</td><td>4868.00</td><td>6934.48</td><td>1.1682</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>7,624</td><td>3455.81</td><td>3310.17</td><td>1.1840</td><td>19,635</td><td>12109.73</td><td>8380.44</td><td>1.0319</td><td>16,249</td><td>12423.09</td><td>10935.82</td><td>1.0639</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>4,748</td><td>3019.05</td><td>3502.37</td><td>1.0427</td><td>22,497</td><td>14362.83</td><td>11686.60</td><td>1.0358</td><td>10,694</td><td>6540.36</td><td>7694.54</td><td>1.0594</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>1123</td><td>1322.38</td><td>4065.09</td><td>0.8867</td><td>1048</td><td>1169.50</td><td>1509.30</td><td>1.0503</td><td>704</td><td>710.28</td><td>1750.32</td><td>1.1685</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>6632</td><td>3839.44</td><td>6303.91</td><td>1.1013</td><td>17488</td><td>10676.60</td><td>9229.70</td><td>1.0858</td><td>9730</td><td>6914.89</td><td>7934.80</td><td>1.1364</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_paleocortex_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_paleocortex_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_paleocortex_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior_dorsal", "central_dorsal", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [0, 0, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [4065.09, 1509.3, 1750.32], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [6303.91, 9229.7, 7934.8], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Paleocortex (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_right_paleocortex_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior_dorsal", "central_dorsal", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [0, 0, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0.8867, 1.0503, 1.1685], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [1.1013, 1.0858, 1.1364], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Paleocortex (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Striatum</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>254</td><td>176.94</td><td>650.52</td><td>1.2733</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,233</td><td>1606.61</td><td>4250.30</td><td>1.2700</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,054</td><td>544.73</td><td>1411.21</td><td>1.2016</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>80</td><td>49.09</td><td>33.06</td><td>1.1302</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>638</td><td>288.84</td><td>234.64</td><td>1.1705</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>28</td><td>30.62</td><td>28.15</td><td>1.1224</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>992</td><td>470.40</td><td>585.07</td><td>1.1549</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>76</td><td>95.54</td><td>242.50</td><td>1.2429</td><td>-</td><td>-</td><td>-</td><td>-</td><td>45</td><td>42.58</td><td>43.32</td><td>1.1567</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>85</td><td>35.82</td><td>45.40</td><td>1.1500</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>23,817</td><td>11457.32</td><td>21022.60</td><td>1.1382</td><td>-</td><td>-</td><td>-</td><td>-</td><td>30,754</td><td>14490.66</td><td>16447.96</td><td>1.0999</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7,231</td><td>3553.77</td><td>5731.89</td><td>1.0777</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5,475</td><td>3112.15</td><td>7105.36</td><td>1.0936</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7,138</td><td>3215.87</td><td>2601.83</td><td>1.1035</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,439</td><td>2041.08</td><td>2907.52</td><td>1.1173</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>11,945</td><td>5197.60</td><td>4978.54</td><td>1.1709</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,002</td><td>5203.23</td><td>3600.85</td><td>1.0764</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>13,115</td><td>7107.03</td><td>6256.19</td><td>1.0966</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,094</td><td>1549.65</td><td>1797.74</td><td>1.0671</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,235</td><td>5992.24</td><td>4875.70</td><td>1.0662</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,471</td><td>2636.40</td><td>3101.65</td><td>1.0817</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>13,444</td><td>10309.51</td><td>18986.20</td><td>1.5850</td><td>33,086</td><td>21565.22</td><td>24395.05</td><td>1.5823</td><td>-</td><td>-</td><td>-</td><td>-</td><td>30,654</td><td>20475.75</td><td>23374.15</td><td>1.5807</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7,749</td><td>4284.68</td><td>7249.88</td><td>1.5759</td><td>18,639</td><td>11693.48</td><td>16308.90</td><td>1.5807</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>2,470</td><td>994.20</td><td>2865.12</td><td>1.4045</td><td>6,485</td><td>2638.77</td><td>2522.73</td><td>1.3883</td><td>-</td><td>-</td><td>-</td><td>-</td><td>5,984</td><td>2256.19</td><td>1561.38</td><td>1.3646</td><td>-</td><td>-</td><td>-</td><td>-</td><td>328</td><td>153.39</td><td>270.06</td><td>1.4273</td><td>1,382</td><td>595.69</td><td>679.24</td><td>1.4030</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>10,575</td><td>8386.94</td><td>12536.54</td><td>1.4365</td><td>26,934</td><td>18126.20</td><td>18036.02</td><td>1.4384</td><td>-</td><td>-</td><td>-</td><td>-</td><td>40,728</td><td>27313.62</td><td>18257.77</td><td>1.4753</td><td>-</td><td>-</td><td>-</td><td>-</td><td>6,379</td><td>3572.74</td><td>7117.02</td><td>1.4798</td><td>16,935</td><td>10675.17</td><td>12117.10</td><td>1.4889</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>35,227</td><td>20572.36</td><td>45818.17</td><td>1.3734</td><td>67,184</td><td>40766.39</td><td>32354.27</td><td>1.3919</td><td>-</td><td>-</td><td>-</td><td>-</td><td>35,550</td><td>23319.46</td><td>22862.22</td><td>1.3919</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,354</td><td>586.26</td><td>1198.90</td><td>1.4109</td><td>11,590</td><td>7342.06</td><td>6532.08</td><td>1.3995</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>15429</td><td>10065.75</td><td>20051.51</td><td>1.4499</td><td>33422</td><td>20774.15</td><td>19327.02</td><td>1.4502</td><td>-</td><td>-</td><td>-</td><td>-</td><td>28229</td><td>18341.26</td><td>16513.88</td><td>1.4531</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3952</td><td>2149.27</td><td>3958.96</td><td>1.4735</td><td>12136</td><td>7576.60</td><td>8909.33</td><td>1.4680</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>82</td><td>68.12</td><td>223.25</td><td>1.2581</td><td>-</td><td>-</td><td>-</td><td>-</td><td>596</td><td>432.23</td><td>1088.71</td><td>1.1698</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>692</td><td>334.95</td><td>569.08</td><td>1.1693</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>10833</td><td>5329.18</td><td>8726.06</td><td>1.1174</td><td>-</td><td>-</td><td>-</td><td>-</td><td>14032</td><td>7225.50</td><td>6881.59</td><td>1.0865</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>7064</td><td>3834.57</td><td>4499.31</td><td>1.0933</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_striatum_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_striatum_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_striatum_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [20051.51, 19327.02, 0, 16513.88, 0, 3958.96, 8909.33, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 223.25, 0, 1088.71, 0, 0, 569.08], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 8726.06, 0, 6881.59, 0, 0, 4499.31], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Striatum (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_right_striatum_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.4499, 1.4502, 0, 1.4531, 0, 1.4735, 1.468, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.2581, 0, 1.1698, 0, 0, 1.1693], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.1174, 0, 1.0865, 0, 0, 1.0933], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Striatum (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+<div class="summary-box">
+<h3>Target: Thalamus</h3>
+<table>
+<thead><tr><th>Subject</th><th>Group</th><th colspan="4">anterior</th><th colspan="4">anterior_central</th><th colspan="4">anterior_dorsal</th><th colspan="4">central</th><th colspan="4">central_dorsal</th><th colspan="4">posterior</th><th colspan="4">posterior_central</th><th colspan="4">posterior_dorsal</th></tr>
+<tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th><th>Count</th><th>SIFT2</th><th>Density</th><th>AFD</th></tr></thead>
+<tbody>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>0.26</td><td>0.97</td><td>1.3182</td><td>-</td><td>-</td><td>-</td><td>-</td><td>56</td><td>19.23</td><td>50.88</td><td>1.2098</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,335</td><td>544.20</td><td>1409.85</td><td>1.1610</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>0.27</td><td>0.18</td><td>1.1828</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,799</td><td>1759.66</td><td>1429.45</td><td>1.1780</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>109</td><td>107.78</td><td>99.06</td><td>1.1663</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,141</td><td>1401.31</td><td>1742.92</td><td>1.1943</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1</td><td>1.69</td><td>4.30</td><td>1.3097</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="zero">0</td><td>0.00</td><td>0.00</td><td class="zero">-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>833</td><td>390.40</td><td>494.80</td><td>1.1836</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>6,113</td><td>2495.08</td><td>4578.14</td><td>1.1090</td><td>-</td><td>-</td><td>-</td><td>-</td><td>23,143</td><td>9585.72</td><td>10880.49</td><td>1.1290</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,440</td><td>1610.26</td><td>2597.20</td><td>1.0737</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,925</td><td>1414.70</td><td>3229.91</td><td>1.0655</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,082</td><td>1846.01</td><td>1493.54</td><td>1.0626</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>688</td><td>298.15</td><td>424.72</td><td>1.0978</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,843</td><td>1933.77</td><td>1852.27</td><td>1.1632</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,304</td><td>630.21</td><td>436.13</td><td>1.0801</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,316</td><td>669.68</td><td>589.50</td><td>1.1092</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>6,500</td><td>4063.75</td><td>4714.32</td><td>1.0265</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9,754</td><td>5349.55</td><td>4352.77</td><td>1.0350</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,938</td><td>953.78</td><td>1122.09</td><td>1.0531</td></tr>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>1,124</td><td>671.68</td><td>1236.99</td><td>1.5245</td><td>1,859</td><td>1073.09</td><td>1213.91</td><td>1.5175</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2,978</td><td>1790.03</td><td>2043.41</td><td>1.5334</td><td>-</td><td>-</td><td>-</td><td>-</td><td>17,422</td><td>9596.22</td><td>16237.25</td><td>1.5533</td><td>12,878</td><td>8526.51</td><td>11891.93</td><td>1.5774</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>513</td><td>229.69</td><td>661.92</td><td>1.4374</td><td>1,236</td><td>608.55</td><td>581.79</td><td>1.4184</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1,244</td><td>597.54</td><td>413.52</td><td>1.3699</td><td>-</td><td>-</td><td>-</td><td>-</td><td>426</td><td>277.14</td><td>487.93</td><td>1.4251</td><td>731</td><td>360.32</td><td>410.85</td><td>1.4103</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>614</td><td>347.07</td><td>518.80</td><td>1.3954</td><td>1,112</td><td>555.59</td><td>552.83</td><td>1.3764</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4,308</td><td>2252.83</td><td>1505.90</td><td>1.3616</td><td>-</td><td>-</td><td>-</td><td>-</td><td>17,569</td><td>10352.76</td><td>20623.04</td><td>1.4375</td><td>16,635</td><td>9865.39</td><td>11197.95</td><td>1.4288</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>17,275</td><td>8268.88</td><td>18416.22</td><td>1.3837</td><td>37,098</td><td>17910.30</td><td>14214.52</td><td>1.3963</td><td>-</td><td>-</td><td>-</td><td>-</td><td>18,138</td><td>9176.05</td><td>8996.13</td><td>1.3863</td><td>-</td><td>-</td><td>-</td><td>-</td><td>3,497</td><td>1443.72</td><td>2952.39</td><td>1.4342</td><td>7,259</td><td>3867.11</td><td>3440.49</td><td>1.4143</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>CTRL Mean</td><td class="group-ctrl">CTRL</td><td>4882</td><td>2379.33</td><td>5208.48</td><td>1.4353</td><td>10326</td><td>5036.89</td><td>4140.76</td><td>1.4272</td><td>-</td><td>-</td><td>-</td><td>-</td><td>6667</td><td>3454.11</td><td>3239.74</td><td>1.4128</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9728</td><td>5417.46</td><td>10075.15</td><td>1.4625</td><td>9376</td><td>5654.83</td><td>6735.30</td><td>1.4577</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>AP Mean</td><td class="group-ap">AP</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0</td><td>0.49</td><td>1.32</td><td>1.3139</td><td>-</td><td>-</td><td>-</td><td>-</td><td>42</td><td>31.82</td><td>37.53</td><td>1.1863</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2027</td><td>1023.89</td><td>1269.26</td><td>1.1792</td></tr>
+<tr style="font-weight:bold;background:#eee"><td>APTR Mean</td><td class="group-aptr">APTR</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>4595</td><td>2476.82</td><td>3593.66</td><td>1.0910</td><td>-</td><td>-</td><td>-</td><td>-</td><td>9571</td><td>4352.87</td><td>4290.73</td><td>1.0767</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>1846</td><td>882.97</td><td>1183.38</td><td>1.0835</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-container"><canvas id="chart_right_thalamus_sift2"></canvas></div>
+<div class="chart-container"><canvas id="chart_right_thalamus_afd"></canvas></div>
+</div>
+<script>
+
+new Chart(document.getElementById('chart_right_thalamus_sift2'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [5208.48, 4140.76, 0, 3239.74, 0, 10075.15, 6735.3, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.32, 0, 37.53, 0, 0, 1269.26], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 3593.66, 0, 4290.73, 0, 0, 1183.38], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'SIFT2 Density → Thalamus (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'SIFT2 Density (×1000)' } } }
+    }
+});
+
+new Chart(document.getElementById('chart_right_thalamus_afd'), {
+    type: 'bar',
+    data: {
+        labels: ["anterior", "anterior_central", "anterior_dorsal", "central", "central_dorsal", "posterior", "posterior_central", "posterior_dorsal"],
+        datasets: [{"label": "CTRL", "data": [1.4353, 1.4272, 0, 1.4128, 0, 1.4625, 1.4577, 0], "backgroundColor": "rgba(46,204,113,0.6)", "borderColor": "#2ecc71", "borderWidth": 1}, {"label": "AP", "data": [0, 0, 1.3139, 0, 1.1863, 0, 0, 1.1792], "backgroundColor": "rgba(231,76,60,0.6)", "borderColor": "#e74c3c", "borderWidth": 1}, {"label": "APTR", "data": [0, 0, 1.091, 0, 1.0767, 0, 0, 1.0835], "backgroundColor": "rgba(243,156,18,0.6)", "borderColor": "#f39c12", "borderWidth": 1}]
+    },
+    options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Mean AFD → Thalamus (right)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Mean Fiber Density (AFD sum)' } } }
+    }
+});
+</script>
+</div>
+</div>
+
+<script>
+function showTab(hemi) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + hemi).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+
+<div class="footer">
+    <p>MBRAIN Per-Tract Metrics Report | Generated 2026-02-10 16:25:11</p>
+    <p>Pipeline: mrtrix_preproc_flip1 | SIFT2 + Fixel AFD Analysis</p>
+</div>
+</div>
+</body>
+</html>

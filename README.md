@@ -6,7 +6,7 @@ Analysis pipeline for mouse brain imaging data using MRtrix3 and PyBIDS.
 
 ```
 mbrain/
-├── config.yaml              # Central configuration (ALL parameters)
+├── config1.yaml             # Central configuration (ALL parameters)
 ├── config_loader.py         # Python config access utility
 ├── main.py                  # Main analysis script
 │
@@ -23,7 +23,7 @@ mbrain/
 │
 ├── utils/                   # Utility modules
 │   ├── __init__.py
-│   ├── config.py           # Legacy config (use config.yaml)
+│   ├── config.py           # Legacy config (use config1.yaml)
 │   ├── file_utils.py       # File handling utilities
 │   ├── bids_converter.py   # Flywheel to BIDS converter
 │   └── dwi_preprocessor.py # MRtrix3 preprocessing pipeline
@@ -37,7 +37,7 @@ mbrain/
 
 ## Configuration
 
-All parameters are centralized in `config.yaml`:
+All parameters are centralized in `config1.yaml`:
 
 ```yaml
 # Paths, groups, tractography params, cleaning params, ROIs, tracts

@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBRAIN Whole-Brain Tractography Report v09</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --ctrl-color: #3498db;
+            --ap-color: #27ae60;
+            --aptr-color: #e74c3c;
+            --bg-color: #f5f6fa;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #dcdde1;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        header h1 { margin: 0 0 10px 0; font-size: 2.5em; }
+        header p { margin: 0; opacity: 0.9; font-size: 1.1em; }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        
+        .methodology-note {
+            background: #fff9e6;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .key-insight {
+            background: #e8f6ff;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .normalization-note {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .warning-note {
+            background: #f8d7da;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .chart-container {
+            min-height: 450px;
+            margin: 20px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover { background: #f8f9fa; }
+        
+        .group-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .group-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid;
+        }
+        
+        .group-card.ctrl { border-color: var(--ctrl-color); }
+        .group-card.ap { border-color: var(--ap-color); }
+        .group-card.aptr { border-color: var(--aptr-color); }
+        
+        .group-card h3 { margin-top: 0; }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .comparison-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .method-box {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .method-box.old { border-color: #e74c3c; }
+        .method-box.new { border-color: #27ae60; }
+        
+        .method-box h4 { margin-top: 0; font-size: 1.2em; }
+        .method-box.old h4 { color: #e74c3c; }
+        .method-box.new h4 { color: #27ae60; }
+        
+        .arrow { font-size: 3em; color: #27ae60; }
+        
+        code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+        
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        
+        .formula-box {
+            text-align: center;
+            font-size: 1.3em;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+            border: 2px solid #3498db;
+        }
+        
+        /* Methods section styling */
+        .methods-section {
+            background: #fafbfc;
+            border: 2px solid #3498db;
+        }
+        
+        .methods-section h2 {
+            background: #3498db;
+            color: white;
+            margin: -25px -25px 20px -25px;
+            padding: 20px 25px;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .methods-section h3 {
+            color: #2c3e50;
+            margin-top: 25px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .methods-section h4 { color: #34495e; margin-top: 20px; }
+        .methods-section p { text-align: justify; }
+        
+        .manuscript-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 20px;
+            min-width: 120px;
+        }
+        
+        .stat-box .stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+        
+        .group-ctrl { color: #3498db; }
+        .group-ap { color: #27ae60; }
+        .group-aptr { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 MBRAIN Whole-Brain Tractography Report</h1>
+            <p>Version 09 - Normalized Connectivity Density (ROI Size-Corrected)</p>
+            <p>All 12 mice: CTRL (4) + AP (4) + APTR (4)</p>
+        </header>
+        
+        <!-- Study Overview -->
+        <div class="card">
+            <h2>📋 Study Overview</h2>
+            <div class="summary-stats">
+                <div class="stat-box">
+                    <div class="stat-value group-ctrl">4</div>
+                    <div class="stat-label">CTRL Subjects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value group-ap">4</div>
+                    <div class="stat-label">AP Subjects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value group-aptr">4</div>
+                    <div class="stat-label">APTR Subjects</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">CTRL Segments</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">AP/APTR Segments<br>(dorsal only)</div>
+                </div>
+            </div>
+            
+            <div class="methodology-note">
+                <h4>🔄 Tractography Direction</h4>
+                <p><strong>SEED:</strong> Isocortex (CTRL) or Graft (AP/APTR) segments - cortical regions</p>
+                <p><strong>TARGET:</strong> Thalamus, Striatum, Cerebellum, Olfactory/Paleocortex</p>
+                <p><strong>Direction:</strong> CORTEX → SUBCORTICAL (cortico-thalamic, cortico-striatal, etc.)</p>
+            </div>
+        </div>
+        
+        <!-- Whole-Brain Methodology -->
+        <div class="card">
+            <h2>🔬 Methodology: Whole-Brain Tractography Approach</h2>
+            
+            <p>This report presents results from our <strong>whole-brain tractography approach</strong>, 
+            which represents a significant methodological improvement over traditional ROI-to-ROI tractography.</p>
+            
+            <div class="comparison-diagram">
+                <div class="method-box old">
+                    <h4>❌ Old Approach: ROI-to-ROI</h4>
+                    <p><code>tckgen -seed_image SEED -include TARGET</code></p>
+                    <ul style="text-align: left;">
+                        <li>Generates tracts FOR EACH connection</li>
+                        <li>5 segments × 4 targets = 20 runs per CTRL</li>
+                        <li>SIFT2 run per-tract (loses global context)</li>
+                        <li>Selection bias: only tracts that reach target</li>
+                    </ul>
+                </div>
+                
+                <div class="arrow">→</div>
+                
+                <div class="method-box new">
+                    <h4>✅ New Approach: Whole-Brain + Passthrough</h4>
+                    <p><code>tckgen -seed_image MASK</code> (1M streamlines)</p>
+                    <ul style="text-align: left;">
+                        <li>Single unbiased whole-brain tractogram</li>
+                        <li>SIFT2 applied ONCE globally</li>
+                        <li>Extract passthrough tracts with <code>tckedit -include</code></li>
+                        <li>Unbiased: all possible connections represented</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="key-insight">
+                <strong>🎯 Key Insight:</strong> By generating 1 million streamlines across the whole brain 
+                FIRST, then applying SIFT2 globally, we get weights that reflect the TRUE fiber density 
+                across all possible pathways. Extracting passthrough tracts afterward preserves these 
+                unbiased weights.
+            </div>
+        </div>
+        
+        <!-- ROI Size Normalization Section (from v06) -->
+        <div class="card">
+            <h2>📊 The Problem: ROI Size Bias in Connectivity Comparisons</h2>
+            
+            <div class="warning-note">
+                <h4>⚠️ Critical Issue</h4>
+                <p>When comparing connectivity between ROIs of different sizes, <strong>larger ROIs naturally generate more streamlines</strong> 
+                simply because they contain more seed points. This creates a bias where connectivity appears higher for larger regions, 
+                even if the actual "connection density" is the same.</p>
+                <p style="margin-top: 10px;"><strong>In this study:</strong></p>
+                <ul>
+                    <li><strong>CTRL:</strong> Isocortex segments have ~350-1500 voxels each (total ~4000-4500 voxels per subject)</li>
+                    <li><strong>AP:</strong> Graft segments have ~270-1500 voxels each (total ~1000-3400 voxels per subject)</li>
+                    <li><strong>APTR:</strong> Graft segments have ~440-1450 voxels each (total ~2000-3600 voxels per subject)</li>
+                </ul>
+                <p>Raw streamline counts would <strong>unfairly favor larger ROIs!</strong></p>
+            </div>
+            
+            <div class="methodology-note">
+                <h4>🔧 Available Solutions</h4>
+                <table style="width: 100%; margin: 10px 0; font-size: 0.9em;">
+                    <tr style="background: rgba(0,0,0,0.05);">
+                        <th style="padding: 8px;">Method</th>
+                        <th style="padding: 8px;">Description</th>
+                        <th style="padding: 8px;">Pros/Cons</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;"><strong>1. Raw Streamline Count</strong></td>
+                        <td style="padding: 8px;">Count streamlines connecting ROI-A to ROI-B</td>
+                        <td style="padding: 8px;">❌ Only valid within-subject; heavily biased by ROI size</td>
+                    </tr>
+                    <tr style="background: rgba(0,0,0,0.02);">
+                        <td style="padding: 8px;"><strong>2. Fixed Streamline Count</strong></td>
+                        <td style="padding: 8px;">Generate same number of streamlines per ROI</td>
+                        <td style="padding: 8px;">✓ Equal sampling; ❌ Undersamples large ROIs</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px;"><strong>3. Connectivity Density</strong></td>
+                        <td style="padding: 8px;">Streamlines / ROI_voxels × 1000</td>
+                        <td style="padding: 8px;">✓ Size-normalized; ✓ Valid cross-subject; ✓ Interpretable</td>
+                    </tr>
+                    <tr style="background: rgba(0,0,0,0.02);">
+                        <td style="padding: 8px;"><strong>4. Connection Probability</strong></td>
+                        <td style="padding: 8px;">Proportion of seeds that reach target</td>
+                        <td style="padding: 8px;">✓ Probabilistic interpretation; ❌ Loses quantitative aspect</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="normalization-note">
+                <h4>✅ Chosen Solution: Connectivity Density</h4>
+                <p>We use <strong>Connectivity Density</strong> as the primary metric:</p>
+                
+                <div class="formula-box">
+                    <strong>Connectivity Density = Streamlines / Seed_Voxels × 1000</strong>
+                </div>
+                
+                <p><strong>Why this approach?</strong></p>
+                <ul>
+                    <li><strong>Normalizes for ROI size:</strong> A 1000-voxel ROI and a 500-voxel ROI with equal "connection strength per voxel" will have equal density</li>
+                    <li><strong>Enables fair comparison:</strong> CTRL (larger atlas ROIs) and AP/APTR (smaller manual ROIs) can be fairly compared</li>
+                    <li><strong>Interpretable units:</strong> "Streamlines per 1000 voxels" is analogous to connection density per unit volume</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Individual ROI Segment Voxel Counts - Scatter Plot -->
+        <div class="card">
+            <h2>📊 Individual Seed ROI Segment Voxel Counts</h2>
+            <p style="color: #666; margin-bottom: 15px;">Voxel counts for each individual seed segment across all subjects. 
+            CTRL has 5 isocortex segments; AP/APTR have 3 dorsal graft segments. Colors indicate segment position (anterior→posterior).</p>
+            <div id="individual-roi-scatter" class="chart-container" style="height: 550px;"></div>
+        </div>
+        
+        <!-- Per-Segment Connectivity Density - 3 Plots -->
+        <div class="card">
+            <h2>📈 Connectivity Density by Segment Position</h2>
+            <p>Connectivity Density = Streamlines / Seed_Voxels × 1000. Each plot shows one segment position, 
+            with bars for each target region (striatum, thalamus, paleocortex/olfactory, cerebellum).
+            <br><strong>Note:</strong> CTRL uses isocortex segments (anterior/central/posterior), 
+            AP/APTR use seg9 graft dorsal segments (anterior_dorsal/central_dorsal/posterior_dorsal).</p>
+            
+            <h3 style="color: #e74c3c; margin-top: 20px;">🔴 Anterior Segment Connectivity</h3>
+            <p style="font-size: 0.9em; color: #666;">CTRL: anterior isocortex | AP/APTR: anterior_dorsal (seg9)</p>
+            <div id="anterior-segment-chart" class="chart-container" style="height: 400px;"></div>
+            
+            <h3 style="color: #f1c40f; margin-top: 30px;">🟡 Central Segment Connectivity</h3>
+            <p style="font-size: 0.9em; color: #666;">CTRL: central isocortex | AP/APTR: central_dorsal (seg9)</p>
+            <div id="central-segment-chart" class="chart-container" style="height: 400px;"></div>
+            
+            <h3 style="color: #3498db; margin-top: 30px;">🔵 Posterior Segment Connectivity</h3>
+            <p style="font-size: 0.9em; color: #666;">CTRL: posterior isocortex | AP/APTR: posterior_dorsal (seg9)</p>
+            <div id="posterior-segment-chart" class="chart-container" style="height: 400px;"></div>
+        </div>
+        
+        <!-- Raw Streamline Counts (for reference) -->
+        <div class="card">
+            <h2>📊 Raw Streamline Counts (Reference Only)</h2>
+            <p style="color: #666;">For transparency, raw streamline counts are shown below. 
+            <strong>Note: These values are biased by ROI size and should NOT be used for group comparisons.</strong></p>
+            
+            <div id="raw-streamlines-chart" class="chart-container"></div>
+            
+            <div class="warning-note">
+                <strong>⚠️ Important:</strong> Raw streamline counts show CTRL >> APTR >> AP, but this largely 
+                reflects ROI size differences, not true connectivity strength. Use Connectivity Density above 
+                for fair comparisons.
+            </div>
+        </div>
+        
+        <!-- Subject Details Table -->
+        <div class="card">
+            <h2>📋 Individual Subject Data (Raw & Normalized)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Group</th>
+                        <th>Total Seed Voxels</th>
+                        <th>Total Raw Streamlines</th>
+                        <th>Connectivity Density</th>
+                    </tr>
+                </thead>
+                <tbody id="subject-table-body">
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pipeline Details -->
+        <div class="card">
+            <h2>🔧 Pipeline Details</h2>
+            
+            <h3>Tractography Parameters</h3>
+            <table>
+                <tr><th>Parameter</th><th>Value</th><th>Description</th></tr>
+                <tr><td>Algorithm</td><td><code>iFOD2</code></td><td>2nd order integration over FODs</td></tr>
+                <tr><td>Streamlines</td><td><code>1,000,000</code></td><td>Dense whole-brain tractogram</td></tr>
+                <tr><td>Step size</td><td><code>0.02 mm</code></td><td>~1/7th of voxel size (0.15mm)</td></tr>
+                <tr><td>Angle</td><td><code>60°</code></td><td>Maximum turn per step</td></tr>
+                <tr><td>Cutoff</td><td><code>0.1</code></td><td>FOD amplitude threshold</td></tr>
+                <tr><td>Min length</td><td><code>2 mm</code></td><td>Minimum streamline length</td></tr>
+                <tr><td>Max length</td><td><code>15 mm</code></td><td>Maximum streamline length</td></tr>
+            </table>
+            
+            <h3>Processing Pipeline</h3>
+            <ol>
+                <li><strong>Whole-brain tractography:</strong> <code>tckgen -seed_image mask.mif</code> (1M streamlines)</li>
+                <li><strong>SIFT2 weighting:</strong> <code>tcksift2 wholebrain.tck wm_fod_norm.mif weights.txt</code></li>
+                <li><strong>Passthrough extraction:</strong> <code>tckedit -include SEED -include TARGET</code></li>
+                <li><strong>MATLAB cleaning:</strong> <code>AFQ_removeFiberOutliers</code> (3σ outliers)</li>
+                <li><strong>Normalization:</strong> Connectivity Density = Streamlines / Seed_Voxels × 1000</li>
+            </ol>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- METHODS SECTION FOR MANUSCRIPT -->
+        <!-- ============================================================== -->
+        <div class="card methods-section">
+            <h2>📝 Methods (Manuscript-Ready)</h2>
+            
+            <div class="manuscript-note">
+                <strong>📋 Note:</strong> This section is formatted for direct inclusion in a journal manuscript. 
+                Text can be copied and adapted as needed. All parameters and procedures are documented from 
+                the actual processing pipeline (config1.yaml).
+            </div>
+
+            <h3>2.1 Animals</h3>
+            <p>
+                Twelve adult mice were used in this study, divided into three experimental groups (n=4 per group): 
+                (1) <strong>CTRL</strong> – wild-type mice with normal cortical development; 
+                (2) <strong>AP</strong> (Apallial) – mice carrying the Emx1-Cre;Lhx2<sup>loxP/loxP</sup> mutation 
+                resulting in severe reduction or absence of the dorsal telencephalon without intervention; and 
+                (3) <strong>APTR</strong> (Apallial + Transplant) – mice with the same genetic mutation that 
+                received embryonic cortical tissue transplantation to restore cortical function. All procedures 
+                were conducted in accordance with institutional animal care guidelines.
+            </p>
+
+            <h3>2.2 MRI Acquisition</h3>
+            <p>
+                Ex vivo diffusion-weighted imaging was performed using a high-field MRI scanner. 
+                Diffusion-weighted images were acquired with the following parameters: 
+                voxel size 0.15 × 0.15 × 0.15 mm³ isotropic, 45 diffusion directions with 
+                b-values of approximately 16 and 1019 s/mm². High-resolution T2-weighted anatomical 
+                images were also acquired for registration and visualization purposes.
+            </p>
+
+            <h3>2.3 Image Preprocessing</h3>
+            
+            <h4>2.3.1 Orientation Standardization</h4>
+            <p>
+                Raw images were reoriented to match the Allen Mouse Brain Common Coordinate Framework 
+                (CCF) orientation to enable atlas-based analysis. This involved a two-step transformation: 
+                (1) axis permutation (axes 2,1,0 for 3D volumes, 2,1,0,3 for 4D DWI) to reorder dimensions, 
+                and (2) a flip along the Y-axis (axis 1) to achieve the standard orientation.
+            </p>
+            
+            <h4>2.3.2 DWI Preprocessing</h4>
+            <p>
+                Diffusion-weighted images underwent the following preprocessing steps using MRtrix3 
+                (version 3.0.4; Tournier et al., 2019): (1) gradient direction verification using 
+                <code>dwigradcheck</code>; (2) denoising using the MP-PCA algorithm 
+                (<code>dwidenoise</code>; Veraart et al., 2016); (3) brain mask creation using 
+                <code>dwi2mask</code>; and (4) bias field correction using N4 (<code>dwibiascorrect ants</code>).
+            </p>
+
+            <h3>2.4 Fiber Orientation Distribution Estimation</h3>
+            <p>
+                Multi-tissue response functions were estimated using the dhollander algorithm 
+                (<code>dwi2response dhollander</code>; Dhollander et al., 2016). Fiber orientation 
+                distributions (FODs) were computed using multi-shell multi-tissue constrained spherical 
+                deconvolution (<code>dwi2fod msmt_csd</code>; Jeurissen et al., 2014). FOD intensity 
+                normalization was performed using <code>mtnormalise</code>.
+            </p>
+
+            <h3>2.5 Region of Interest Definition</h3>
+            
+            <h4>2.5.1 CTRL Group: Atlas-Based ROIs</h4>
+            <p>
+                For CTRL subjects, regions of interest were derived from the Allen Mouse Brain CCF atlas 
+                (Wang et al., 2020). The Allen CCF template was registered to each subject using ANTs 
+                SyN nonlinear registration. ROIs were extracted for: Isocortex (seed, divided into 5 
+                anterior-posterior segments), Thalamus, Striatum, Cerebellum, and Olfactory Cortex.
+            </p>
+            
+            <h4>2.5.2 AP/APTR Groups: Manual ROIs</h4>
+            <p>
+                For AP and APTR subjects, ROIs were manually segmented in 3D Slicer by an expert 
+                neuroanatomist: Graft (seed, divided into 3 dorsal segments), Thalamus, Striatum, 
+                Cerebellum, and Paleocortex.
+            </p>
+
+            <h3>2.6 Whole-Brain Tractography</h3>
+            <p>
+                Whole-brain probabilistic tractography was performed using iFOD2 (<code>tckgen</code>; 
+                Tournier et al., 2010). Unlike traditional ROI-to-ROI tractography, we generated a 
+                single dense tractogram seeded throughout the entire brain mask to capture all possible 
+                white matter connections without a priori anatomical bias. One million streamlines were 
+                generated per subject with: step size 0.02 mm, maximum angle 60°, FOD cutoff 0.1, 
+                minimum length 2 mm, maximum length 15 mm.
+            </p>
+
+            <h3>2.7 SIFT2 Optimization</h3>
+            <p>
+                SIFT2 (Smith et al., 2015) was applied to the whole-brain tractogram to assign weights 
+                reflecting underlying fiber density. Critically, SIFT2 was applied once to the complete 
+                tractogram, allowing all pathways to compete globally for the FOD at each voxel.
+            </p>
+
+            <h3>2.8 Passthrough Tract Extraction</h3>
+            <p>
+                Specific anatomical connections were extracted using <code>tckedit -include SEED -include TARGET</code>, 
+                selecting streamlines that traversed both ROIs while preserving original SIFT2 weights.
+            </p>
+
+            <h3>2.9 Tract Cleaning</h3>
+            <p>
+                Extracted streamlines were cleaned using AFQ_removeFiberOutliers (Yeatman et al., 2012) 
+                to remove anatomically implausible fibers (>3 SD from the tract core).
+            </p>
+
+            <h3>2.10 ROI Size Normalization</h3>
+            <p>
+                To enable fair comparisons between groups with different ROI sizes, connectivity was 
+                normalized by seed ROI volume. <strong>Connectivity Density</strong> was calculated as:
+            </p>
+            <p style="text-align: center; font-size: 1.1em; margin: 15px 0; padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                Connectivity Density = (Cleaned Streamlines / Seed ROI Voxels) × 1000
+            </p>
+            <p>
+                This metric represents the number of streamlines per 1000 seed voxels, accounting for 
+                the substantial size differences between atlas-derived CTRL isocortex segments 
+                (~350-1500 voxels) and manually-drawn AP/APTR graft segments (~270-1500 voxels).
+            </p>
+
+            <h3>2.11 Statistical Analysis</h3>
+            <p>
+                Group-level statistics (mean ± SD) were calculated for connectivity density across 
+                CTRL (n=4), AP (n=4), and APTR (n=4) groups. Target-specific connectivity was analyzed 
+                by aggregating normalized values across all seed segments for each target region.
+            </p>
+
+            <h3>References</h3>
+            <p style="font-size: 0.9em; line-height: 1.8;">
+                Dhollander T, et al. ISMRM Workshop on Breaking the Barriers of Diffusion MRI. 2016.<br>
+                Jeurissen B, et al. NeuroImage. 2014;103:411-426.<br>
+                Smith RE, et al. NeuroImage. 2015;119:338-351.<br>
+                Tournier JD, et al. ISMRM. 2010;18:1670.<br>
+                Tournier JD, et al. NeuroImage. 2019;202:116137.<br>
+                Veraart J, et al. NeuroImage. 2016;142:394-406.<br>
+                Wang Q, et al. Cell. 2020;181(4):936-953.e20.<br>
+                Yeatman JD, et al. PLoS One. 2012;7(11):e49790.
+            </p>
+        </div>
+        
+        <footer>
+            <p>Generated: 2026-02-03 | Version: v10 with Per-Segment Connectivity by Target</p>
+            <p>MBRAIN Project | Pipeline: mrtrix_preproc_flip1 | Whole-Brain Tractography with Connectivity Density</p>
+        </footer>
+    </div>
+    
+    <script>
+        // ========== DATA ==========
+        
+        // Subject info
+        var ctrlSubjects = ["129-921-R1F", "129-921-R1L1F", "129-1014-L1M", "138-1010-L1F"];
+        var apSubjects = ["596-C-OO-NmM", "769-C-O5-R1M", "769-C-OO-NmM", "875-C-OO-NM"];
+        var aptrSubjects = ["AP72-862-901-NmF", "AP72-862-901-R1M", "Apallial17NmF", "Apallial20R1F"];
+        
+        // Seed voxel counts (from roi_utils.py)
+        var seedVoxels = {
+            'CTRL': {
+                "129-921-R1F": {"anterior": 347, "anterior_central": 1046, "central": 1445, "posterior_central": 877, "posterior": 568, "total": 4283},
+                "129-921-R1L1F": {"anterior": 669, "anterior_central": 1005, "central": 1496, "posterior_central": 881, "posterior": 502, "total": 4553},
+                "129-1014-L1M": {"anterior": 543, "anterior_central": 884, "central": 876, "posterior_central": 717, "posterior": 591, "total": 3611},
+                "138-1010-L1F": {"anterior": 449, "anterior_central": 1260, "central": 1020, "posterior_central": 1124, "posterior": 489, "total": 4342}
+            },
+            'AP': {
+                "596-C-OO-NmM": {"anterior_dorsal": 272, "central_dorsal": 378, "posterior_dorsal": 386, "total": 1036},
+                "769-C-O5-R1M": {"anterior_dorsal": 697, "central_dorsal": 1485, "posterior_dorsal": 1231, "total": 3413},
+                "769-C-OO-NmM": {"anterior_dorsal": 481, "central_dorsal": 1088, "posterior_dorsal": 804, "total": 2373},
+                "875-C-OO-NM": {"anterior_dorsal": 394, "central_dorsal": 983, "posterior_dorsal": 789, "total": 2166}
+            },
+            'APTR': {
+                "AP72-862-901-NmF": {"anterior_dorsal": 545, "central_dorsal": 881, "posterior_dorsal": 620, "total": 2046},
+                "AP72-862-901-R1M": {"anterior_dorsal": 438, "central_dorsal": 1236, "posterior_dorsal": 702, "total": 2376},
+                "Apallial17NmF": {"anterior_dorsal": 1044, "central_dorsal": 1445, "posterior_dorsal": 1136, "total": 3625},
+                "Apallial20R1F": {"anterior_dorsal": 862, "central_dorsal": 1229, "posterior_dorsal": 850, "total": 2941}
+            }
+        };
+        
+        // Raw streamline counts (from passthrough_summary.json)
+        var rawStreamlines = {
+            'CTRL': {
+                "129-921-R1F": {"thalamus": 25739, "striatum": 60086, "cerebellum": 2850, "olfactory": 27707, "total": 116382},
+                "129-921-R1L1F": {"thalamus": 39408, "striatum": 113020, "cerebellum": 18945, "olfactory": 71712, "total": 243085},
+                "129-1014-L1M": {"thalamus": 13098, "striatum": 56432, "cerebellum": 9043, "olfactory": 41777, "total": 120350},
+                "138-1010-L1F": {"thalamus": 58865, "striatum": 120585, "cerebellum": 53302, "olfactory": 63857, "total": 296609}
+            },
+            'AP': {
+                "596-C-OO-NmM": {"thalamus": 1597, "striatum": 3081, "cerebellum": 0, "paleocortex": 5032, "total": 9710},
+                "769-C-O5-R1M": {"thalamus": 3068, "striatum": 931, "cerebellum": 1247, "paleocortex": 1172, "total": 6418},
+                "769-C-OO-NmM": {"thalamus": 2728, "striatum": 1174, "cerebellum": 116, "paleocortex": 784, "total": 4802},
+                "875-C-OO-NM": {"thalamus": 438, "striatum": 158, "cerebellum": 46, "paleocortex": 1355, "total": 1997}
+            },
+            'APTR': {
+                "AP72-862-901-NmF": {"thalamus": 12710, "striatum": 29268, "cerebellum": 927, "paleocortex": 5299, "total": 48204},
+                "AP72-862-901-R1M": {"thalamus": 1215, "striatum": 9797, "cerebellum": 0, "paleocortex": 12948, "total": 23960},
+                "Apallial17NmF": {"thalamus": 1186, "striatum": 9860, "cerebellum": 19, "paleocortex": 14750, "total": 25815},
+                "Apallial20R1F": {"thalamus": 7769, "striatum": 8563, "cerebellum": 0, "paleocortex": 16419, "total": 32751}
+            }
+        };
+        
+        // Calculate connectivity density
+        function calcDensity(rawTotal, seedTotal) {
+            return seedTotal > 0 ? (rawTotal / seedTotal) * 1000 : 0;
+        }
+        
+        // Calculate densities for each subject
+        var densities = {
+            'CTRL': {},
+            'AP': {},
+            'APTR': {}
+        };
+        
+        ctrlSubjects.forEach(function(subj) {
+            var raw = rawStreamlines['CTRL'][subj];
+            var vox = seedVoxels['CTRL'][subj];
+            densities['CTRL'][subj] = {
+                'thalamus': calcDensity(raw.thalamus, vox.total),
+                'striatum': calcDensity(raw.striatum, vox.total),
+                'cerebellum': calcDensity(raw.cerebellum, vox.total),
+                'olfactory': calcDensity(raw.olfactory, vox.total),
+                'total': calcDensity(raw.total, vox.total)
+            };
+        });
+        
+        apSubjects.forEach(function(subj) {
+            var raw = rawStreamlines['AP'][subj];
+            var vox = seedVoxels['AP'][subj];
+            densities['AP'][subj] = {
+                'thalamus': calcDensity(raw.thalamus, vox.total),
+                'striatum': calcDensity(raw.striatum, vox.total),
+                'cerebellum': calcDensity(raw.cerebellum, vox.total),
+                'paleocortex': calcDensity(raw.paleocortex, vox.total),
+                'total': calcDensity(raw.total, vox.total)
+            };
+        });
+        
+        aptrSubjects.forEach(function(subj) {
+            var raw = rawStreamlines['APTR'][subj];
+            var vox = seedVoxels['APTR'][subj];
+            densities['APTR'][subj] = {
+                'thalamus': calcDensity(raw.thalamus, vox.total),
+                'striatum': calcDensity(raw.striatum, vox.total),
+                'cerebellum': calcDensity(raw.cerebellum, vox.total),
+                'paleocortex': calcDensity(raw.paleocortex, vox.total),
+                'total': calcDensity(raw.total, vox.total)
+            };
+        });
+        
+        // Helper functions
+        function mean(arr) { return arr.length > 0 ? arr.reduce((a,b) => a+b, 0) / arr.length : 0; }
+        function std(arr) {
+            if (arr.length < 2) return 0;
+            var m = mean(arr);
+            return Math.sqrt(arr.map(x => Math.pow(x - m, 2)).reduce((a,b) => a+b, 0) / arr.length);
+        }
+        
+        // Define colors
+        var groupColors = {'CTRL': '#3498db', 'AP': '#27ae60', 'APTR': '#e74c3c'};
+        
+        // Segment shapes (different shape per segment position)
+        var segmentShapes = {
+            'anterior': 'circle',
+            'anterior_central': 'square',
+            'central': 'diamond',
+            'posterior_central': 'triangle-up',
+            'posterior': 'star',
+            'anterior_dorsal': 'circle',
+            'central_dorsal': 'square',
+            'posterior_dorsal': 'diamond'
+        };
+        
+        // Segment colors (consistent across groups: anterior=red, central=yellow, posterior=blue)
+        var segmentColors = {
+            'anterior': '#e74c3c',
+            'anterior_central': '#e67e22',
+            'central': '#f1c40f',
+            'posterior_central': '#2ecc71',
+            'posterior': '#3498db',
+            'anterior_dorsal': '#e74c3c',
+            'central_dorsal': '#f1c40f',
+            'posterior_dorsal': '#3498db'
+        };
+        
+        // Mouse colors for connecting lines (4 mice per group)
+        var mouseColors = ['#2c3e50', '#7f8c8d', '#95a5a6', '#bdc3c7'];
+        
+        // ========== CHART 0: Individual ROI Segment Voxel Counts ==========
+        var indivROIData = [];
+        var ctrlSegments = ['anterior', 'anterior_central', 'central', 'posterior_central', 'posterior'];
+        var graftSegments = ['anterior_dorsal', 'central_dorsal', 'posterior_dorsal'];
+        
+        // Fixed x positions for segments (no jitter for clean lines)
+        var ctrlSegX = [0, 0.2, 0.4, 0.6, 0.8];
+        var graftSegX = [0, 0.2, 0.4];
+        
+        // CTRL: Add lines connecting same mouse, then markers
+        ctrlSubjects.forEach(function(subj, mouseIdx) {
+            var xLine = [];
+            var yLine = [];
+            ctrlSegments.forEach(function(seg, segIdx) {
+                xLine.push(ctrlSegX[segIdx]);
+                yLine.push(seedVoxels['CTRL'][subj][seg]);
+            });
+            indivROIData.push({
+                x: xLine,
+                y: yLine,
+                mode: 'lines',
+                type: 'scatter',
+                name: subj.split('-').slice(-1)[0],
+                line: { color: mouseColors[mouseIdx], width: 1.5, dash: 'solid' },
+                legendgroup: 'ctrl_mouse_' + mouseIdx,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        });
+        
+        // CTRL: Add markers for each segment
+        ctrlSegments.forEach(function(seg, segIdx) {
+            var xVals = [];
+            var yVals = [];
+            var textVals = [];
+            ctrlSubjects.forEach(function(subj, mouseIdx) {
+                xVals.push(ctrlSegX[segIdx]);
+                yVals.push(seedVoxels['CTRL'][subj][seg]);
+                textVals.push(subj.split('-').slice(-1)[0] + ': ' + seedVoxels['CTRL'][subj][seg] + ' vox');
+            });
+            indivROIData.push({
+                x: xVals,
+                y: yVals,
+                mode: 'markers',
+                type: 'scatter',
+                name: seg.replace(/_/g, ' '),
+                marker: { color: segmentColors[seg], size: 14, symbol: segmentShapes[seg],
+                          line: { color: '#2c3e50', width: 1.5 } },
+                text: textVals,
+                hovertemplate: '%{text}<extra>' + seg.replace(/_/g, ' ') + '</extra>',
+                legendgroup: 'seg_' + seg,
+                showlegend: segIdx < 5  // Show in legend
+            });
+        });
+        
+        // AP: Lines connecting same mouse
+        apSubjects.forEach(function(subj, mouseIdx) {
+            var xLine = [];
+            var yLine = [];
+            graftSegments.forEach(function(seg, segIdx) {
+                xLine.push(1.3 + graftSegX[segIdx]);
+                yLine.push(seedVoxels['AP'][subj][seg]);
+            });
+            indivROIData.push({
+                x: xLine,
+                y: yLine,
+                mode: 'lines',
+                type: 'scatter',
+                line: { color: mouseColors[mouseIdx], width: 1.5 },
+                legendgroup: 'ap_mouse_' + mouseIdx,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        });
+        
+        // AP: Markers
+        graftSegments.forEach(function(seg, segIdx) {
+            var xVals = [];
+            var yVals = [];
+            var textVals = [];
+            apSubjects.forEach(function(subj) {
+                xVals.push(1.3 + graftSegX[segIdx]);
+                yVals.push(seedVoxels['AP'][subj][seg]);
+                textVals.push(subj.split('-').slice(-1)[0] + ': ' + seedVoxels['AP'][subj][seg] + ' vox');
+            });
+            indivROIData.push({
+                x: xVals,
+                y: yVals,
+                mode: 'markers',
+                type: 'scatter',
+                name: seg.replace(/_/g, ' '),
+                marker: { color: segmentColors[seg], size: 14, symbol: segmentShapes[seg],
+                          line: { color: '#2c3e50', width: 1.5 } },
+                text: textVals,
+                hovertemplate: '%{text}<extra>' + seg.replace(/_/g, ' ') + '</extra>',
+                legendgroup: 'seg_' + seg,
+                showlegend: false
+            });
+        });
+        
+        // APTR: Lines connecting same mouse
+        aptrSubjects.forEach(function(subj, mouseIdx) {
+            var xLine = [];
+            var yLine = [];
+            graftSegments.forEach(function(seg, segIdx) {
+                xLine.push(2.3 + graftSegX[segIdx]);
+                yLine.push(seedVoxels['APTR'][subj][seg]);
+            });
+            indivROIData.push({
+                x: xLine,
+                y: yLine,
+                mode: 'lines',
+                type: 'scatter',
+                line: { color: mouseColors[mouseIdx], width: 1.5 },
+                legendgroup: 'aptr_mouse_' + mouseIdx,
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        });
+        
+        // APTR: Markers
+        graftSegments.forEach(function(seg, segIdx) {
+            var xVals = [];
+            var yVals = [];
+            var textVals = [];
+            aptrSubjects.forEach(function(subj) {
+                xVals.push(2.3 + graftSegX[segIdx]);
+                yVals.push(seedVoxels['APTR'][subj][seg]);
+                textVals.push(subj.split('-').slice(-1)[0] + ': ' + seedVoxels['APTR'][subj][seg] + ' vox');
+            });
+            indivROIData.push({
+                x: xVals,
+                y: yVals,
+                mode: 'markers',
+                type: 'scatter',
+                name: seg.replace(/_/g, ' '),
+                marker: { color: segmentColors[seg], size: 14, symbol: segmentShapes[seg],
+                          line: { color: '#2c3e50', width: 1.5 } },
+                text: textVals,
+                hovertemplate: '%{text}<extra>' + seg.replace(/_/g, ' ') + '</extra>',
+                legendgroup: 'seg_' + seg,
+                showlegend: false
+            });
+        });
+        
+        var indivROILayout = {
+            title: 'Individual Seed ROI Segment Voxel Counts (seg9 dorsal for AP/APTR)',
+            yaxis: { title: 'Voxel Count', zeroline: true, rangemode: 'tozero' },
+            xaxis: {
+                ticktext: ['ant', 'ant_c', 'cen', 'pos_c', 'pos', 'ant_d', 'cen_d', 'pos_d', 'ant_d', 'cen_d', 'pos_d'],
+                tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1.3, 1.5, 1.7, 2.3, 2.5, 2.7],
+                range: [-0.2, 3.0],
+                title: ''
+            },
+            showlegend: true,
+            legend: { x: 1.02, y: 1, orientation: 'v', title: {text: 'Segment'} },
+            margin: { r: 150, t: 80 },
+            shapes: [
+                // Vertical separators between groups
+                { type: 'line', x0: 1.1, x1: 1.1, y0: 0, y1: 1, yref: 'paper', 
+                  line: { color: '#bdc3c7', width: 2, dash: 'dash' } },
+                { type: 'line', x0: 2.1, x1: 2.1, y0: 0, y1: 1, yref: 'paper', 
+                  line: { color: '#bdc3c7', width: 2, dash: 'dash' } }
+            ],
+            annotations: [
+                { x: 0.4, y: 1.12, xref: 'x', yref: 'paper', text: '<b>CTRL</b><br><span style="font-size:10px">(5 isocortex segs)</span>', showarrow: false, font: { color: groupColors['CTRL'], size: 13 } },
+                { x: 1.5, y: 1.12, xref: 'x', yref: 'paper', text: '<b>AP</b><br><span style="font-size:10px">(seg9 dorsal)</span>', showarrow: false, font: { color: groupColors['AP'], size: 13 } },
+                { x: 2.5, y: 1.12, xref: 'x', yref: 'paper', text: '<b>APTR</b><br><span style="font-size:10px">(seg9 dorsal)</span>', showarrow: false, font: { color: groupColors['APTR'], size: 13 } }
+            ]
+        };
+        
+        Plotly.newPlot('individual-roi-scatter', indivROIData, indivROILayout);
+        
+        // ========== PER-SEGMENT STREAMLINE DATA ==========
+        // CTRL per-segment streamlines
+        var ctrlSegmentStreamlines = {
+            "129-921-R1F": {
+                "anterior": {"striatum": 1962, "thalamus": 53, "olfactory": 1237, "cerebellum": 0},
+                "central": {"striatum": 32802, "thalamus": 10413, "olfactory": 7037, "cerebellum": 0},
+                "posterior": {"striatum": 698, "thalamus": 4217, "olfactory": 7110, "cerebellum": 2784}
+            },
+            "129-921-R1L1F": {
+                "anterior": {"striatum": 19241, "thalamus": 3065, "olfactory": 7216, "cerebellum": 21},
+                "central": {"striatum": 42095, "thalamus": 13964, "olfactory": 22259, "cerebellum": 1948},
+                "posterior": {"striatum": 4535, "thalamus": 7463, "olfactory": 11302, "cerebellum": 10219}
+            },
+            "129-1014-L1M": {
+                "anterior": {"striatum": 11093, "thalamus": 734, "olfactory": 6432, "cerebellum": 24},
+                "central": {"striatum": 15518, "thalamus": 2672, "olfactory": 6458, "cerebellum": 632},
+                "posterior": {"striatum": 1355, "thalamus": 4022, "olfactory": 9716, "cerebellum": 5726}
+            },
+            "138-1010-L1F": {
+                "anterior": {"striatum": 26215, "thalamus": 11280, "olfactory": 6009, "cerebellum": 349},
+                "central": {"striatum": 29663, "thalamus": 16949, "olfactory": 13896, "cerebellum": 8807},
+                "posterior": {"striatum": 326, "thalamus": 1778, "olfactory": 8584, "cerebellum": 22930}
+            }
+        };
+
+        // AP per-segment streamlines (seg9)
+        var apSegmentStreamlines = {
+            "596-C-OO-NmM": {
+                "anterior_dorsal": {"striatum": 47, "thalamus": 0, "paleocortex": 1674, "cerebellum": 0},
+                "central_dorsal": {"striatum": 2241, "thalamus": 24, "paleocortex": 1595, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 793, "thalamus": 1573, "paleocortex": 1763, "cerebellum": 0}
+            },
+            "769-C-O5-R1M": {
+                "anterior_dorsal": {"striatum": 0, "thalamus": 0, "paleocortex": 19, "cerebellum": 0},
+                "central_dorsal": {"striatum": 19, "thalamus": 0, "paleocortex": 926, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 912, "thalamus": 3068, "paleocortex": 227, "cerebellum": 1247}
+            },
+            "769-C-OO-NmM": {
+                "anterior_dorsal": {"striatum": 0, "thalamus": 0, "paleocortex": 23, "cerebellum": 0},
+                "central_dorsal": {"striatum": 0, "thalamus": 66, "paleocortex": 169, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 1174, "thalamus": 2662, "paleocortex": 592, "cerebellum": 116}
+            },
+            "875-C-OO-NM": {
+                "anterior_dorsal": {"striatum": 52, "thalamus": 0, "paleocortex": 841, "cerebellum": 0},
+                "central_dorsal": {"striatum": 19, "thalamus": 0, "paleocortex": 491, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 87, "thalamus": 438, "paleocortex": 23, "cerebellum": 46}
+            }
+        };
+
+        // APTR per-segment streamlines (seg9)
+        var aptrSegmentStreamlines = {
+            "AP72-862-901-NmF": {
+                "anterior_dorsal": {"striatum": 11714, "thalamus": 2480, "paleocortex": 821, "cerebellum": 260},
+                "central_dorsal": {"striatum": 15008, "thalamus": 9298, "paleocortex": 3577, "cerebellum": 623},
+                "posterior_dorsal": {"striatum": 2546, "thalamus": 932, "paleocortex": 901, "cerebellum": 44}
+            },
+            "AP72-862-901-R1M": {
+                "anterior_dorsal": {"striatum": 1442, "thalamus": 226, "paleocortex": 1226, "cerebellum": 0},
+                "central_dorsal": {"striatum": 5340, "thalamus": 823, "paleocortex": 5377, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 3015, "thalamus": 166, "paleocortex": 6345, "cerebellum": 0}
+            },
+            "Apallial17NmF": {
+                "anterior_dorsal": {"striatum": 2494, "thalamus": 605, "paleocortex": 1219, "cerebellum": 0},
+                "central_dorsal": {"striatum": 2833, "thalamus": 340, "paleocortex": 6674, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 4533, "thalamus": 241, "paleocortex": 6857, "cerebellum": 19}
+            },
+            "Apallial20R1F": {
+                "anterior_dorsal": {"striatum": 1194, "thalamus": 3042, "paleocortex": 1606, "cerebellum": 0},
+                "central_dorsal": {"striatum": 4934, "thalamus": 3645, "paleocortex": 10609, "cerebellum": 0},
+                "posterior_dorsal": {"striatum": 2435, "thalamus": 1082, "paleocortex": 4204, "cerebellum": 0}
+            }
+        };
+
+        // Target colors
+        var targetColors = {
+            'striatum': '#f39c12',
+            'thalamus': '#9b59b6', 
+            'paleocortex': '#e91e63',
+            'olfactory': '#e91e63',
+            'cerebellum': '#1abc9c'
+        };
+        
+        // Segment mapping: CTRL segment -> AP/APTR segment
+        var segmentMapping = {
+            'anterior': 'anterior_dorsal',
+            'central': 'central_dorsal',
+            'posterior': 'posterior_dorsal'
+        };
+
+        // Function to create segment connectivity chart
+        function createSegmentChart(chartId, ctrlSeg, graftSeg, segmentTitle) {
+            var data = [];
+            var targetList = ['striatum', 'thalamus', 'olfactory', 'cerebellum'];
+            var graftTargetList = ['striatum', 'thalamus', 'paleocortex', 'cerebellum'];
+            var barWidth = 0.15;
+            
+            // For each target, create grouped bars
+            targetList.forEach(function(target, targetIdx) {
+                var graftTarget = graftTargetList[targetIdx];
+                
+                // CTRL data - calculate density
+                var ctrlVals = ctrlSubjects.map(function(s) {
+                    var streamlines = ctrlSegmentStreamlines[s][ctrlSeg][target] || 0;
+                    var voxels = seedVoxels['CTRL'][s][ctrlSeg] || 1;
+                    return (streamlines / voxels) * 1000;
+                });
+                
+                // AP data
+                var apVals = apSubjects.map(function(s) {
+                    var streamlines = apSegmentStreamlines[s][graftSeg][graftTarget] || 0;
+                    var voxels = seedVoxels['AP'][s][graftSeg] || 1;
+                    return (streamlines / voxels) * 1000;
+                });
+                
+                // APTR data
+                var aptrVals = aptrSubjects.map(function(s) {
+                    var streamlines = aptrSegmentStreamlines[s][graftSeg][graftTarget] || 0;
+                    var voxels = seedVoxels['APTR'][s][graftSeg] || 1;
+                    return (streamlines / voxels) * 1000;
+                });
+                
+                // Add bars for each group
+                var targetLabel = target === 'olfactory' ? 'Olfactory/Paleocortex' : target.charAt(0).toUpperCase() + target.slice(1);
+                
+                data.push({
+                    x: [targetIdx - barWidth * 1.2],
+                    y: [mean(ctrlVals)],
+                    error_y: { type: 'data', array: [std(ctrlVals)], visible: true, thickness: 2 },
+                    type: 'bar',
+                    name: 'CTRL',
+                    marker: { color: groupColors['CTRL'] },
+                    width: barWidth,
+                    legendgroup: 'CTRL',
+                    showlegend: targetIdx === 0,
+                    hovertemplate: 'CTRL ' + targetLabel + ': %{y:.1f}±' + std(ctrlVals).toFixed(1) + '<extra></extra>'
+                });
+                
+                data.push({
+                    x: [targetIdx],
+                    y: [mean(apVals)],
+                    error_y: { type: 'data', array: [std(apVals)], visible: true, thickness: 2 },
+                    type: 'bar',
+                    name: 'AP',
+                    marker: { color: groupColors['AP'] },
+                    width: barWidth,
+                    legendgroup: 'AP',
+                    showlegend: targetIdx === 0,
+                    hovertemplate: 'AP ' + targetLabel + ': %{y:.1f}±' + std(apVals).toFixed(1) + '<extra></extra>'
+                });
+                
+                data.push({
+                    x: [targetIdx + barWidth * 1.2],
+                    y: [mean(aptrVals)],
+                    error_y: { type: 'data', array: [std(aptrVals)], visible: true, thickness: 2 },
+                    type: 'bar',
+                    name: 'APTR',
+                    marker: { color: groupColors['APTR'] },
+                    width: barWidth,
+                    legendgroup: 'APTR',
+                    showlegend: targetIdx === 0,
+                    hovertemplate: 'APTR ' + targetLabel + ': %{y:.1f}±' + std(aptrVals).toFixed(1) + '<extra></extra>'
+                });
+                
+                // Add individual points
+                ctrlSubjects.forEach(function(s, i) {
+                    data.push({
+                        x: [targetIdx - barWidth * 1.2 + (Math.random() - 0.5) * 0.08],
+                        y: [ctrlVals[i]],
+                        mode: 'markers',
+                        type: 'scatter',
+                        marker: { color: '#2c3e50', size: 6, opacity: 0.6 },
+                        showlegend: false,
+                        hovertemplate: s + ': %{y:.1f}<extra></extra>'
+                    });
+                });
+                apSubjects.forEach(function(s, i) {
+                    data.push({
+                        x: [targetIdx + (Math.random() - 0.5) * 0.08],
+                        y: [apVals[i]],
+                        mode: 'markers',
+                        type: 'scatter',
+                        marker: { color: '#2c3e50', size: 6, opacity: 0.6 },
+                        showlegend: false,
+                        hovertemplate: s + ': %{y:.1f}<extra></extra>'
+                    });
+                });
+                aptrSubjects.forEach(function(s, i) {
+                    data.push({
+                        x: [targetIdx + barWidth * 1.2 + (Math.random() - 0.5) * 0.08],
+                        y: [aptrVals[i]],
+                        mode: 'markers',
+                        type: 'scatter',
+                        marker: { color: '#2c3e50', size: 6, opacity: 0.6 },
+                        showlegend: false,
+                        hovertemplate: s + ': %{y:.1f}<extra></extra>'
+                    });
+                });
+            });
+            
+            var layout = {
+                title: segmentTitle + ' Segment → Target Connectivity Density',
+                yaxis: { title: 'Connectivity Density (streamlines/1000 voxels)', zeroline: true, rangemode: 'tozero' },
+                xaxis: {
+                    ticktext: ['Striatum', 'Thalamus', 'Olfactory/Paleocortex', 'Cerebellum'],
+                    tickvals: [0, 1, 2, 3],
+                    range: [-0.5, 3.5]
+                },
+                barmode: 'group',
+                legend: { x: 0.85, y: 0.95, bgcolor: 'rgba(255,255,255,0.8)' },
+                hovermode: 'closest'
+            };
+            
+            Plotly.newPlot(chartId, data, layout);
+        }
+        
+        // Create the 3 segment charts
+        createSegmentChart('anterior-segment-chart', 'anterior', 'anterior_dorsal', 'Anterior');
+        createSegmentChart('central-segment-chart', 'central', 'central_dorsal', 'Central');
+        createSegmentChart('posterior-segment-chart', 'posterior', 'posterior_dorsal', 'Posterior');
+        
+        // ========== CHART 4: Raw Streamline Counts (Reference) ==========
+        var rawData = [];
+        
+        // CTRL
+        rawData.push({
+            x: ctrlSubjects,
+            y: ctrlSubjects.map(function(s) { return rawStreamlines['CTRL'][s].total; }),
+            type: 'bar',
+            name: 'CTRL',
+            marker: { color: groupColors['CTRL'] }
+        });
+        
+        // AP
+        rawData.push({
+            x: apSubjects,
+            y: apSubjects.map(function(s) { return rawStreamlines['AP'][s].total; }),
+            type: 'bar',
+            name: 'AP',
+            marker: { color: groupColors['AP'] },
+            xaxis: 'x2'
+        });
+        
+        // APTR
+        rawData.push({
+            x: aptrSubjects,
+            y: aptrSubjects.map(function(s) { return rawStreamlines['APTR'][s].total; }),
+            type: 'bar',
+            name: 'APTR',
+            marker: { color: groupColors['APTR'] },
+            xaxis: 'x3'
+        });
+        
+        var rawLayout = {
+            title: 'Raw Passthrough Streamlines per Subject (NOT Normalized - For Reference Only)',
+            barmode: 'group',
+            grid: {rows: 1, columns: 3, pattern: 'independent'},
+            xaxis: {domain: [0, 0.30], title: 'CTRL', tickangle: -45},
+            xaxis2: {domain: [0.35, 0.65], title: 'AP', tickangle: -45},
+            xaxis3: {domain: [0.70, 1.0], title: 'APTR', tickangle: -45},
+            yaxis: {title: 'Streamline Count'},
+            showlegend: true,
+            legend: {x: 0.5, y: 1.1, orientation: 'h', xanchor: 'center'}
+        };
+        
+        Plotly.newPlot('raw-streamlines-chart', rawData, rawLayout);
+        
+        // ========== Populate Subject Table ==========
+        var tableBody = document.getElementById('subject-table-body');
+        var allSubjects = [
+            {group: 'CTRL', subjects: ctrlSubjects},
+            {group: 'AP', subjects: apSubjects},
+            {group: 'APTR', subjects: aptrSubjects}
+        ];
+        
+        allSubjects.forEach(function(groupInfo) {
+            groupInfo.subjects.forEach(function(subj) {
+                var vox = seedVoxels[groupInfo.group][subj];
+                var raw = rawStreamlines[groupInfo.group][subj];
+                var dens = densities[groupInfo.group][subj];
+                
+                var row = document.createElement('tr');
+                row.innerHTML = 
+                    '<td>sub-' + subj + '</td>' +
+                    '<td>' + groupInfo.group + '</td>' +
+                    '<td>' + vox.total.toLocaleString() + '</td>' +
+                    '<td>' + raw.total.toLocaleString() + '</td>' +
+                    '<td><strong>' + dens.total.toFixed(1) + '</strong></td>';
+                tableBody.appendChild(row);
+            });
+        });
+    </script>
+</body>
+</html>
