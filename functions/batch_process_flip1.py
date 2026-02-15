@@ -154,21 +154,172 @@ def step2_flip_t2w(subject, session, bids_dir, derivatives_dir, dry_run=False, f
 
 
 def step3_flip_rois(subject, session, old_derivatives_dir, derivatives_dir, dry_run=False, force=False):
-    """Step 3: Flip manual ROIs from old pipeline to flip1."""
+    """Step 3: Flip manual ROIs to flip1 orientation.
+    
+    Source priority:
+      1. Original Slicer .seg.nrrd file (from paths.manual_roi_slicer_dir)
+      2. Old pipeline manual_roi_flip/ folder (legacy fallback)
+    """
     log_message(f"Step 3: Flipping manual ROIs")
     
-    # Source: old pipeline manual_roi_flip (has L/R correction)
-    old_roi_dir = os.path.join(old_derivatives_dir, subject, session, "manual_roi_flip")
     new_roi_dir = os.path.join(derivatives_dir, subject, session, "manual_roi")
+    os.makedirs(new_roi_dir, exist_ok=True)
     
-    if not os.path.exists(old_roi_dir):
-        log_message(f"Old ROI folder not found: {old_roi_dir}", "ERROR")
-        return False
-    
-    # ROI names
+    # ROI names and hemispheres
     rois = ["Graft", "Striatum", "Thalamus", "Palecortex", "cerebellum"]
     hemispheres = ["left", "right"]
     
+    # --- Try source 1: Slicer .seg.nrrd ---
+    slicer_dir = config['paths'].get('manual_roi_slicer_dir', '')
+    slicer_file = _get_slicer_file(subject, config)
+    old_roi_dir = os.path.join(old_derivatives_dir, subject, session, "manual_roi_flip")
+    
+    if slicer_file and slicer_dir and os.path.exists(os.path.join(slicer_dir, slicer_file)):
+        slicer_path = os.path.join(slicer_dir, slicer_file)
+        log_message(f"Using Slicer source: {slicer_file}")
+        ok = _flip_rois_from_slicer(slicer_path, new_roi_dir, rois, hemispheres, dry_run, force)
+    elif os.path.exists(old_roi_dir):
+        # --- Fallback: old pipeline manual_roi_flip ---
+        log_message(f"Using old pipeline source: {old_roi_dir}")
+        ok = _flip_rois_from_nii(old_roi_dir, new_roi_dir, rois, hemispheres, dry_run, force)
+    else:
+        log_message(f"No ROI source found for {subject}. "
+                    f"Slicer file: {slicer_file or 'not mapped'}, "
+                    f"Old pipeline: {old_roi_dir} (not found)", "ERROR")
+        return False
+    
+    # --- Automatic L/R verification (runs after ANY source) ---
+    if ok and not dry_run:
+        ok = _verify_roi_hemispheres(new_roi_dir, rois)
+    
+    return ok
+
+
+def _get_slicer_file(subject, config):
+    """Look up the slicer_file for a subject from config groups."""
+    for group_name in ["AP", "APTR"]:
+        for entry in config.get('groups', {}).get(group_name, []):
+            if entry.get('id') == subject:
+                return entry.get('slicer_file')
+    return None
+
+
+def _flip_rois_from_slicer(slicer_path, new_roi_dir, rois, hemispheres, dry_run, force):
+    """Convert Slicer .seg.nrrd to individual flipped ROI .mif files."""
+    import tempfile
+    
+    # First extract segments from .seg.nrrd to temporary NII files
+    tmp_dir = os.path.join(new_roi_dir, "tmp_slicer_extract")
+    os.makedirs(tmp_dir, exist_ok=True)
+    
+    # Use Python to extract segments
+    extract_script = f'''
+import nrrd
+import nibabel as nib
+import numpy as np
+import os
+
+data, header = nrrd.read("{slicer_path}")
+print(f"  Slicer data shape: {{data.shape}}")
+
+# Build NIfTI affine from NRRD header
+# NRRD space_directions: rows = direction vectors per data axis, in LPS space
+# NIfTI affine: columns = direction vectors per data axis, in RAS space
+# So: transpose (rows->columns) + convert LPS->RAS (negate L and P axes)
+space_dirs = np.array(header.get("space directions", np.eye(3)))
+origin = np.array(header.get("space origin", [0, 0, 0]))
+affine = np.eye(4)
+affine[:3, :3] = space_dirs.T       # transpose: NRRD rows -> NIfTI columns
+affine[:3, 3] = origin
+# LPS -> RAS: negate first two rows (L->R, P->A; S unchanged)
+affine[0, :] = -affine[0, :]
+affine[1, :] = -affine[1, :]
+
+# Extract each segment
+i = 0
+while True:
+    name_key = f"Segment{{i}}_Name"
+    if name_key not in header:
+        break
+    seg_name = header[name_key]
+    label_key = f"Segment{{i}}_LabelValue"
+    label_val = int(header.get(label_key, i + 1))
+    
+    # Create binary mask for this segment
+    if data.ndim == 4:
+        layer_key = f"Segment{{i}}_Layer"
+        layer = int(header.get(layer_key, 0))
+        mask = (data[layer] == label_val).astype(np.uint8)
+    else:
+        mask = (data == label_val).astype(np.uint8)
+    
+    if mask.sum() > 0:
+        nii = nib.Nifti1Image(mask, affine)
+        out_path = os.path.join("{tmp_dir}", f"{{seg_name}}.nii.gz")
+        nib.save(nii, out_path)
+        print(f"  Extracted: {{seg_name}} ({{mask.sum()}} voxels)")
+    else:
+        print(f"  Empty segment: {{seg_name}} (skipping)")
+    i += 1
+'''
+    
+    if not dry_run:
+        result = subprocess.run(
+            ["python", "-c", extract_script],
+            capture_output=True, text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            log_message(f"Slicer extraction failed: {result.stderr}", "ERROR")
+            return False
+    
+    # Now flip each extracted NII to .mif
+    # Slicer labels are inverted: what Slicer calls "left" is anatomical right
+    # and vice versa. Swap names during extraction.
+    success_count = 0
+    for roi in rois:
+        for hemi in hemispheres:
+            # Swap hemispheres (Slicer labels are inverted)
+            slicer_hemi = "right" if hemi == "left" else "left"
+            input_nii = os.path.join(tmp_dir, f"{roi}_{slicer_hemi}.nii.gz")
+            output_roi = os.path.join(new_roi_dir, f"roi_{roi}_{hemi}_flip.mif")
+            
+            if not os.path.exists(input_nii) and not dry_run:
+                print(f"  Not found (skipping): {roi}_{slicer_hemi}.nii.gz")
+                continue
+            
+            if file_exists(output_roi) and not force:
+                print(f"  Exists: roi_{roi}_{hemi}_flip.mif")
+                success_count += 1
+                continue
+            
+            # Flip1: axes 2,1,0 permutation + flip axis 1
+            tmp_perm = os.path.join(new_roi_dir, f"tmp_{roi}_{hemi}_perm.mif")
+            
+            cmds = [
+                f"mrconvert '{input_nii}' '{tmp_perm}' -axes 2,1,0 -strides 1,2,3 -force -quiet",
+                f"mrtransform '{tmp_perm}' '{output_roi}' -flip 1 -force -quiet",
+                f"rm -f '{tmp_perm}'"
+            ]
+            
+            for cmd in cmds:
+                if not run_cmd(cmd, dry_run):
+                    continue
+            
+            if not dry_run:
+                print(f"  Created: roi_{roi}_{hemi}_flip.mif")
+            success_count += 1
+    
+    # Clean up temp dir
+    if not dry_run:
+        import shutil
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    
+    return success_count > 0
+
+
+def _flip_rois_from_nii(old_roi_dir, new_roi_dir, rois, hemispheres, dry_run, force):
+    """Flip ROIs from old pipeline NII files (legacy fallback)."""
     success_count = 0
     for roi in rois:
         for hemi in hemispheres:
@@ -202,6 +353,59 @@ def step3_flip_rois(subject, session, old_derivatives_dir, derivatives_dir, dry_
             success_count += 1
     
     return success_count > 0
+
+
+def _verify_roi_hemispheres(roi_dir, rois):
+    """Report L/R centroid positions for manual verification.
+    
+    After flip1 with correct affine, L/R is axis 2.
+    Prints centroid Z and side-of-midline for each ROI so the user
+    can confirm naming is correct in the QC step.
+    
+    Returns True always (informational only — does NOT auto-swap).
+    """
+    import nibabel as nib
+    import numpy as np
+    
+    log_message("L/R hemisphere centroid report (verify visually in QC 3)...")
+    
+    for roi in rois:
+        centroids = {}
+        midline_z = None
+        for hemi in ["left", "right"]:
+            mif = os.path.join(roi_dir, f"roi_{roi}_{hemi}_flip.mif")
+            if not file_exists(mif):
+                continue
+            nii_tmp = os.path.join(roi_dir, f"tmp_verify_{roi}_{hemi}.nii.gz")
+            try:
+                subprocess.run(
+                    ["mrconvert", mif, nii_tmp, "-force", "-quiet"],
+                    check=True, capture_output=True
+                )
+                img = nib.load(nii_tmp)
+                data = img.get_fdata()
+                mask = data > 0.5
+                if mask.sum() > 0:
+                    coords = np.argwhere(mask)
+                    centroids[hemi] = coords.mean(axis=0)[2]  # axis 2 = L/R
+                    midline_z = data.shape[2] // 2
+            finally:
+                if os.path.exists(nii_tmp):
+                    os.remove(nii_tmp)
+        
+        if len(centroids) == 2:
+            left_z = centroids["left"]
+            right_z = centroids["right"]
+            left_side = "HIGH" if left_z >= midline_z else "LOW"
+            right_side = "HIGH" if right_z >= midline_z else "LOW"
+            sep = "separate" if (left_z < midline_z) != (right_z < midline_z) else "SAME SIDE!"
+            print(f"  {roi}: L centroid Z={left_z:.1f} ({left_side}), "
+                  f"R centroid Z={right_z:.1f} ({right_side}), "
+                  f"midline={midline_z} [{sep}]")
+    
+    log_message("Centroid report complete — confirm visually in QC 3")
+    
+    return True
 
 
 def step4_preprocess_dwi(subject, session, bids_dir, derivatives_dir, dry_run=False, force=False):
@@ -286,7 +490,7 @@ def step4_preprocess_dwi(subject, session, bids_dir, derivatives_dir, dry_run=Fa
     
     # Step 4h: Extract mean low-b for registration (use b<50 as "b0" for mouse data)
     b0_bias = os.path.join(dwi_dir, "b0_bias.mif")
-    cmd = f"dwiextract '{dwi_bias}' - -bvalue 50 | mrmath - mean '{b0_bias}' -axis 3 -force -quiet"
+    cmd = f"dwiextract '{dwi_bias}' - -bzero -config BZeroThreshold 50 | mrmath - mean '{b0_bias}' -axis 3 -force -quiet"
     if not run_cmd(cmd, dry_run):
         return False
     
@@ -333,10 +537,17 @@ def step4_preprocess_dwi(subject, session, bids_dir, derivatives_dir, dry_run=Fa
     
     # Step 4m: Extract final low-b reference
     b0_final = os.path.join(dwi_dir, "b0_final.mif")
-    cmd = f"dwiextract '{final_dwi}' - -bvalue 50 | mrmath - mean '{b0_final}' -axis 3 -force -quiet"
+    cmd = f"dwiextract '{final_dwi}' - -bzero -config BZeroThreshold 50 | mrmath - mean '{b0_final}' -axis 3 -force -quiet"
     if not run_cmd(cmd, dry_run):
         return False
     print(f"  Created: b0_final.mif")
+    
+    # Step 4n: Create mask in anatomical space from registered DWI
+    mask_anat = os.path.join(dwi_dir, "mask_anat.mif")
+    cmd = f"dwi2mask '{final_dwi}' '{mask_anat}' -force -quiet"
+    if not run_cmd(cmd, dry_run):
+        return False
+    print(f"  Created: mask_anat.mif")
     
     return True
 

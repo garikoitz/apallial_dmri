@@ -377,9 +377,18 @@
 #     PROBLEM: Original Slicer NRRD segmentations had LEFT and RIGHT labels SWAPPED.
 #              When viewing ROIs on original T2w, the left-labeled ROI appeared on the 
 #              anatomical RIGHT side, and vice versa.
-#     SOLUTION: Created manual_roi_flip/ folders in mrtrix_preproc/ for all AP/APTR subjects.
-#              Files are copied with swapped names:
+#     OLD SOLUTION (legacy fallback): Created manual_roi_flip/ folders in mrtrix_preproc/
+#              Files were copied with swapped names:
 #                roi_{ROI}_left.nii.gz → roi_{ROI}_right.nii.gz (and vice versa)
+#     CURRENT SOLUTION (2026-02-15): batch_process_flip1.py step3 now has automatic
+#              L/R verification via _verify_roi_hemispheres(). After creating ROIs
+#              from ANY source (Slicer or old pipeline), the function:
+#                1. Converts each .mif to temp .nii.gz
+#                2. Computes voxel centroid on axis 2 (L/R axis in flip1)
+#                3. Checks: left ROI centroid Z >= midline, right Z < midline
+#                4. If wrong, auto-swaps the file pair and re-verifies
+#              This eliminates the need for hardcoded L/R swaps and prevents
+#              the recurring L/R confusion regardless of the source data.
 #     SUBJECTS WITH CORRECTED ROIS (manual_roi_flip folder):
 #       - sub-Apallial17NmF/ses-240816091633/manual_roi_flip/ (validated)
 #       - sub-596-C-OO-NmM/ses-240911103349/manual_roi_flip/
@@ -505,7 +514,12 @@ paths:
   
   # Legacy paths (for compatibility) - updated to shared drive
   derivatives_dir: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1"
-  derivatives_dir_old: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc"
+  derivatives_dir_old: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc"  # OBSOLETE - no longer exists
+  
+  # Original 3D Slicer manual ROI segmentations (.seg.nrrd files)
+  # These are the SOURCE files for AP/APTR manual ROIs.
+  # Each file contains 10 segments: {Graft,Striatum,Palecortex,Thalamus,cerebellum}_{left,right}
+  manual_roi_slicer_dir: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/local/manual_roi_Slicer"
   
   # Atlas paths - local workspace
   atlas_dir: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf"
@@ -569,23 +583,34 @@ groups:
   AP:
     - id: sub-596-C-OO-NmM
       session: ses-240911103349
+      slicer_file: "596-C-OO-NmM_9-11-24_T2w.seg.nrrd"
     - id: sub-769-C-O5-R1M
       session: ses-240911115733
+      slicer_file: "769-C-O5-R1M_091124_T2w.seg.nrrd"
     - id: sub-769-C-OO-NmM
       session: ses-240911111853
+      slicer_file: "769-C-00-NM_T2w.seg.nrrd"
     - id: sub-875-C-OO-NM
       session: ses-240911100253
+      slicer_file: "875-C-OO-NM_091124_T2w.seg-kk.nrrd"
+    - id: sub-APtestmouseNmM
+      session: ses-240911111853
+      slicer_file: "769-C-00-NM_T2w.seg.nrrd"  # borrowed from sub-769-C-OO-NmM for testing
   
   # APTR group - apallial mice with transplant
   APTR:
     - id: sub-AP72-862-901-NmF
       session: ses-251210093342
+      slicer_file: "Apallial72_NMF_20251210_T2w.seg.nrrd"
     - id: sub-AP72-862-901-R1M
       session: ses-251210100043
+      slicer_file: "Apallial72_R1M_20251210_T2w.seg.nrrd"
     - id: sub-Apallial17NmF
       session: ses-240816091633
+      slicer_file: "Apallial17_NMF_20240816_T2w_new2.seg.nrrd"
     - id: sub-Apallial20R1F
       session: ses-240909094232
+      slicer_file: "Apallial20_R1F_20240909_T2w-kk_so.seg.nrrd"
 
 # -----------------------------------------------------------------------------
 # TRACTOGRAPHY PARAMETERS (tckgen)
@@ -1166,10 +1191,26 @@ file_tree:
   # MANUAL ROI FILES (AP/APTR only)
   # ---------------------------------------------------------------------------
   # IMPORTANT: Manual ROIs have 3 versions - use the correct one!
+  #
+  # SOURCE: Original 3D Slicer .seg.nrrd files are stored in:
+  #   paths.manual_roi_slicer_dir (Google Drive shared folder)
+  # Each subject in AP/APTR groups has a 'slicer_file' field mapping to its .seg.nrrd
+  # Segments inside: {Graft,Striatum,Palecortex,Thalamus,cerebellum}_{left,right}
+  #
+  # Pipeline: .seg.nrrd → convert to NII → flip1 transform → .mif in manual_roi/
   manual_rois:
     location: "../manual_roi/"
     description: "Manually segmented ROIs for AP/APTR subjects"
     groups: ["AP", "APTR"]
+    
+    # Original Slicer segmentations (SOURCE OF TRUTH)
+    slicer_source:
+      folder: "paths.manual_roi_slicer_dir"
+      format: ".seg.nrrd"
+      segments: ["Graft_left", "Graft_right", "Striatum_left", "Striatum_right",
+                 "Palecortex_left", "Palecortex_right", "Thalamus_left", "Thalamus_right",
+                 "cerebellum_left", "cerebellum_right"]
+      note: "Subject-to-file mapping is in groups.AP[].slicer_file and groups.APTR[].slicer_file"
     
     # Original ROIs (NOT flipped) - DO NOT USE DIRECTLY
     original:
