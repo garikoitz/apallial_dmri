@@ -1197,13 +1197,210 @@ if csv_path.exists():
 else:
     print("Report CSV not found.")
 
-# %% [markdown] Step 11: Final Visualization & Summary
+# %% [markdown] Step 11: Fixel-Based Analysis (FBA)
 # ---
-# ## Step 11: Final Visualization & Summary
+# ## Step 11: Fixel-Based Analysis (FBA)
+#
+# Decompose FODs into discrete fixels and compute microstructural metrics.
+#
+# **FBA pipeline:**
+# 1. **Generate fixels** — `fod2fixel` on `wm_fod_norm_group.mif` → `fixels_group/`
+#    (produces `afd.mif`, `peak.mif`, `directions.mif`, `index.mif`)
+# 2. **Voxel AFD map** — `fixel2voxel` collapses fixel AFD to voxel space → `afd_voxel_sum.mif`
+# 3. **ROI fixel metrics** — directional FD within each ROI (AP/DV/LR decomposition)
+# 4. **Tract AFD sampling** — `tcksample` samples AFD along cleaned passthrough tracts
+#
+# **Key metrics:**
+# - `fd_total` — Total Fiber Density in ROI
+# - `fd_ap`, `fd_dv`, `fd_lm` — Directional FD (Anterior-Posterior, Dorsal-Ventral, Lateral-Medial)
+# - `fd_ap_frac`, `fd_dv_frac`, `fd_lm_frac` — Directional fractions
+# - `mean_afd` — Mean AFD along a tract path
+#
+# **Axis convention (after flip1):** axis 0 = AP, axis 1 = DV, axis 2 = LR
+
+# %% [Step 11a] Generate Fixels (fod2fixel)
+# Generate fixel decomposition from group-calibrated FOD
+FIXEL_DIR = DWI / 'fixels_group'
+print(f'Step 11a: Generating fixels from group FOD...\n')
+print(f'  Input:  {DWI}/wm_fod_norm_group.mif')
+print(f'  Mask:   {DWI}/mask_anat.mif')
+print(f'  Output: {FIXEL_DIR}/')
+
+fod_file = DWI / 'wm_fod_norm_group.mif'
+mask_file = DWI / 'mask_anat.mif'
+
+if not fod_file.exists():
+    print(f'\n  ❌ ERROR: Group FOD not found! Run Step 3b first.')
+elif FIXEL_DIR.exists() and (FIXEL_DIR / 'afd.mif').exists():
+    print(f'\n  ✅ Fixels already exist. Use --force in manual run to regenerate.')
+    for ff in ['index.mif', 'directions.mif', 'afd.mif', 'peak.mif']:
+        check_file(FIXEL_DIR / ff)
+else:
+    result_11a = run(
+        f'micromamba run -n mbrain fod2fixel '
+        f'{DWI}/wm_fod_norm_group.mif {FIXEL_DIR} '
+        f'-mask {DWI}/mask_anat.mif '
+        f'-afd afd.mif -peak peak.mif -force -quiet',
+        timeout=600)
+    print('\n--- Fixel outputs ---')
+    for ff in ['index.mif', 'directions.mif', 'afd.mif', 'peak.mif']:
+        check_file(FIXEL_DIR / ff)
+
+# %% [Step 11b] Create Voxel AFD Map (fixel2voxel)
+# Collapse fixel AFD values to a voxel-level sum for tract sampling
+AFD_VOXEL = DWI / 'afd_voxel_sum.mif'
+print(f'Step 11b: Creating voxel AFD map...\n')
+
+if AFD_VOXEL.exists():
+    print(f'  ✅ afd_voxel_sum.mif already exists.')
+    check_file(AFD_VOXEL)
+elif not (FIXEL_DIR / 'afd.mif').exists():
+    print(f'  ❌ ERROR: Fixels not found! Run Step 11a first.')
+else:
+    result_11b = run(
+        f'micromamba run -n mbrain fixel2voxel '
+        f'{FIXEL_DIR}/afd.mif sum {AFD_VOXEL} -force',
+        timeout=120)
+    check_file(AFD_VOXEL)
+
+# %% [Step 11c] ROI-Based Fixel Metrics (Directional FD)
+# Compute directional fiber density within each ROI using the fixel decomposition.
+# This runs analyze_roi_fixels.py on each ROI, producing CSV with FD_total, FD_ap, FD_dv, FD_lm.
+print(f'Step 11c: Computing ROI-based fixel metrics...\n')
+
+if GROUP == 'CTRL':
+    roi_names = ['isocortex_left', 'isocortex_right',
+                 'thalamus_left', 'thalamus_right',
+                 'striatum_left', 'striatum_right',
+                 'cerebellum_left', 'cerebellum_right']
+else:
+    roi_names = ['graft_left', 'graft_right',
+                 'thalamus_left', 'thalamus_right',
+                 'striatum_left', 'striatum_right',
+                 'palecortex_left', 'palecortex_right',
+                 'cerebellum_left', 'cerebellum_right']
+
+fixel_csv = REPO_DIR / 'reports' / f'fixel_metrics_{SUBJECT_ID}.csv'
+for roi_name in roi_names:
+    print(f'  Processing ROI: {roi_name}')
+    result_11c = run(
+        f'cd {REPO_DIR} && micromamba run -n mbrain python functions/analyze_roi_fixels.py '
+        f'--subject {SUBJECT_ID} --roi {roi_name} '
+        f'--output {fixel_csv} --force',
+        timeout=300)
+
+if fixel_csv.exists():
+    print(f'\n--- ROI Fixel Metrics ---')
+    import pandas as pd
+    df_fixel = pd.read_csv(fixel_csv)
+    print(f'  {len(df_fixel)} ROI entries')
+    display(df_fixel.to_string(index=False))
+else:
+    print(f'\n  ⚠ Fixel CSV not generated (check errors above)')
+
+# %% [Step 11d] Tract AFD Sampling (tcksample along cleaned tracts)
+# Sample the voxel AFD map along each cleaned passthrough tract.
+# This gives mean_afd per tract — a microstructural metric independent of streamline count.
+import numpy as np
+print(f'Step 11d: Sampling AFD along cleaned tracts...\n')
+
+AFD_VOXEL = DWI / 'afd_voxel_sum.mif'
+if not AFD_VOXEL.exists():
+    print(f'  ❌ ERROR: afd_voxel_sum.mif not found! Run Step 11b first.')
+else:
+    # Find all cleaned tract files
+    pt_dir_afd = WB_DIR / 'passthrough_tracts'
+    cleaned_tracts_afd = sorted(glob.glob(str(pt_dir_afd / '*_cleaned.tck'))) if pt_dir_afd.exists() else []
+    
+    # Also check shrunk tracts for AP/APTR
+    if GROUP in ['AP', 'APTR']:
+        shrink_dir_afd = WB_DIR / 'passthrough_tracts_shrink'
+        cleaned_tracts_afd += sorted(glob.glob(str(shrink_dir_afd / '*_cleaned.tck'))) if shrink_dir_afd.exists() else []
+    
+    afd_results = []
+    for tract_path in cleaned_tracts_afd:
+        tract_name = Path(tract_path).stem.replace('_cleaned', '')
+        afd_out = Path(tract_path).parent / f'{tract_name}_afd.txt'
+        
+        result_afd = run(
+            f'micromamba run -n mbrain tcksample '
+            f'{tract_path} {AFD_VOXEL} {afd_out} '
+            f'-stat_tck mean -force',
+            timeout=120)
+        
+        if afd_out.exists():
+            # Read mean AFD values
+            with open(afd_out) as f:
+                lines = [l.strip() for l in f if l.strip() and not l.startswith('#')]
+            if lines:
+                values = [float(v) for v in lines if v.replace('.','').replace('-','').replace('e','').isdigit() or '.' in v]
+                if values:
+                    mean_afd = np.mean(values)
+                    afd_results.append({'tract': tract_name, 'mean_afd': mean_afd, 'n_streamlines': len(values)})
+                    print(f'  ✅ {tract_name}: mean_afd={mean_afd:.6f} (n={len(values)})')
+    
+    if afd_results:
+        import pandas as pd
+        df_afd = pd.DataFrame(afd_results)
+        print(f'\n--- Tract AFD Summary ---')
+        display(df_afd.to_string(index=False))
+    else:
+        print('  ⚠ No AFD results (are cleaned tracts available?)')
+
+# %% [Step 11e] Slicewise Fixel Analysis (Directional FD by coronal slice)
+# Compute fixel metrics per coronal slice within the seed ROI.
+# This produces the "radar plot" data used in the group comparison reports.
+print(f'Step 11e: Slicewise fixel analysis...\n')
+
+# Run the 3-group comparison analysis (includes this subject's data)
+# This generates radar plots comparing CTRL vs AP vs APTR per slice
+for hemi in ['left', 'right']:
+    print(f'\n  --- {hemi.upper()} hemisphere ---')
+    result_11e = run(
+        f'cd {REPO_DIR} && micromamba run -n mbrain python functions/analyze_roi_fixels.py '
+        f'--compare --force',
+        timeout=600)
+
+print('\n--- Slicewise fixel reports ---')
+for hemi in ['left', 'right']:
+    for shrink_tag in ['', '_shrink']:
+        fig_path = REPO_DIR / 'reports' / f'fixel_3group_comparison_{hemi}{shrink_tag}.png'
+        if fig_path.exists():
+            check_file(fig_path)
+
+# %% [markdown] QC 11: Fixel Analysis
+# ### QC Checkpoint 11: Fixel Analysis
+#
+# **Verify:**
+# - Fixels generated without errors (Step 11a)
+# - AFD voxel map looks reasonable (higher in WM, low in CSF)
+# - ROI metrics show expected directional patterns:
+#   - Graft/isocortex: mixed directions (cortical fanning)
+#   - Thalamus: strong AP component (internal capsule)
+#   - Cerebellum: characteristic DV pattern
+# - Tract AFD values consistent with other subjects in same group
+
+# %% [QC 11] View AFD Voxel Map on T2w
+# Visualize the AFD map to confirm it looks reasonable
+AFD_VOXEL = DWI / 'afd_voxel_sum.mif'
+if AFD_VOXEL.exists():
+    launch_gui(f"mrview {DWI}/t2w_highres_flip.mif -overlay.load {AFD_VOXEL} -overlay.opacity 0.5")
+    print('\n👆 AFD voxel map. Should be bright in WM regions, dark in CSF/outside brain.')
+else:
+    print('  ❌ afd_voxel_sum.mif not found.')
+
+# %% [markdown] QC 11 Result
+# **QC 11 Result:** ☐ PASS / ☐ FAIL
+#
+# ---
+
+# %% [markdown] Step 12: Final Visualization & Summary
+# ---
+# ## Step 12: Final Visualization & Summary
 #
 # View the complete results for this subject.
 
-# %% [Step 11] Pipeline Summary Table
+# %% [Step 12] Pipeline Summary Table
 # Summary table: all tracts for this subject
 print(f"\n{'=' * 80}")
 print(f' PIPELINE COMPLETE: {SUBJECT_ID} ({GROUP})')
@@ -1231,7 +1428,7 @@ print(f'\nReport: reports/tract_metrics_{version}.csv')
 print(f'HTML:   reports/tract_metrics_report_{version}.html')
 print(f"\n{'=' * 80}")
 
-# %% [Step 11] Final Visualization — All Cleaned Tracts in mrview
+# %% [Step 12] Final Visualization — All Cleaned Tracts in mrview
 # Final comprehensive visualization
 # Open mrview with T2w + best tracts
 if GROUP == 'CTRL':
@@ -1273,6 +1470,8 @@ print('\n👆 Final visualization with all left-hemisphere cleaned tracts.')
 # | 7   | Whole-brain tractogram (fills brain volume) | ☐ PASS / ☐ FAIL |
 # | 8   | Passthrough tracts (connect correct regions) | ☐ PASS / ☐ FAIL |
 # | 9   | Cleaned tracts (tight bundles, outliers removed) | ☐ PASS / ☐ FAIL |
+# | 10  | Tract metrics report generated (CSV + HTML) | ☐ PASS / ☐ FAIL |
+# | 11  | AFD voxel map reasonable (bright WM, dark CSF); ROI fixel metrics consistent | ☐ PASS / ☐ FAIL |
 #
 # **Processed by:** _Your name_
 # **Date:** _Date_
