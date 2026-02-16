@@ -1368,6 +1368,79 @@ for hemi in ['left', 'right']:
         if fig_path.exists():
             check_file(fig_path)
 
+# %% [Step 11e-km] 3-Group Fixel K-means Direction Comparison
+# Same layout as Step 11e, but uses K-means clustering + scatter matrix
+# eigenvector method to identify the 2 main fiber directions per slice.
+# Solid = Dir 1 (largest cluster), Dashed = Dir 2.
+import sys, yaml, importlib
+import numpy as np
+from pathlib import Path
+sys.path.insert(0, str(REPO_DIR))
+import functions.fixel_roi_analysis as _fri
+importlib.reload(_fri)
+from functions.fixel_roi_analysis import analyze_3group_kmeans
+
+print('Step 11e-km: 3-Group Fixel K-means Direction Comparison\n')
+
+# Load config
+with open(REPO_DIR / 'config1.yaml') as f:
+    cfg = yaml.safe_load(f)
+
+report_dir = REPO_DIR / 'reports'
+combos = [(h, True) for h in ['left', 'right']]  # always use shrink ROIs
+
+# --- Pass 1: compute data only (no plots) to find unified y_max ---
+print('Pass 1: computing data for all combinations...')
+all_results = {}
+global_max = 0.0
+for hemi, use_shrink in combos:
+    tag = f'{hemi}_shrink'
+    r = analyze_3group_kmeans(
+        cfg, hemisphere=hemi, use_shrink=True,
+        output_dir=report_dir, n_clusters=2, conda_env='mbrain',
+        force=False, show=False, verbose=False, plot=False)
+    all_results[tag] = (hemi, True, r)
+    if r:
+        for group in ['CTRL', 'AP', 'APTR']:
+            for subj, data in r['all_group_data'].get(group, {}).items():
+                for s_idx, res in data.items():
+                    for sd in res.get('scaled_directions', []):
+                        val = np.max(np.abs(sd))
+                        if val > global_max:
+                            global_max = val
+
+y_max_unified = max(0.05, np.ceil(global_max * 20) / 20)
+print(f'  Unified y_max = {y_max_unified:.4f} (global max = {global_max:.4f})\n')
+
+# --- Pass 2: generate plots with forced y_max ---
+for tag, (hemi, use_shrink, r) in all_results.items():
+    print(f'\n{"="*60}')
+    print(f'  {tag.upper()}')
+    print(f'{"="*60}')
+    if not r:
+        print(f'  ⚠ No data for {tag}')
+        continue
+    from functions.fixel_roi_analysis import (
+        plot_3group_kmeans_comparison, plot_3group_component_lines
+    )
+    suffix = '_shrink' if use_shrink else ''
+    tns = r['target_n_slices']
+
+    fig_path = report_dir / f'fixel_3group_comparison_{hemi}{suffix}.png'
+    plot_3group_kmeans_comparison(
+        r['all_group_data'], hemi, tns,
+        use_shrink=use_shrink, save_path=fig_path, show=True,
+        y_max=y_max_unified)
+
+    lines_path = report_dir / f'fixel_3group_components_{hemi}{suffix}.png'
+    plot_3group_component_lines(
+        r['all_group_data'], hemi, tns,
+        use_shrink=use_shrink, save_path=lines_path, show=True,
+        y_max=y_max_unified)
+
+    print(f'  ✅ Radar: {fig_path}')
+    print(f'  ✅ Lines: {lines_path}')
+
 # %% [markdown] QC 11: Fixel Analysis
 # ### QC Checkpoint 11: Fixel Analysis
 #
@@ -1381,21 +1454,134 @@ for hemi in ['left', 'right']:
 # - Tract AFD values consistent with other subjects in same group
 
 # %% [QC 11] View AFD Voxel Map on T2w
-# Visualize the AFD map to confirm it looks reasonable
-AFD_VOXEL = DWI / 'afd_voxel_sum.mif'
-if AFD_VOXEL.exists():
-    launch_gui(f"mrview {DWI}/t2w_highres_flip.mif -overlay.load {AFD_VOXEL} -overlay.opacity 0.5")
-    print('\n👆 AFD voxel map. Should be bright in WM regions, dark in CSF/outside brain.')
-else:
-    print('  ❌ afd_voxel_sum.mif not found.')
+# Check afd_voxel_sum.mif across all 12 real subjects (excluding test mice)
+print('QC 11: Checking AFD voxel maps for all subjects\n')
+
+skip_ids = {'sub-APtestmouseNmM'}
+found = 0
+missing = 0
+for group_name in ['CTRL', 'AP', 'APTR']:
+    print(f'\n--- {group_name} ---')
+    for entry in cfg['groups'][group_name]:
+        sid, ses = entry['id'], entry['session']
+        if sid in skip_ids:
+            continue
+        afd_path = DERIV / sid / ses / 'dwi' / 'afd_voxel_sum.mif'
+        if afd_path.exists():
+            print(f'  ✅ {sid}: afd_voxel_sum.mif exists')
+            found += 1
+        else:
+            print(f'  ❌ {sid}: afd_voxel_sum.mif NOT FOUND — run Steps 11a+11b for this subject')
+            missing += 1
+
+print(f'\n--- Summary: {found} found, {missing} missing ---')
+if found > 0:
+    # Open the first available one for visual check
+    for group_name in ['CTRL', 'AP', 'APTR']:
+        for entry in cfg['groups'][group_name]:
+            sid, ses = entry['id'], entry['session']
+            if sid in skip_ids:
+                continue
+            afd_path = DERIV / sid / ses / 'dwi' / 'afd_voxel_sum.mif'
+            t2w_path = DERIV / sid / ses / 'dwi' / 't2w_highres_flip.mif'
+            if afd_path.exists():
+                print(f'\nOpening {sid} for visual check...')
+                launch_gui(f"mrview {t2w_path} -overlay.load {afd_path} -overlay.opacity 0.5")
+                print('👆 AFD voxel map. Should be bright in WM regions, dark in CSF/outside brain.')
+                break
+        else:
+            continue
+        break
 
 # %% [markdown] QC 11 Result
 # **QC 11 Result:** ☐ PASS / ☐ FAIL
 #
 # ---
 
-# %% [markdown] Step 12: Final Visualization & Summary
+# %% [markdown] Step 11f: Fixel Square ROI Analysis
 # ---
+# ## Step 11f: Fixel Square ROI Direction Analysis
+#
+# Analyze the **main fiber directions** within a user-drawn square ROI.
+#
+# **Pipeline:**
+# 1. Run `fod2fixel` masked to the square ROI → local fixel directory
+# 2. Extract fixel directions (unit vectors) and AFD values
+# 3. Cluster fixels into 2 populations (K-means on direction vectors)
+# 4. Report **Main Direction 1** and **Main Direction 2** with mean AFD
+#
+# **Prerequisites:**
+# - `square_roi_fixel.mif` drawn in mrview ROI editor and saved in `dwi/`
+# - `wm_fod_norm_group.mif` (from Step 3b)
+#
+# **Antipodal symmetry:** Fiber directions are sign-ambiguous (v ≡ −v).
+# Before clustering, all vectors are flipped to the same hemisphere (z ≥ 0).
+#
+# **Axis convention (flip1):** axis 0 = AP, axis 1 = DV, axis 2 = LR
+
+# %% [Step 11f] Fixel Square ROI — Generate fixels & extract directions
+from functions.fixel_roi_analysis import generate_fixel_peaks
+
+SQUARE_ROI_T2W = DWI / 'square_roi_fixel.mif'
+FOD_PATH = DWI / 'wm_fod_norm_group.mif'
+
+print('Step 11f: Fixel Square ROI Direction Analysis\n')
+
+if not SQUARE_ROI_T2W.exists():
+    print('  ❌ ERROR: square_roi_fixel.mif not found!')
+    print('  Draw a square ROI in mrview (Tool → ROI editor) and save as:')
+    print(f'  {SQUARE_ROI_T2W}')
+elif not FOD_PATH.exists():
+    print('  ❌ ERROR: wm_fod_norm_group.mif not found! Run Step 3b first.')
+else:
+    peaks_nii = generate_fixel_peaks(
+        roi_path=SQUARE_ROI_T2W,
+        fod_path=FOD_PATH,
+        output_dir=DWI,
+        conda_env='mbrain',
+        force=True,
+    )
+    print('\n  ✅ Fixel extraction complete.')
+
+# %% [Step 11f-2] Fixel Square ROI — K-means clustering of directions
+import numpy as np
+from functions.fixel_roi_analysis import extract_peak_vectors, cluster_fixel_directions
+
+PEAKS_NII = DWI / 'square_roi_peaks.nii'
+print('Step 11f-2: Clustering fixel directions within square ROI\n')
+
+if not PEAKS_NII.exists():
+    print('  ❌ Peaks file not found — run the cell above first.')
+else:
+    all_vectors, all_peak_indices, n_peaks = extract_peak_vectors(PEAKS_NII)
+    if len(all_vectors) == 0:
+        print('  ⚠ No valid fixel vectors found in the square ROI.')
+    else:
+        print(f'  Total fixel vectors: {len(all_vectors)}')
+        print(f'    Peak 1: {np.sum(all_peak_indices == 1)}')
+        if n_peaks > 1:
+            print(f'    Peak 2: {np.sum(all_peak_indices == 2)}')
+
+        cluster_result = cluster_fixel_directions(
+            all_vectors, all_peak_indices, n_peaks,
+            n_clusters=2, verbose=True,
+        )
+
+# %% [Step 11f-3] Fixel Square ROI — 3D Direction Visualization
+from functions.fixel_roi_analysis import plot_fixel_directions
+
+if 'cluster_result' in dir() and cluster_result is not None:
+    fig_path = REPO_DIR / 'reports' / f'fixel_square_roi_{SUBJECT_ID}.png'
+    fig = plot_fixel_directions(
+        cluster_result,
+        subject_id=SUBJECT_ID,
+        save_path=fig_path,
+        show=True,
+    )
+else:
+    print('  ❌ Run Step 11f-2 first.')
+
+# %% [markdown] Step 12: Final Visualization & Summary
 # ## Step 12: Final Visualization & Summary
 #
 # View the complete results for this subject.
