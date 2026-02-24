@@ -1,5 +1,16 @@
 # GitHub Copilot Instructions for MBRAIN Project
 
+## 🚫 ABSOLUTE RULE: NEVER DELETE FILES OR DIRECTORIES WITHOUT EXPLICIT USER PERMISSION 🚫
+
+**This rule has NO exceptions:**
+- NEVER call `shutil.rmtree()`, `os.remove()`, `Path.unlink()`, `rm`, or any delete/remove operation on data files or directories without the user explicitly saying "delete" or "remove" in that specific request.
+- If a task seems to require deleting files, STOP and ASK the user first.
+- "Clean up", "fix", "recover", or "rename" do NOT imply permission to delete.
+- This applies to all files: .tck, .mif, .nii.gz, directories, logs — everything.
+- Background: files were irreversibly deleted from a shared Google Drive folder without permission, causing significant data loss and recovery effort.
+
+---
+
 ## ⚠️ CRITICAL: ALWAYS READ config1.yaml FIRST - NO EXCEPTIONS! ⚠️
 
 **STOP! Before doing ANYTHING in this project:**
