@@ -128,7 +128,7 @@ def cluster_fixel_directions(all_vectors, all_peak_indices, n_peaks_per_voxel,
         n_peaks_per_voxel : int
         per_cluster : list of dict with per-cluster stats
     """
-    axis_names = ['AP (axis 0)', 'DV (axis 1)', 'LR (axis 2)']
+    axis_names = ['AP (axis 0)', 'DV (axis 1)', 'ML (axis 2)']
 
     # Cluster on |v| for antipodal safety
     abs_vectors = np.abs(all_vectors)
@@ -172,7 +172,7 @@ def cluster_fixel_directions(all_vectors, all_peak_indices, n_peaks_per_voxel,
             print(f'  From peak 1: {info["n_from_peak1"]}, peak 2: {info["n_from_peak2"]}')
             theta = np.degrees(np.arccos(np.clip(np.abs(d[1]), 0, 1)))
             phi = np.degrees(np.arctan2(np.abs(d[2]), np.abs(d[0])))
-            print(f'  Spherical:      θ={theta:.1f}° from DV, φ={phi:.1f}° in AP-LR plane')
+            print(f'  Spherical:      θ={theta:.1f}° from DV, φ={phi:.1f}° in AP-ML plane')
 
         per_cluster.append(info)
 
@@ -219,7 +219,32 @@ def cluster_fixel_directions(all_vectors, all_peak_indices, n_peaks_per_voxel,
 # Plotting
 # ---------------------------------------------------------------------------
 
-def plot_fixel_directions(result, subject_id='', save_path=None, show=True):
+def draw_radial_whiskers(ax3d, vectors, peaks, color='#E24A33', alpha=0.3,
+                         linewidth=0.6, max_length=0.4):
+    """Draw radial whiskers from unit-sphere points, length ∝ peak amplitude.
+
+    Parameters
+    ----------
+    ax3d : mpl_toolkits.mplot3d.Axes3D
+    vectors : np.ndarray (N, 3)  — unit directions (original axis order: 0=AP, 1=DV, 2=ML)
+    peaks : np.ndarray (N,)  — scalar amplitudes
+    color, alpha, linewidth : styling
+    max_length : float  — length of whisker for the maximum peak value
+    """
+    pk_max = peaks.max() if len(peaks) > 0 and peaks.max() > 0 else 1.0
+    scale = max_length / pk_max
+    for i in range(len(vectors)):
+        v = vectors[i]
+        length = peaks[i] * scale
+        # Swapped axes: X=AP(0), Y=ML(2), Z=DV(1)
+        ax3d.plot([v[0], v[0] * (1 + length)],
+                  [v[2], v[2] * (1 + length)],
+                  [v[1], v[1] * (1 + length)],
+                  color=color, alpha=alpha, linewidth=linewidth)
+
+
+def plot_fixel_directions(result, subject_id='', save_path=None, show=True,
+                          peaks=None):
     """Generate 3D hemisphere scatter + radar plot for fixel direction results.
 
     Parameters
@@ -232,6 +257,10 @@ def plot_fixel_directions(result, subject_id='', save_path=None, show=True):
         If provided, save the figure here.
     show : bool
         Whether to call plt.show().
+    peaks : np.ndarray or None
+        Per-fixel peak FOD amplitudes (same length as all_vectors).
+        If provided, radial whiskers are drawn from each point on the
+        sphere with length proportional to the peak value.
 
     Returns
     -------
@@ -246,9 +275,14 @@ def plot_fixel_directions(result, subject_id='', save_path=None, show=True):
     n_clusters = len(directions)
     angle_between = result.get('angle_between', None)
 
-    # Flip vectors to z >= 0 for viz
-    flip = all_vectors[:, 2] < 0
+    # Flip vectors to DV >= 0 for viz (DV = axis 1)
+    flip = all_vectors[:, 1] < 0
     all_vectors[flip] *= -1
+
+    # Prepare peaks array (flip in sync with vectors)
+    if peaks is not None:
+        peaks = np.asarray(peaks, dtype=float).copy()
+        # peaks don't need sign flip, they are scalar magnitudes
 
     colors_list = ['#E24A33', '#348ABD', '#988ED5', '#8EBA42', '#FFB347', '#77BEDB']
     colors = colors_list[:n_clusters]
@@ -257,43 +291,75 @@ def plot_fixel_directions(result, subject_id='', save_path=None, show=True):
     fig.suptitle(f'Fixel ROI — Main Fiber Directions ({subject_id})',
                  fontsize=14, fontweight='bold')
 
-    # ---- Left: 3D hemisphere scatter ----
+    # ---- Left: 3D binned sticks (origin → bin direction, length = sum of peaks) ----
     ax3d = fig.add_subplot(121, projection='3d')
 
-    u = np.linspace(0, 2 * np.pi, 40)
-    v = np.linspace(0, np.pi / 2, 20)
-    xs = np.outer(np.cos(u), np.sin(v))
-    ys = np.outer(np.sin(u), np.sin(v))
-    zs = np.outer(np.ones_like(u), np.cos(v))
-    ax3d.plot_wireframe(xs, ys, zs, alpha=0.06, color='gray', linewidth=0.3)
+    from matplotlib import cm
+    pk_arr = np.asarray(peaks, dtype=float) if peaks is not None else np.ones(len(all_vectors))
+    cmap = cm.get_cmap('hot_r')
 
-    max_pts = 800
-    for k_idx in range(n_clusters):
-        mask_k = labels == k_idx
-        vecs_k = all_vectors[mask_k]
-        if len(vecs_k) > max_pts:
-            rng = np.random.RandomState(42)
-            idx = rng.choice(len(vecs_k), max_pts, replace=False)
-            vecs_k = vecs_k[idx]
-        ax3d.scatter(vecs_k[:, 0], vecs_k[:, 1], vecs_k[:, 2],
-                     c=colors[k_idx], alpha=0.25, s=6, label=f'Cluster {k_idx + 1}')
+    # Bin fixels on a spherical grid and sum peaks per bin
+    n_az, n_el = 16, 8
+    az_edges = np.linspace(0, 2 * np.pi, n_az + 1)
+    el_edges = np.linspace(0, np.pi / 2, n_el + 1)
 
-    arrow_kw = dict(arrow_length_ratio=0.12, linewidth=3.5)
-    for k_idx, d in enumerate(directions):
-        ax3d.quiver(0, 0, 0, d[0], d[1], d[2], color=colors[k_idx], **arrow_kw,
-                    label=f'Dir {k_idx + 1} [{d[0]:+.2f},{d[1]:+.2f},{d[2]:+.2f}]')
+    # Spherical coords: elevation = arcsin(DV), azimuth = atan2(ML, AP)
+    elev_vals = np.arcsin(np.clip(all_vectors[:, 1], -1, 1))
+    az_vals = np.arctan2(all_vectors[:, 2], all_vectors[:, 0]) % (2 * np.pi)
+
+    peak_grid = np.zeros((n_az, n_el))
+    for fi in range(len(all_vectors)):
+        ui = np.clip(np.searchsorted(az_edges, az_vals[fi], side='right') - 1, 0, n_az - 1)
+        vi = np.clip(np.searchsorted(el_edges, elev_vals[fi], side='right') - 1, 0, n_el - 1)
+        peak_grid[ui, vi] += pk_arr[fi]
+
+    pk_max = peak_grid.max() if peak_grid.max() > 0 else 1.0
+
+    # Draw one stick per non-empty bin: direction = bin centre, length = sum(peaks)
+    for i in range(n_az):
+        for j in range(n_el):
+            if peak_grid[i, j] <= 0:
+                continue
+            # Bin centre in spherical coords
+            az_c = (az_edges[i] + az_edges[i + 1]) / 2
+            el_c = (el_edges[j] + el_edges[j + 1]) / 2
+            # Convert to cartesian (original axes: AP, DV, ML)
+            dx = np.cos(az_c) * np.cos(el_c)  # AP
+            dy = np.sin(el_c)                   # DV
+            dz = np.sin(az_c) * np.cos(el_c)   # ML
+            length = peak_grid[i, j] / pk_max   # normalised to [0, 1]
+            # Plot axes: X=AP, Y=ML, Z=DV
+            ax3d.plot([0, dx * length],
+                      [0, dz * length],
+                      [0, dy * length],
+                      color=cmap(length), alpha=0.8, linewidth=1.5)
+
+    # Colorbar
+    sm = plt.cm.ScalarMappable(cmap=cmap,
+                                norm=plt.Normalize(vmin=0, vmax=pk_max))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax3d, shrink=0.5, pad=0.08, label='Sum peak amplitude')
 
     ax3d.set_xlabel('AP (axis 0)')
-    ax3d.set_ylabel('DV (axis 1)')
-    ax3d.set_zlabel('LR (axis 2)')
-    ax3d.set_xlim(-1.1, 1.1)
-    ax3d.set_ylim(-1.1, 1.1)
-    ax3d.set_zlim(-0.1, 1.1)
-    ax3d.set_title('Fixel Directions on Hemisphere')
-    ax3d.legend(loc='upper left', fontsize=8, framealpha=0.9)
+    ax3d.set_ylabel('ML (axis 2)')
+    ax3d.set_zlabel('DV (axis 1)')
+    ax3d.set_xlim(-1.05, 1.05)
+    ax3d.set_ylim(-1.05, 1.05)
+    ax3d.set_zlim(-0.05, 1.05)
+    ax3d.set_title('Binned Fixel Sticks (length = sum peak amp)')
     ax3d.view_init(elev=25, azim=-60)
 
+    # Remove background panes and grid, keep only axes
+    ax3d.xaxis.pane.fill = False
+    ax3d.yaxis.pane.fill = False
+    ax3d.zaxis.pane.fill = False
+    ax3d.xaxis.pane.set_edgecolor('none')
+    ax3d.yaxis.pane.set_edgecolor('none')
+    ax3d.zaxis.pane.set_edgecolor('none')
+    ax3d.grid(False)
+
     # ---- Right: Radar plot (DV south, ML upper-right, AP upper-left) ----
+    # Triangles are scaled by mean peak amplitude per cluster, not unitless.
     ax_radar = fig.add_subplot(122, projection='polar')
     ax_radar.set_theta_zero_location('S')
     ax_radar.set_theta_direction(-1)
@@ -304,30 +370,54 @@ def plot_fixel_directions(result, subject_id='', save_path=None, show=True):
 
     linestyles = ['-', '--', '-.', ':']
 
+    # Compute mean peak amplitude per cluster for scaling
+    cluster_mean_peaks = []
+    for k_idx in range(n_clusters):
+        mask_k = labels == k_idx
+        if peaks is not None and np.any(mask_k):
+            cluster_mean_peaks.append(float(np.mean(peaks[mask_k])))
+        else:
+            cluster_mean_peaks.append(1.0)  # fallback: unit vectors
+
+    radar_max = 0.0
     for k_idx, d in enumerate(directions):
-        abs_d = np.abs(d)[reorder]
+        # Scale direction components by mean peak amplitude of this cluster
+        abs_d = np.abs(d)[reorder] * cluster_mean_peaks[k_idx]
+        radar_max = max(radar_max, np.max(abs_d))
         vals = np.concatenate([abs_d, [abs_d[0]]])
         angles_closed = np.concatenate([angles_radar, [angles_radar[0]]])
         ls = linestyles[k_idx % len(linestyles)]
         n_k = int(np.sum(labels == k_idx))
+        mean_pk = cluster_mean_peaks[k_idx]
         ax_radar.plot(angles_closed, vals, color=colors[k_idx], linewidth=2.5,
-                      linestyle=ls, label=f'Dir {k_idx + 1} (n={n_k})')
+                      linestyle=ls,
+                      label=f'Dir {k_idx + 1} (n={n_k}, peak={mean_pk:.3f})')
         ax_radar.fill(angles_closed, vals, color=colors[k_idx],
                       alpha=0.15 if k_idx == 0 else 0.08)
 
-    # Isotropic reference
-    iso_val = 1.0 / np.sqrt(3)
+    # Isotropic reference scaled by overall mean peak
+    if peaks is not None and len(peaks) > 0:
+        overall_mean_peak = float(np.mean(peaks))
+    else:
+        overall_mean_peak = 1.0
+    iso_val = overall_mean_peak / np.sqrt(3)
     iso_angles = np.linspace(0, 2 * np.pi, 100)
     ax_radar.plot(iso_angles, [iso_val] * len(iso_angles), color='gray',
                   linewidth=0.8, linestyle=':', alpha=0.5, label='isotropic')
 
     ax_radar.set_xticks(angles_radar)
     ax_radar.set_xticklabels(radar_labels_list, fontsize=13, fontweight='bold')
-    ax_radar.set_ylim(0, 1.05)
-    ax_radar.set_yticks([0.25, 0.5, 0.75, 1.0])
-    ax_radar.set_yticklabels(['0.25', '0.50', '0.75', '1.00'], fontsize=8, color='gray')
+    # Dynamic y-axis based on actual peak-scaled values
+    y_max = max(radar_max * 1.1, iso_val * 1.2)
+    ax_radar.set_ylim(0, y_max)
+    # Auto-compute nice tick spacing
+    tick_step = round(y_max / 4, 3)
+    if tick_step > 0:
+        yticks = [tick_step * i for i in range(1, 5) if tick_step * i < y_max]
+        ax_radar.set_yticks(yticks)
+        ax_radar.set_yticklabels([f'{t:.3f}' for t in yticks], fontsize=8, color='gray')
     angle_str = f'(∠ = {angle_between:.1f}°)' if angle_between is not None else ''
-    ax_radar.set_title(f'Directional Decomposition\n{angle_str}', pad=20, fontsize=12)
+    ax_radar.set_title(f'Peak-weighted Direction\n{angle_str}', pad=20, fontsize=12)
     ax_radar.legend(loc='upper right', bbox_to_anchor=(1.35, 1.1), fontsize=9, framealpha=0.9)
 
     plt.tight_layout()
@@ -575,7 +665,7 @@ def extract_slicewise_vectors(fixel_data, roi_mask, slice_axis=0, min_fixels=5):
     ----------
     fixel_data : dict  (from load_fixel_dir)
     roi_mask : np.ndarray  (bool, same spatial shape as fixel index)
-    slice_axis : int  (0=AP, 1=DV, 2=LR in flip1 convention)
+    slice_axis : int  (0=AP, 1=DV, 2=ML in flip1 convention)
     min_fixels : int  (skip slices with fewer fixels)
 
     Returns

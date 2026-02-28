@@ -62,8 +62,16 @@ def generate_fixels(fod_file: Path, output_dir: Path, force: bool = False) -> Op
     
     Returns path to fixel directory if successful.
     """
-    if output_dir.exists() and not force:
-        logger.info(f"  Fixels already exist: {output_dir}")
+    if output_dir.exists() and any(output_dir.iterdir()):
+        if force:
+            logger.warning(
+                f"  ⚠ Fixel directory is not empty: {output_dir}\n"
+                f"    fod2fixel cannot overwrite non-empty directories.\n"
+                f"    Please delete it manually if you want to regenerate:\n"
+                f"      rm -rf '{output_dir}'"
+            )
+        else:
+            logger.info(f"  ✓ Fixels already exist: {output_dir}")
         return output_dir
     
     # fod2fixel command - output AFD and peak amplitude
@@ -270,23 +278,54 @@ def process_subject(subject: str, session: str, group: str,
 
 def find_roi_path(subj_dir: Path, roi_name: str, group: str) -> Optional[Path]:
     """
-    Find ROI file path based on naming convention.
+    Find ROI file path based on naming convention and group.
     
-    roi_name examples:
-        - 'graft_left' -> manual_roi/fod_space/roi_Graft_left_flip_fod.mif
-        - 'isocortex_left' -> atlas/rois/fod_space/roi_isocortex_left.nii.gz
+    ROI correspondence (from config1.yaml):
+        CTRL (atlas)         AP/APTR (manual)
+        ─────────────        ────────────────
+        isocortex            Graft           (seed)
+        thalamus             Thalamus        (target)
+        striatum             Striatum        (target)
+        piriform_complex     Palecortex      (target)
+        cerebellum           cerebellum      (target)
+    
+    roi_name format: '{canonical_name}_{hemisphere}'
+        e.g. 'thalamus_left', 'seed_right', 'paleocortex_left'
+    
+    'seed' is a special alias: maps to isocortex (CTRL) or Graft (AP/APTR).
     """
-    if 'graft' in roi_name.lower():
-        # Manual ROI
-        hemi = roi_name.split('_')[-1]  # left or right
-        roi_path = subj_dir / 'manual_roi' / 'fod_space' / f'roi_Graft_{hemi}_flip_fod.mif'
-    elif 'isocortex' in roi_name.lower():
-        # Atlas ROI
-        hemi = roi_name.split('_')[-1]
-        roi_path = subj_dir / 'atlas' / 'rois' / 'fod_space' / f'roi_isocortex_{hemi}.nii.gz'
-    else:
-        logger.warning(f"Unknown ROI naming pattern: {roi_name}")
+    # Parse roi_name into canonical name + hemisphere
+    parts = roi_name.rsplit('_', 1)
+    if len(parts) != 2 or parts[1] not in ('left', 'right'):
+        logger.warning(f"Invalid ROI name format '{roi_name}' — expected '<name>_<left|right>'")
         return None
+    canonical, hemi = parts
+    
+    # Mapping: canonical name → (CTRL atlas filename stem, AP/APTR manual filename stem)
+    # CTRL:    atlas/rois/fod_space/roi_{atlas_name}_{hemi}.nii.gz
+    # AP/APTR: manual_roi/fod_space/roi_{manual_name}_{hemi}_flip_fod.mif
+    roi_map = {
+        'seed':         ('isocortex',        'Graft'),
+        'graft':        ('isocortex',        'Graft'),
+        'isocortex':    ('isocortex',        'Graft'),
+        'thalamus':     ('thalamus',         'Thalamus'),
+        'striatum':     ('striatum',         'Striatum'),
+        'paleocortex':  ('piriform_complex', 'Palecortex'),
+        'cerebellum':   ('cerebellum',       'cerebellum'),
+    }
+    
+    mapping = roi_map.get(canonical.lower())
+    if not mapping:
+        logger.warning(f"Unknown ROI canonical name: '{canonical}'. "
+                       f"Valid names: {list(roi_map.keys())}")
+        return None
+    
+    atlas_name, manual_name = mapping
+    
+    if group == 'CTRL':
+        roi_path = subj_dir / 'atlas' / 'rois' / 'fod_space' / f'roi_{atlas_name}_{hemi}.nii.gz'
+    else:
+        roi_path = subj_dir / 'manual_roi' / 'fod_space' / f'roi_{manual_name}_{hemi}_flip_fod.mif'
     
     if roi_path.exists():
         return roi_path
@@ -296,6 +335,9 @@ def find_roi_path(subj_dir: Path, roi_name: str, group: str) -> Optional[Path]:
 
 def get_subjects(cfg: dict, group: Optional[str] = None, subject: Optional[str] = None) -> List[Tuple[str, str, str]]:
     """Get list of (subject_id, session, group) tuples."""
+    # APtestmouseNmM is a test subject borrowed from 769-C-OO-NmM — always excluded
+    EXCLUDED_SUBJECTS = {'sub-APtestmouseNmM'}
+    
     groups = cfg.get('groups', {})
     subjects = []
     
@@ -311,12 +353,14 @@ def get_subjects(cfg: dict, group: Optional[str] = None, subject: Optional[str] 
         if group not in groups:
             raise ValueError(f"Group {group} not found")
         for s in groups[group]:
-            subjects.append((s['id'], s['session'], group))
+            if s['id'] not in EXCLUDED_SUBJECTS:
+                subjects.append((s['id'], s['session'], group))
     else:
         # All groups
         for g_name, subj_list in groups.items():
             for s in subj_list:
-                subjects.append((s['id'], s['session'], g_name))
+                if s['id'] not in EXCLUDED_SUBJECTS:
+                    subjects.append((s['id'], s['session'], g_name))
     
     return subjects
 
@@ -1060,6 +1104,183 @@ def analyze_fixel_3group_comparison(hemisphere: str, cfg: dict, output_dir: str,
     return output_path
 
 
+def analyze_all_rois(cfg: dict, output_file: str, force: bool = False) -> Optional[str]:
+    """
+    Run fixel analysis for ALL shared ROIs × ALL subjects × both hemispheres.
+    
+    Shared target ROIs (exist in all 3 groups):
+        thalamus, striatum, paleocortex, cerebellum
+    
+    Group-specific seed ROI:
+        CTRL → isocortex,  AP/APTR → graft  (unified as 'seed')
+    
+    For each combination, computes:
+        FD_total, FD_ap, FD_dv, FD_lm, n_fixels, n_voxels
+        + fractional metrics (FD_ap_frac, FD_dv_frac, FD_lm_frac)
+    
+    Output: CSV with one row per (subject, roi, hemisphere).
+    """
+    logger.info("\n" + "=" * 60)
+    logger.info("ALL-ROIS MODE: Fixel analysis for all shared ROIs")
+    logger.info("=" * 60)
+    
+    # ROIs to analyze: shared targets + group-specific seed
+    shared_targets = ['thalamus', 'striatum', 'paleocortex', 'cerebellum']
+    hemispheres = ['left', 'right']
+    
+    # Get all subjects
+    subjects = get_subjects(cfg)
+    logger.info(f"Subjects: {len(subjects)}")
+    logger.info(f"Shared targets: {shared_targets}")
+    logger.info(f"+ seed ROI (isocortex for CTRL, graft for AP/APTR)")
+    
+    results = []
+    
+    for subject, session, group in subjects:
+        logger.info(f"\n{'='*50}")
+        logger.info(f"Subject: {subject} ({group})")
+        logger.info(f"{'='*50}")
+        
+        deriv_dir = Path(cfg['paths']['derivatives_flip1'])
+        subj_dir = deriv_dir / subject / session
+        
+        # Check prerequisites
+        fod_file = subj_dir / 'dwi' / 'wm_fod_norm_group.mif'
+        if not fod_file.exists():
+            logger.warning(f"  ⚠ Skipping: Group FOD not found")
+            continue
+        
+        # Generate fixels (shared across all ROIs for this subject)
+        fixel_dir = subj_dir / 'dwi' / 'fixels_group'
+        fixel_dir = generate_fixels(fod_file, fixel_dir, force)
+        if not fixel_dir:
+            logger.error(f"  ✗ Failed to generate fixels")
+            continue
+        
+        # Load fixel data ONCE per subject (expensive operation)
+        logger.info("  Loading fixel data...")
+        fixel_data = load_fixel_data(fixel_dir)
+        
+        # Build ROI list: shared targets + seed
+        roi_names = shared_targets + ['seed']
+        
+        for roi_canonical in roi_names:
+            for hemi in hemispheres:
+                roi_name = f"{roi_canonical}_{hemi}"
+                
+                roi_path = find_roi_path(subj_dir, roi_name, group)
+                if not roi_path:
+                    logger.warning(f"  ⚠ ROI not found: {roi_name}")
+                    continue
+                
+                logger.info(f"  {roi_name}: {roi_path.name}")
+                roi_mask = load_roi_mask(roi_path)
+                
+                # Compute metrics
+                metrics = compute_roi_fixel_metrics(fixel_data, roi_mask)
+                
+                # Determine display name for seed
+                if roi_canonical == 'seed':
+                    display_name = 'isocortex' if group == 'CTRL' else 'graft'
+                else:
+                    display_name = roi_canonical
+                
+                metrics['subject'] = subject
+                metrics['session'] = session
+                metrics['group'] = group
+                metrics['roi'] = display_name
+                metrics['hemisphere'] = hemi
+                
+                results.append(metrics)
+    
+    if not results:
+        logger.error("No results collected!")
+        return None
+    
+    # Save CSV
+    output_path = Path(output_file)
+    save_all_rois_csv(results, output_path)
+    
+    # Print summary table
+    print_all_rois_summary(results)
+    
+    return str(output_path)
+
+
+def save_all_rois_csv(results: List[Dict], output_file: Path):
+    """Save all-ROIs results to CSV."""
+    import csv
+    
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    fieldnames = ['subject', 'group', 'roi', 'hemisphere',
+                  'n_fixels', 'n_voxels',
+                  'fd_total', 'fd_ap', 'fd_dv', 'fd_lm',
+                  'fd_ap_frac', 'fd_dv_frac', 'fd_lm_frac',
+                  'fd_mean_per_fixel', 'session']
+    
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        for r in results:
+            total_dir = r['fd_ap'] + r['fd_dv'] + r['fd_lm']
+            n_fix = r['n_fixels'] if r['n_fixels'] > 0 else 1  # avoid div by zero
+            
+            row = {
+                'subject': r['subject'],
+                'group': r['group'],
+                'roi': r['roi'],
+                'hemisphere': r['hemisphere'],
+                'n_fixels': r['n_fixels'],
+                'n_voxels': r['n_voxels'],
+                'fd_total': f"{r['fd_total']:.6f}",
+                'fd_ap': f"{r['fd_ap']:.6f}",
+                'fd_dv': f"{r['fd_dv']:.6f}",
+                'fd_lm': f"{r['fd_lm']:.6f}",
+                'fd_ap_frac': f"{r['fd_ap']/total_dir:.4f}" if total_dir > 0 else '0',
+                'fd_dv_frac': f"{r['fd_dv']/total_dir:.4f}" if total_dir > 0 else '0',
+                'fd_lm_frac': f"{r['fd_lm']/total_dir:.4f}" if total_dir > 0 else '0',
+                'fd_mean_per_fixel': f"{r['fd_total']/n_fix:.6f}",
+                'session': r['session'],
+            }
+            writer.writerow(row)
+    
+    logger.info(f"\n✓ CSV saved: {output_file} ({len(results)} rows)")
+
+
+def print_all_rois_summary(results: List[Dict]):
+    """Print summary table of all-ROIs analysis."""
+    logger.info("\n" + "=" * 90)
+    logger.info("ALL-ROIS FIXEL ANALYSIS SUMMARY")
+    logger.info("=" * 90)
+    logger.info(f"{'Group':>6} {'Subject':>22} {'ROI':>14} {'Hemi':>6} "
+                f"{'Fixels':>7} {'FD_tot':>8} {'AP%':>6} {'DV%':>6} {'ML%':>6}")
+    logger.info("-" * 90)
+    
+    current_group = None
+    for r in sorted(results, key=lambda x: (x['group'], x['subject'], x['roi'], x['hemisphere'])):
+        if r['group'] != current_group:
+            if current_group is not None:
+                logger.info("-" * 90)
+            current_group = r['group']
+        
+        total_dir = r['fd_ap'] + r['fd_dv'] + r['fd_lm']
+        subj_short = r['subject'].replace('sub-', '')[:20]
+        
+        if total_dir > 0:
+            logger.info(f"{r['group']:>6} {subj_short:>22} {r['roi']:>14} {r['hemisphere']:>6} "
+                        f"{r['n_fixels']:>7} {r['fd_total']:>8.2f} "
+                        f"{r['fd_ap']/total_dir*100:>5.1f}% "
+                        f"{r['fd_dv']/total_dir*100:>5.1f}% "
+                        f"{r['fd_lm']/total_dir*100:>5.1f}%")
+        else:
+            logger.info(f"{r['group']:>6} {subj_short:>22} {r['roi']:>14} {r['hemisphere']:>6} "
+                        f"{r['n_fixels']:>7} {r['fd_total']:>8.2f}    0.0%   0.0%   0.0%")
+    
+    logger.info("=" * 90)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='ROI-based fixel analysis',
@@ -1068,7 +1289,10 @@ def main():
     parser.add_argument('--subject', help='Process specific subject')
     parser.add_argument('--group', help='Process all subjects in group (CTRL, AP, APTR)')
     parser.add_argument('--roi',
-                        help='ROI name (e.g., graft_left, isocortex_left)')
+                        help='ROI name (e.g., thalamus_left, seed_right, paleocortex_left)')
+    parser.add_argument('--all-rois', action='store_true',
+                        help='Analyze ALL shared ROIs (thalamus, striatum, paleocortex, '
+                             'cerebellum) + seed (isocortex/graft) × both hemispheres × all subjects')
     parser.add_argument('--probe', action='store_true',
                         help='Generate fixel probe comparison (3 groups, single-slice ROIs)')
     parser.add_argument('--compare', action='store_true',
@@ -1094,6 +1318,13 @@ def main():
     logger.info("ROI-Based Fixel Analysis")
     logger.info("="*60)
     
+    if args.all_rois:
+        logger.info("ALL-ROIS MODE: Analyzing all shared ROIs + seed for all subjects")
+        result = analyze_all_rois(cfg, args.output, force=args.force)
+        if result:
+            logger.info(f"\nDone! CSV saved to: {result}")
+        return 0
+    
     if args.probe:
         logger.info("PROBE MODE: Fixel-based comparison using single-slice probe ROIs")
         output_dir = 'reports'
@@ -1112,7 +1343,7 @@ def main():
     
     # Standard ROI mode
     if not args.roi:
-        parser.error("Must specify --roi, --probe, or --compare")
+        parser.error("Must specify --roi, --all-rois, --probe, or --compare")
     
     logger.info(f"ROI: {args.roi}")
     

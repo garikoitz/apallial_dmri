@@ -74,16 +74,19 @@
 - [x] Step 1b: Group-calibrated FODs generated for all 12 subjects (`wm_fod_norm_group.mif`)
 
 ### Phase 2: ROI-Based Subject-Space Fixel Analysis ← CURRENT
-- [ ] Step 2a: Run `fod2fixel` on each subject's `wm_fod_norm_group.mif` in subject space
+- [x] Step 2a: Run `fod2fixel` on each subject's `wm_fod_norm_group.mif` in subject space
   - Output: fixel directories with FD (apparent fibre density) and directions per voxel
-- [ ] Step 2b: Extract fixels within shared ROIs (thalamus, striatum, paleocortex, cerebellum)
+- [x] Step 2b: Extract fixels within shared ROIs (thalamus, striatum, paleocortex, cerebellum)
   - These ROIs exist in all 3 groups (from Allen atlas for CTRL, manual for AP/APTR)
   - Both already resampled to FOD space
-- [ ] Step 2c: Compute directional FD metrics per ROI (FD_total, FD_ap, FD_dv, FD_lm)
+- [x] Step 2c: Compute directional FD metrics per ROI (FD_total, FD_ap, FD_dv, FD_lm)
   - Use fixel directions to decompose FD into anterior-posterior, dorso-ventral, lateral-medial
-- [ ] Step 2d: Also extract fixels within seed regions (isocortex for CTRL, graft for AP/APTR)
+- [x] Step 2d: Also extract fixels within seed regions (isocortex for CTRL, graft for AP/APTR)
   - These are group-specific ROIs (not directly comparable across groups)
   - Compare graft segments of AP vs APTR
+- **OUTPUT**: `reports/fixel_all_rois.csv` — 120 rows (12 subjects × 5 ROIs × 2 hemispheres)
+  - Columns: subject, group, roi, hemisphere, n_fixels, n_voxels, fd_total, fd_ap, fd_dv, fd_lm, fractions, fd_mean_per_fixel
+  - Generated on 2026-02-25 with `python functions/analyze_roi_fixels.py --all-rois`
 
 ### Phase 3: Tract-Level Connectivity Metrics
 - [ ] Step 3a: Use existing wholebrain tractograms + SIFT2 weights

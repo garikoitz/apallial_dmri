@@ -51,12 +51,16 @@ def get_paths():
 
 def get_subjects(cfg, group=None, subject=None):
     """Get list of (subject_id, session, group) tuples."""
+    # APtestmouseNmM is a test subject borrowed from 769-C-OO-NmM — always excluded
+    EXCLUDED_SUBJECTS = {'sub-APtestmouseNmM'}
     subjects = []
     for group_name in ['CTRL', 'AP', 'APTR']:
         if group and group != group_name:
             continue
         for subj in cfg.get('groups', {}).get(group_name, []):
             sid = subj['id']
+            if sid in EXCLUDED_SUBJECTS:
+                continue
             if subject and subject != sid:
                 continue
             subjects.append((sid, subj['session'], group_name))

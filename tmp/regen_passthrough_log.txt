@@ -1,0 +1,26 @@
+=== Passthrough Tract Regeneration ===
+Started: Tue Feb 24 21:20:01 CET 2026
+Subjects: sub-769-C-O5-R1M sub-APtestmouseNmM sub-Apallial17NmF sub-Apallial20R1F
+
+============================================
+STEP 1: Extract passthrough (regular segments)
+============================================
+
+>>> sub-769-C-O5-R1M left hemisphere
+======================================================================
+PASSTHROUGH TRACT ANALYSIS PIPELINE
+Hemisphere: LEFT
+Started: 2026-02-24 21:20:02
+Pipeline: flip1
+Derivatives: /Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1
+======================================================================
+
+Subjects to process: 1 (left hemisphere)
+  - sub-769-C-O5-R1M (AP)
+
+======================================================================
+STEP 1: PASSTHROUGH EXTRACTION (LEFT hemisphere)
+======================================================================
+
+--- sub-769-C-O5-R1M (AP) ---
+    [1/12] seg9_graft_left_anterior_dorsal_to_Thalamus_left... Interrupted system call ; error code 4

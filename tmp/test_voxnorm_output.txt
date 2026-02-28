@@ -1,0 +1,18 @@
+
+CTRL  sub-129-921-R1F:
+  Slice 7: voxels=  47 fixels= 138  AP=0.36686 DV=0.05732 ML=0.66264  |sd|=0.75958  fix/vox=2.94
+  Slice 8: voxels= 100 fixels= 324  AP=0.88841 DV=0.02262 ML=0.52753  |sd|=1.03348  fix/vox=3.24
+  Slice 9: voxels= 187 fixels= 639  AP=0.55146 DV=0.05430 ML=0.81896  |sd|=0.98882  fix/vox=3.42
+  Slice 10: voxels= 258 fixels= 762  AP=0.32221 DV=0.07202 ML=0.81434  |sd|=0.87872  fix/vox=2.95
+
+AP    sub-596-C-OO-NmM:
+  Slice 11: voxels= 123 fixels=   8  AP=0.00070 DV=0.00328 ML=0.00479  |sd|=0.00584  fix/vox=0.07
+  Slice 12: voxels= 140 fixels=  47  AP=0.00485 DV=0.01230 ML=0.04072  |sd|=0.04281  fix/vox=0.34
+  Slice 13: voxels= 171 fixels=  13  AP=0.00054 DV=0.00579 ML=0.00595  |sd|=0.00832  fix/vox=0.08
+  Slice 15: voxels= 132 fixels=  14  AP=0.00638 DV=0.00935 ML=0.00043  |sd|=0.01132  fix/vox=0.11
+
+APTR  sub-AP72-862-901-NmF:
+  Slice 8: voxels=  24 fixels=  75  AP=0.03531 DV=0.01842 ML=0.49425  |sd|=0.49585  fix/vox=3.12
+  Slice 9: voxels=  24 fixels=  79  AP=0.14126 DV=0.00120 ML=0.81186  |sd|=0.82406  fix/vox=3.29
+  Slice 10: voxels= 159 fixels= 453  AP=0.01421 DV=0.42401 ML=0.05695  |sd|=0.42806  fix/vox=2.85
+  Slice 11: voxels= 251 fixels= 722  AP=0.04050 DV=0.45678 ML=0.03662  |sd|=0.46004  fix/vox=2.88
