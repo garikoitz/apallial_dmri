@@ -195,8 +195,8 @@ def draw_radar_mice(ax, mouse_data_list, title='', y_max=None, group='CTRL'):
 
     thin_radial_grid(ax, n_ticks=3)
 
-    ax.set_title(title, fontsize=10, pad=12)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.45, 1.15), fontsize=6.5,
+    ax.set_title(title, fontsize=10, pad=18)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.10), fontsize=6.5,
               framealpha=0.8, handlelength=1.5)
 
 
@@ -369,9 +369,10 @@ print(f"\nGlobal y_max for radar plots: {y_max_global:.4f}")
 # ============================================================
 print("\n--- Composing 3×3 figure ---")
 
-fig = plt.figure(figsize=(18, 17))
-gs = fig.add_gridspec(3, 3, hspace=0.25, wspace=0.15,
-                       height_ratios=[1, 1, 0.9])
+fig = plt.figure(figsize=(18, 20))
+gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.20,
+                       height_ratios=[1, 1, 1.0],
+                       top=0.93, bottom=0.04, left=0.08, right=0.95)
 
 groups_order = ['CTRL', 'AP', 'APTR']
 group_titles = ['Control (isocortex)', 'Apallial (graft)', '$t^{AP}$-hCO (graft + Tx)']
@@ -380,7 +381,7 @@ group_titles = ['Control (isocortex)', 'Apallial (graft)', '$t^{AP}$-hCO (graft 
 for col, group in enumerate(groups_order):
     ax = fig.add_subplot(gs[0, col])
     ax.imshow(screenshots.get((group, 'fod'), np.zeros((10, 10, 3), dtype=np.uint8)))
-    ax.set_title(f'{group_titles[col]}\n{REPR_SUBJECTS[group]["id"]}', fontsize=11, fontweight='bold')
+    ax.set_title(f'{group_titles[col]}\n{REPR_SUBJECTS[group]["id"]}', fontsize=11, fontweight='bold', pad=10)
     ax.axis('off')
     if col == 0:
         ax.set_ylabel('FODs', fontsize=14, fontweight='bold', labelpad=20)
@@ -405,15 +406,15 @@ for col, group in enumerate(groups_order):
         ax.set_title(f'{group}: no data', fontsize=10)
 
 # Row labels on left side
-fig.text(0.02, 0.85, 'Row 1: FOD Glyphs', fontsize=12, fontweight='bold',
+fig.text(0.02, 0.78, 'Row 1: FOD Glyphs', fontsize=12, fontweight='bold',
          rotation=90, va='center')
-fig.text(0.02, 0.55, 'Row 2: Fixel Sticks', fontsize=12, fontweight='bold',
+fig.text(0.02, 0.50, 'Row 2: Fixel Sticks', fontsize=12, fontweight='bold',
          rotation=90, va='center')
-fig.text(0.02, 0.22, 'Row 3: Individual Mice\n(first-thalamus slice)', fontsize=11,
+fig.text(0.02, 0.20, 'Row 3: Individual Mice\n(first-thalamus slice)', fontsize=11,
          fontweight='bold', rotation=90, va='center')
 
 fig.suptitle('Fixel Direction Analysis — Control vs Apallial vs $t^{AP}$-hCO (left hemisphere) v08 [newmask]',
-             fontsize=16, fontweight='bold', y=0.98)
+             fontsize=16, fontweight='bold', y=0.97)
 
 save_path = REPORTS / 'fixel_4x3_comparison_v08.png'
 fig.savefig(save_path, dpi=150, bbox_inches='tight', facecolor='white')
