@@ -421,6 +421,19 @@ fig.savefig(save_path, dpi=150, bbox_inches='tight', facecolor='white')
 print(f"\n✅ Saved: {save_path}")
 
 save_path_svg = REPORTS / 'fixel_4x3_comparison_v08.svg'
-fig.savefig(save_path_svg, format='svg', bbox_inches='tight', facecolor='white')
-print(f"✅ Saved: {save_path_svg}")
+try:
+    import cairo  # pycairo — enables matplotlib cairo backend
+    from matplotlib.backends.backend_cairo import FigureCanvasCairo
+    canvas_orig = fig.canvas
+    FigureCanvasCairo(fig)        # attach cairo canvas
+    fig.savefig(save_path_svg, format='svg', bbox_inches='tight', facecolor='white')
+    fig.set_canvas(canvas_orig)   # restore original canvas
+    print(f"✅ Saved (cairo SVG): {save_path_svg}")
+except Exception as e:
+    print(f"⚠️  Cairo SVG failed ({e}), using default SVG with fonttype=none")
+    # Use fonttype='none' so text stays as <text> elements (not paths),
+    # and skip bbox_inches='tight' which mis-calculates text bboxes in SVG.
+    with matplotlib.rc_context({'svg.fonttype': 'none'}):
+        fig.savefig(save_path_svg, format='svg', facecolor='white')
+    print(f"✅ Saved (SVG fonttype=none): {save_path_svg}")
 plt.close(fig)
