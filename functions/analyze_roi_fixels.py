@@ -1304,8 +1304,14 @@ def main():
     parser.add_argument('--force', action='store_true',
                         help='Force regeneration of fixels')
     parser.add_argument('--log-file', help='Path to log file')
+    parser.add_argument('--derivatives-dir', type=str,
+                        help='Override derivatives directory (default: from config1.yaml)')
     
     args = parser.parse_args()
+    
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
     
     # Setup logger
     global logger

@@ -427,8 +427,14 @@ def main():
                         help='Use shrunk graft segments (eroded by 1 voxel) - AP/APTR only')
     parser.add_argument('--create-shrink-segments', action='store_true',
                         help='Create shrunk versions of all graft segments for AP/APTR')
+    parser.add_argument('--derivatives-dir', type=str,
+                        help='Override derivatives directory (default: from config1.yaml)')
     
     args = parser.parse_args()
+    
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
     
     # Load configuration
     cfg = load_config()

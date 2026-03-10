@@ -245,20 +245,30 @@ Examples:
         default="config1.yaml",
         help="Path to config file (default: config1.yaml)"
     )
+    parser.add_argument(
+        "--derivatives-dir",
+        help="Override derivatives directory (default: from config or MBRAIN_DERIVATIVES_DIR env var)"
+    )
     
     args = parser.parse_args()
     
     # Load configuration
     config = load_config(args.config)
     
-    # Get base path - use derivatives_flip1 or derivatives_dir
-    paths = config.get('paths', {})
-    base_path = Path(paths.get('derivatives_flip1') or paths.get('derivatives_dir'))
-    
-    if not base_path.exists():
-        # Try using repo_dir + relative path
-        repo_dir = Path(paths.get('repo_dir', '/Users/glerma/soft/mbrain'))
-        base_path = repo_dir / "data" / "derivatives" / "mrtrix_preproc_flip1"
+    # Get base path - CLI flag > env var > config
+    if args.derivatives_dir:
+        base_path = Path(args.derivatives_dir)
+    else:
+        import os
+        env_deriv = os.environ.get('MBRAIN_DERIVATIVES_DIR')
+        if env_deriv:
+            base_path = Path(env_deriv)
+        else:
+            paths = config.get('paths', {})
+            base_path = Path(paths.get('derivatives_flip1') or paths.get('derivatives_dir'))
+            if not base_path.exists():
+                repo_dir = Path(paths.get('repo_dir', '/Users/glerma/soft/mbrain'))
+                base_path = repo_dir / "data" / "derivatives" / "mrtrix_preproc_flip1"
     
     # Determine which subjects to process
     subjects_to_process = []

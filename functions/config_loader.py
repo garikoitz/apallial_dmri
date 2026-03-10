@@ -59,7 +59,71 @@ def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = No
     with open(config_path, 'r') as f:
         _config = yaml.safe_load(f)
     
+    # Resolve {variable} placeholders in paths
+    _resolve_path_variables(_config)
+    
+    # Allow environment variable override for derivatives directory
+    # Used by --derivatives-dir CLI args across pipeline scripts
+    deriv_override = os.environ.get('MBRAIN_DERIVATIVES_DIR')
+    if deriv_override and 'paths' in _config:
+        _config['paths']['derivatives_dir'] = deriv_override
+        _config['paths']['derivatives_flip1'] = deriv_override
+    
     return _config
+
+
+def _resolve_path_variables(cfg: Dict[str, Any], max_passes: int = 5) -> None:
+    """
+    Resolve {variable} placeholders in the 'paths' section of the config.
+    
+    Variables like {repo_dir}, {data_base}, {matlab_path}, {rtp2_pipeline_path}
+    are expanded using values from the same 'paths' dict.
+    Also resolves {matlab_path} and {rtp2_pipeline_path} references in other sections.
+    """
+    if 'paths' not in cfg:
+        return
+    
+    paths = cfg['paths']
+    
+    # Multi-pass resolution (handles chained references)
+    for _ in range(max_passes):
+        changed = False
+        for key, val in paths.items():
+            if isinstance(val, str) and '{' in val:
+                new_val = val
+                for ref_key, ref_val in paths.items():
+                    if isinstance(ref_val, str) and '{' not in ref_val:
+                        new_val = new_val.replace('{' + ref_key + '}', ref_val)
+                if new_val != val:
+                    paths[key] = new_val
+                    changed = True
+        if not changed:
+            break
+    
+    # Also resolve path references in other sections (matlab_cleaning, atlas_coreg, file_tree, etc.)
+    _resolve_nested(cfg, paths)
+
+
+def _resolve_nested(obj: Any, paths: Dict[str, str]) -> None:
+    """Recursively resolve {variable} placeholders in nested dicts/lists using paths dict."""
+    if isinstance(obj, dict):
+        for key, val in obj.items():
+            if isinstance(val, str) and '{' in val:
+                for ref_key, ref_val in paths.items():
+                    if isinstance(ref_val, str):
+                        val = val.replace('{' + ref_key + '}', ref_val)
+                obj[key] = val
+            elif isinstance(val, (dict, list)):
+                _resolve_nested(val, paths)
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            if isinstance(item, str) and '{' in item:
+                for ref_key, ref_val in paths.items():
+                    if isinstance(ref_val, str):
+                        item = item.replace('{' + ref_key + '}', ref_val)
+                obj[i] = item
+            elif isinstance(item, (dict, list)):
+                _resolve_nested(item, paths)
 
 def get_current_pipeline() -> str:
     """Get the currently loaded pipeline name ('flip1')."""

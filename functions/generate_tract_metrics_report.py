@@ -955,8 +955,14 @@ def main():
                         help='Output directory for report files')
     parser.add_argument('--version', type=str, default='v01',
                         help='Report version suffix')
+    parser.add_argument('--derivatives-dir', type=str,
+                        help='Override derivatives directory (default: from config1.yaml)')
 
     args = parser.parse_args()
+
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
 
     print("=" * 70)
     print("MBRAIN PER-TRACT METRICS REPORT")

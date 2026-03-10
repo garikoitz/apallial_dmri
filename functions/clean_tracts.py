@@ -97,6 +97,7 @@ def run_matlab_cleaning(tracks_file, output_file, dry_run=False):
     # Use -batch flag for true non-interactive mode (faster and more reliable than -r)
     matlab_cmd = (
         f"addpath(genpath('{afq_path}')); "
+        f"addpath('/opt/mrtrix-3.0.3/matlab'); "
         f"dwidir='{dwidir}'; "
         f"tckfilename='{tckfilename}'; "
         f"fg=fgRead(fullfile(dwidir,tckfilename)); "
@@ -234,6 +235,7 @@ def run_batch_matlab_cleaning(tract_dir, tck_files, params, paths, dry_run=False
     
     matlab_cmd = (
         f"addpath(genpath('{afq_path}')); "
+        f"addpath('/opt/mrtrix-3.0.3/matlab'); "
         f"dwidir = '{tract_dir}'; "
         f"files = {{'{file_list}'}}; "
         f"for i = 1:length(files), "
@@ -322,7 +324,7 @@ def run_batch_matlab_cleaning(tract_dir, tck_files, params, paths, dry_run=False
 
 
 def run_passthrough_cleaning(group=None, subject=None, dry_run=False,
-                              use_shrink=False, force=False):
+                              use_shrink=False, use_cst=False, force=False):
     """Clean all passthrough tracts for specified subjects.
     
     Uses batch MATLAB processing (one session per subject directory)
@@ -333,6 +335,7 @@ def run_passthrough_cleaning(group=None, subject=None, dry_run=False,
         subject: Optional subject filter
         dry_run: Preview mode
         use_shrink: Use passthrough_tracts_shrink/ for AP/APTR
+        use_cst: Clean CST tracts in passthrough_cst/ (AP/APTR only)
         force: Re-clean even if _cleaned exists
     """
     cfg = load_config()
@@ -377,20 +380,31 @@ def run_passthrough_cleaning(group=None, subject=None, dry_run=False,
         # Determine which passthrough dirs to clean
         dirs_to_clean = []
         
-        # Always clean regular passthrough_tracts
-        pt_dir = wholebrain_dir / "passthrough_tracts"
-        if pt_dir.exists():
-            dirs_to_clean.append(("passthrough_tracts", pt_dir))
-        else:
-            print(f"  WARNING: {pt_dir} does not exist, skipping")
-        
-        # For AP/APTR with --shrink, also clean passthrough_tracts_shrink
-        if use_shrink and grp_name in ('AP', 'APTR'):
-            pt_shrink_dir = wholebrain_dir / "passthrough_tracts_shrink"
-            if pt_shrink_dir.exists():
-                dirs_to_clean.append(("passthrough_tracts_shrink", pt_shrink_dir))
+        if use_cst:
+            # CST mode: only clean passthrough_cst/ (AP/APTR subjects)
+            if grp_name in ('AP', 'APTR'):
+                cst_dir = wholebrain_dir / "passthrough_cst"
+                if cst_dir.exists():
+                    dirs_to_clean.append(("passthrough_cst", cst_dir))
+                else:
+                    print(f"  WARNING: {cst_dir} does not exist, skipping")
             else:
-                print(f"  WARNING: {pt_shrink_dir} does not exist, skipping")
+                print(f"  SKIP: CST cleaning only applies to AP/APTR (this is {grp_name})")
+        else:
+            # Regular passthrough mode
+            pt_dir = wholebrain_dir / "passthrough_tracts"
+            if pt_dir.exists():
+                dirs_to_clean.append(("passthrough_tracts", pt_dir))
+            else:
+                print(f"  WARNING: {pt_dir} does not exist, skipping")
+            
+            # For AP/APTR with --shrink, also clean passthrough_tracts_shrink
+            if use_shrink and grp_name in ('AP', 'APTR'):
+                pt_shrink_dir = wholebrain_dir / "passthrough_tracts_shrink"
+                if pt_shrink_dir.exists():
+                    dirs_to_clean.append(("passthrough_tracts_shrink", pt_shrink_dir))
+                else:
+                    print(f"  WARNING: {pt_shrink_dir} does not exist, skipping")
         
         for dir_label, pt_path in dirs_to_clean:
             # Find all raw .tck files (exclude _cleaned, _SF, afd_samples)
@@ -452,22 +466,29 @@ def main():
                         help='Clean passthrough tracts (batch MATLAB per subject)')
     parser.add_argument('--shrink', action='store_true',
                         help='Use passthrough_tracts_shrink/ (AP/APTR only, with --passthrough)')
+    parser.add_argument('--passthrough-cst', action='store_true',
+                        help='Clean CST passthrough tracts in passthrough_cst/ (AP/APTR only)')
     parser.add_argument('--force', action='store_true',
                         help='Re-clean even if _cleaned files already exist')
+    parser.add_argument('--derivatives-dir', type=str,
+                        help='Override derivatives directory (default: from config1.yaml)')
     
     args = parser.parse_args()
     
-    if args.passthrough:
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
+    
+    if args.passthrough or args.passthrough_cst:
         run_passthrough_cleaning(
             group=args.group,
             subject=args.subject,
             dry_run=args.dry_run,
             use_shrink=args.shrink,
+            use_cst=args.passthrough_cst,
             force=args.force
         )
         return
-    
-    args = parser.parse_args()
     
     subjects = get_subjects(group=args.group, subject=args.subject)
     tracts = get_tracts(tract_name=args.tract, segment=args.segment)

@@ -1,0 +1,13 @@
+subject,group,left_anterior_cerebellum,left_anterior_paleocortex,left_anterior_striatum,left_anterior_thalamus,left_central_cerebellum,left_central_paleocortex,left_central_striatum,left_central_thalamus,left_posterior_cerebellum,left_posterior_paleocortex,left_posterior_striatum,left_posterior_thalamus,right_anterior_cerebellum,right_anterior_paleocortex,right_anterior_striatum,right_anterior_thalamus,right_central_cerebellum,right_central_paleocortex,right_central_striatum,right_central_thalamus,right_posterior_cerebellum,right_posterior_paleocortex,right_posterior_striatum,right_posterior_thalamus
+sub-129-921-R1F,CTRL,21,664,6509,2439,23,5623,23892,6738,112,6441,1832,3426,20,1162,5950,1649,109,4760,22113,4367,144,4564,4363,4849
+sub-129-921-R1L1F,CTRL,19,3400,1036,222,20,5496,109,321,18,5394,4,37,17,2778,1042,311,38,3640,1493,1290,91,8018,67,786
+sub-129-1014-L1M,CTRL,19,6219,893,471,33,4236,102,632,36,4436,36,310,8,6249,1198,427,66,5589,2908,2488,30,6434,20,346
+sub-138-1010-L1F,CTRL,0,1994,1402,1052,0,3372,656,705,2,4785,105,568,0,1612,498,139,11,3673,1104,933,17,5432,134,698
+sub-596-C-OO-NmM,AP,0,1109,72,1,0,991,1360,72,13,1696,757,957,1,367,268,24,9,135,245,51,11,949,206,456
+sub-769-C-O5-R1M,AP,0,11,1,0,0,876,158,2,81,3,12,17,0,1008,283,63,2,131,89,31,4,0,0,33
+sub-769-C-OO-NmM,AP,0,2,0,0,5,140,24,114,18,64,20,95,0,45,27,137,1,152,272,31,34,15,70,752
+sub-875-C-OO-NM,AP,0,676,207,1,0,975,405,3,32,8,30,19,13,2849,1923,392,136,70,309,99,8,1825,863,175
+sub-AP72-862-901-NmF,APTR,56,1988,3518,585,526,1576,6465,4260,29,56,233,277,139,51,293,258,47,1528,1393,1229,19,18,24,60
+sub-AP72-862-901-R1M,APTR,22,1686,1398,419,75,1604,1173,1452,24,223,181,66,38,794,1152,506,69,138,603,218,9,13,34,22
+sub-Apallial17NmF,APTR,30,336,650,749,54,3619,982,106,48,1717,1325,111,92,202,446,444,18,5080,1507,377,18,5492,1633,191
+sub-Apallial20R1F,APTR,57,330,263,1019,86,3052,1526,1040,17,471,147,105,19,132,911,4310,42,1485,4931,5558,31,66,92,33

@@ -189,15 +189,23 @@ def reestimate_fods(subjects: List[Tuple[str, str, str]],
             fail_count += 1
             continue
         
-        # Normalize
+        # Normalize — try WM+CSF first, fall back to WM-only, then copy
         norm_cmd = (f"mtnormalise '{wm_fod_group}' '{wm_fod_norm_group}' "
                    f"'{csf_fod_group}' '{csf_fod_norm_group}' "
                    f"-mask '{mask}' -force -quiet")
         
         result = subprocess.run(norm_cmd, shell=True, capture_output=True, text=True)
         if result.returncode != 0:
-            logger.warning(f"  ⚠ mtnormalise failed (copying unnormalized): {result.stderr[:200]}")
-            run_cmd(f"cp '{wm_fod_group}' '{wm_fod_norm_group}'", "Using unnormalized FOD...")
+            logger.warning(f"  ⚠ mtnormalise WM+CSF failed: {result.stderr[:200]}")
+            logger.info("  Trying WM-only mtnormalise as fallback...")
+            norm_wm_cmd = (f"mtnormalise '{wm_fod_group}' '{wm_fod_norm_group}' "
+                          f"-mask '{mask}' -force -quiet")
+            result2 = subprocess.run(norm_wm_cmd, shell=True, capture_output=True, text=True)
+            if result2.returncode != 0:
+                logger.warning(f"  ⚠ mtnormalise WM-only also failed (copying unnormalized): {result2.stderr[:200]}")
+                run_cmd(f"cp '{wm_fod_group}' '{wm_fod_norm_group}'", "Using unnormalized FOD...")
+            else:
+                logger.info("  ✓ FOD normalized (WM-only fallback)")
         else:
             logger.info("  ✓ FOD normalized")
         
@@ -218,8 +226,14 @@ def main():
     parser.add_argument('--force', action='store_true',
                         help='Force regeneration even if output exists')
     parser.add_argument('--log-file', help='Path to log file')
+    parser.add_argument('--derivatives-dir', type=str,
+                        help='Override derivatives directory (default: from config1.yaml)')
     
     args = parser.parse_args()
+    
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
     
     # Setup logger
     global logger

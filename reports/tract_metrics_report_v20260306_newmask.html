@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBRAIN Tract Metrics Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+
+<script>
+// ── Custom Chart.js plugin: Error Bars ──
+const errorBarsPlugin = {
+  id: 'customErrorBars',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    chart.data.datasets.forEach((ds, di) => {
+      if (!ds._errorBars) return;
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((bar, idx) => {
+        const err = ds._errorBars[idx];
+        if (err == null || err === 0 || isNaN(err)) return;
+        const x = bar.x;
+        const yScale = chart.scales.y;
+        const mean = ds.data[idx];
+        const yTop = yScale.getPixelForValue(mean + err);
+        const yBottom = yScale.getPixelForValue(Math.max(0, mean - err));
+        const capW = bar.width ? bar.width * 0.3 : 5;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, yTop);
+        ctx.lineTo(x, yBottom);
+        ctx.moveTo(x - capW, yTop);
+        ctx.lineTo(x + capW, yTop);
+        ctx.moveTo(x - capW, yBottom);
+        ctx.lineTo(x + capW, yBottom);
+        ctx.stroke();
+        ctx.restore();
+      });
+    });
+  }
+};
+
+// ── Custom Chart.js plugin: Individual Data Points ──
+const dataPointsPlugin = {
+  id: 'customDataPoints',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    chart.data.datasets.forEach((ds, di) => {
+      if (!ds._dataPoints) return;
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((bar, idx) => {
+        const pts = ds._dataPoints[idx];
+        if (!pts || pts.length === 0) return;
+        const x = bar.x;
+        const yScale = chart.scales.y;
+        const n = pts.length;
+        const spread = Math.min(bar.width ? bar.width * 0.6 : 8, 16);
+        const jitter = n > 1
+          ? pts.map((_, i) => (i - (n-1)/2) * (spread / Math.max(n-1, 1)))
+          : [0];
+        ctx.save();
+        ctx.fillStyle = ds.borderColor || '#333';
+        ctx.globalAlpha = 0.7;
+        pts.forEach((val, pi) => {
+          const px = x + jitter[pi];
+          const py = yScale.getPixelForValue(val);
+          ctx.beginPath();
+          ctx.arc(px, py, 3.5, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+        ctx.restore();
+      });
+    });
+  }
+};
+</script>
+
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       margin: 0; padding: 20px; background: #f5f5f5; color: #333; }
+.container { max-width: 1600px; margin: 0 auto; }
+h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+h2 { color: #34495e; margin-top: 30px; }
+h3 { color: #7f8c8d; margin-top: 20px; }
+.info-box { background: #fdf6e3; border-left: 4px solid #f39c12; padding: 12px 18px;
+             margin: 10px 0; font-size: 13px; }
+.info-box code { background: #eee; padding: 1px 5px; border-radius: 3px; }
+.summary-box { background: white; border-radius: 8px; padding: 20px;
+                margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; }
+th, td { border: 1px solid #ddd; padding: 5px 8px; text-align: right; }
+th { background: #3498db; color: white; position: sticky; top: 0; font-size: 11px; }
+td:first-child, td:nth-child(2) { text-align: left; }
+tr:nth-child(even) { background: #f8f9fa; }
+tr:hover { background: #e8f4fd; }
+tr.group-mean { font-weight: bold; background: #eee !important; }
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 15px 0; }
+.chart-box { background: white; border-radius: 8px; padding: 15px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.tabs { display: flex; gap: 5px; margin: 20px 0 10px; }
+.tab { padding: 8px 16px; background: #ecf0f1; border: none; border-radius: 5px 5px 0 0;
+        cursor: pointer; font-size: 14px; }
+.tab.active { background: #3498db; color: white; }
+.tab-content { display: none; } .tab-content.active { display: block; }
+.group-ctrl { color: #2ecc71; } .group-ap { color: #e74c3c; } .group-aptr { color: #f39c12; }
+.zero { color: #ccc; }
+.footer { text-align: center; color: #95a5a6; margin-top: 40px; padding: 20px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>MBRAIN Tract Metrics Report</h1>
+<p>Generated: 2026-03-06 17:38:25</p>
+
+<div class="info-box">
+<strong>Segments (source ROIs):</strong>
+CTRL: <code>isocortex_{anterior, central, posterior}</code> &harr;
+AP/APTR: <code>seg9_graft_{anterior, central, posterior}_dorsal</code> (shrunk ROIs)<br>
+<strong>Targets (X-axis):</strong> Striatum, Thalamus, Paleocortex, Cerebellum (L/R)<br>
+<strong>Tracts:</strong> AP/APTR from <code>passthrough_tracts_shrink/</code>;
+CTRL from <code>passthrough_tracts/</code>. All MATLAB AFQ-cleaned.
+</div>
+<div class="info-box" style="border-left-color: #3498db;">
+<strong>Metrics:</strong><br>
+<b>Count</b>: Number of streamlines in cleaned passthrough tract.<br>
+<b>SIFT2 Weighted</b>: Sum of SIFT2 weights for matched streamlines (whole-brain SIFT2).
+Biologically-corrected connection strength.<br>
+<b>Density</b>: Streamline count / target ROI volume (mm&sup3;).
+Normalizes for target region size.
+</div>
+<div class="summary-box"><h2>Summary</h2>
+<h3 class="group-ctrl">CTRL (4 subjects)</h3>
+<p>Subjects: sub-129-1014-L1M, sub-129-921-R1F, sub-129-921-R1L1F, sub-138-1010-L1F<br>Total streamlines: 219,495 | Total SIFT2: 525148.41</p>
+<h3 class="group-ap">AP (4 subjects)</h3>
+<p>Subjects: sub-596-C-OO-NmM, sub-769-C-O5-R1M, sub-769-C-OO-NmM, sub-875-C-OO-NM<br>Total streamlines: 25,591 | Total SIFT2: 98066.87</p>
+<h3 class="group-aptr">APTR (4 subjects)</h3>
+<p>Subjects: sub-AP72-862-901-NmF, sub-AP72-862-901-R1M, sub-Apallial17NmF, sub-Apallial20R1F<br>Total streamlines: 87,497 | Total SIFT2: 407299.56</p>
+</div>
+<div class="tabs">
+<button class="tab active" onclick="showTab('left')">Left Hemisphere</button>
+<button class="tab" onclick="showTab('right')">Right Hemisphere</button>
+</div>
+<div id="tab-left" class="tab-content active">
+<h2>Left Hemisphere</h2>
+<div class="summary-box"><h3>Source Segment: Anterior</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>893</td><td>2500.9674</td><td>72.52</td><td>471</td><td>1248.7952</td><td>63.25</td><td>6,219</td><td>16631.4097</td><td>589.29</td><td>19</td><td>9.9409</td><td>0.91</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>6,509</td><td>9446.4564</td><td>530.03</td><td>2,439</td><td>4036.2645</td><td>350.77</td><td>664</td><td>2203.6355</td><td>62.85</td><td>21</td><td>11.7445</td><td>0.91</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>1,036</td><td>3705.0068</td><td>81.39</td><td>222</td><td>737.4656</td><td>31.32</td><td>3,400</td><td>11215.6918</td><td>267.11</td><td>19</td><td>10.8697</td><td>0.87</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>1,402</td><td>2269.6340</td><td>109.85</td><td>1,052</td><td>947.6448</td><td>136.74</td><td>1,994</td><td>4310.0382</td><td>168.69</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>72</td><td>83.0908</td><td>9.04</td><td>1</td><td>0.2932</td><td>0.47</td><td>1,109</td><td>2062.4703</td><td>91.36</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>1</td><td>0.4315</td><td>0.15</td><td class="zero">0</td><td>0.0000</td><td>0.00</td><td>11</td><td>23.4647</td><td>1.22</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.0000</td><td>0.00</td><td class="zero">0</td><td>0.0000</td><td>0.00</td><td>2</td><td>7.5789</td><td>0.22</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>207</td><td>233.8963</td><td>23.35</td><td>1</td><td>0.6308</td><td>0.25</td><td>676</td><td>1333.2053</td><td>70.78</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>3,518</td><td>15201.3249</td><td>345.09</td><td>585</td><td>5870.4382</td><td>127.54</td><td>1,988</td><td>7583.1192</td><td>236.35</td><td>56</td><td>387.9809</td><td>11.67</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>1,398</td><td>6182.8601</td><td>161.26</td><td>419</td><td>1580.3423</td><td>155.02</td><td>1,686</td><td>6080.5452</td><td>209.09</td><td>22</td><td>63.7622</td><td>4.32</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>650</td><td>4817.1731</td><td>123.19</td><td>749</td><td>3088.2419</td><td>424.06</td><td>336</td><td>3549.8887</td><td>52.77</td><td>30</td><td>80.0673</td><td>7.11</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>263</td><td>2281.6325</td><td>86.26</td><td>1,019</td><td>5419.3794</td><td>377.41</td><td>330</td><td>2987.5874</td><td>61.37</td><td>57</td><td>300.9165</td><td>16.61</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>2460&plusmn;1354</td><td>4480.5161&plusmn;1684.9478</td><td>198.45&plusmn;110.81</td><td>1046&plusmn;496</td><td>1742.5425&plusmn;771.7398</td><td>145.52&plusmn;71.89</td><td>3069&plusmn;1189</td><td>8590.1938&plusmn;3299.7759</td><td>271.99&plusmn;113.69</td><td>15&plusmn;5</td><td>8.1388&plusmn;2.7378</td><td>0.67&plusmn;0.22</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>70&plusmn;49</td><td>79.3546&plusmn;55.0932</td><td>8.14&plusmn;5.49</td><td>0&plusmn;0</td><td>0.2310&plusmn;0.1501</td><td>0.18&plusmn;0.11</td><td>450&plusmn;271</td><td>856.6798&plusmn;507.9556</td><td>40.89&plusmn;23.57</td><td>0&plusmn;0</td><td>0.0000&plusmn;0.0000</td><td>0.00&plusmn;0.00</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>1457&plusmn;726</td><td>7120.7476&plusmn;2812.1589</td><td>178.95&plusmn;57.46</td><td>693&plusmn;128</td><td>3989.6005&plusmn;1008.2489</td><td>271.01&plusmn;75.71</td><td>1085&plusmn;439</td><td>5050.2851&plusmn;1079.4519</td><td>139.89&plusmn;48.17</td><td>41&plusmn;9</td><td>208.1817&plusmn;80.7247</td><td>9.93&plusmn;2.69</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_0"></canvas></div>
+<div class="chart-box"><canvas id="chart_1"></canvas></div>
+<div class="chart-box"><canvas id="chart_2"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_0');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [2460.0, 1046.0, 3069.25, 14.75], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [1353.915002, 495.823053, 1189.247337, 4.939214], "_dataPoints": [[893.0, 6509.0, 1036.0, 1402.0], [471.0, 2439.0, 222.0, 1052.0], [6219.0, 664.0, 3400.0, 1994.0], [19.0, 21.0, 19.0, 0.0]]}, {"label": "AP", "data": [70.0, 0.5, 449.5, 0.0], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [48.67751, 0.288675, 270.613654, 0.0], "_dataPoints": [[72.0, 1.0, 0.0, 207.0], [1.0, 0.0, 0.0, 1.0], [1109.0, 11.0, 2.0, 676.0], [0.0, 0.0, 0.0, 0.0]]}, {"label": "APTR", "data": [1457.25, 693.0, 1085.0, 41.25], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [726.182183, 127.851476, 438.52366, 8.957074], "_dataPoints": [[3518.0, 1398.0, 650.0, 263.0], [585.0, 419.0, 749.0, 1019.0], [1988.0, 1686.0, 336.0, 330.0], [56.0, 22.0, 30.0, 57.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Anterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_1');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [4480.516124, 1742.542519, 8590.193783, 8.138791], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [1684.94783, 771.739848, 3299.775903, 2.737805], "_dataPoints": [[2500.967389, 9446.456362, 3705.00677, 2269.633975], [1248.795219, 4036.264456, 737.465601, 947.6448], [16631.409659, 2203.635469, 11215.691846, 4310.038159], [9.940919, 11.744536, 10.869708, 0.0]]}, {"label": "AP", "data": [79.354645, 0.231019, 856.679797, 0.0], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [55.093193, 0.150128, 507.955626, 0.0], "_dataPoints": [[83.090783, 0.431466, 0.0, 233.896329], [0.293247, 0.0, 0.0, 0.63083], [2062.470274, 23.46469, 7.578896, 1333.205328], [0.0, 0.0, 0.0, 0.0]]}, {"label": "APTR", "data": [7120.747637, 3989.600467, 5050.285128, 208.18173], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [2812.158919, 1008.248909, 1079.451855, 80.724723], "_dataPoints": [[15201.324913, 6182.860073, 4817.173088, 2281.632476], [5870.438219, 1580.342328, 3088.241945, 5419.379378], [7583.119186, 6080.545236, 3549.888736, 2987.587353], [387.980851, 63.762222, 80.067304, 300.916544]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Anterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_2');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [198.447831, 145.519749, 271.985547, 0.670375], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [110.8144, 71.887829, 113.694046, 0.223604], "_dataPoints": [[72.518829, 530.031664, 81.388971, 109.85186], [63.24912, 350.769459, 31.32114, 136.739279], [589.294783, 62.851962, 267.106661, 168.688783], [0.905002, 0.905462, 0.871035, 0.0]]}, {"label": "AP", "data": [8.135437, 0.179206, 40.893619, 0.0], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [5.49416, 0.112697, 23.573176, 0.0], "_dataPoints": [[9.039548, 0.151947, 0.0, 23.350254], [0.467836, 0.0, 0.0, 0.248988], [91.360313, 1.216142, 0.221945, 70.776076], [0.0, 0.0, 0.0, 0.0]]}, {"label": "APTR", "data": [178.952608, 271.007504, 139.893507, 9.927655], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [57.456542, 75.709339, 48.174376, 2.693729], "_dataPoints": [[345.091007, 161.261007, 123.193556, 86.264863], [127.536428, 155.023904, 424.062279, 377.407407], [236.350653, 209.088607, 52.767962, 61.366806], [11.666644, 4.320843, 7.111111, 16.612022]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Anterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+<div class="summary-box"><h3>Source Segment: Central</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>102</td><td>252.8239</td><td>8.28</td><td>632</td><td>2506.4586</td><td>84.87</td><td>4,236</td><td>16208.5195</td><td>401.39</td><td>33</td><td>66.3351</td><td>1.57</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>23,892</td><td>37660.3852</td><td>1945.54</td><td>6,738</td><td>13106.8161</td><td>969.04</td><td>5,623</td><td>18439.7885</td><td>532.25</td><td>23</td><td>76.9905</td><td>0.99</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>109</td><td>322.9229</td><td>8.56</td><td>321</td><td>725.6214</td><td>45.29</td><td>5,496</td><td>19333.1090</td><td>431.77</td><td>20</td><td>13.8878</td><td>0.92</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>656</td><td>2529.4025</td><td>51.40</td><td>705</td><td>1382.0355</td><td>91.64</td><td>3,372</td><td>13163.5537</td><td>285.27</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>1,360</td><td>1347.0363</td><td>170.75</td><td>72</td><td>37.8702</td><td>33.68</td><td>991</td><td>1009.5900</td><td>81.64</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>158</td><td>115.2663</td><td>24.01</td><td>2</td><td>0.6529</td><td>0.53</td><td>876</td><td>1341.7517</td><td>96.85</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>24</td><td>25.1874</td><td>3.97</td><td>114</td><td>86.8005</td><td>31.67</td><td>140</td><td>390.3785</td><td>15.54</td><td>5</td><td>3.6314</td><td>1.15</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>405</td><td>269.9756</td><td>45.69</td><td>3</td><td>1.3357</td><td>0.75</td><td>975</td><td>1197.1611</td><td>102.08</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>6,465</td><td>18580.8995</td><td>634.17</td><td>4,260</td><td>17980.5512</td><td>928.73</td><td>1,576</td><td>14024.4967</td><td>187.37</td><td>526</td><td>2981.5007</td><td>109.58</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>1,173</td><td>4641.2126</td><td>135.31</td><td>1,452</td><td>3361.4997</td><td>537.22</td><td>1,604</td><td>5683.8853</td><td>198.92</td><td>75</td><td>280.7920</td><td>14.73</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>982</td><td>4577.5591</td><td>186.12</td><td>106</td><td>737.4905</td><td>60.01</td><td>3,619</td><td>11778.4355</td><td>568.35</td><td>54</td><td>303.6592</td><td>12.80</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>1,526</td><td>5987.2124</td><td>500.53</td><td>1,040</td><td>5486.2876</td><td>385.19</td><td>3,052</td><td>14308.4268</td><td>567.55</td><td>86</td><td>536.0035</td><td>25.06</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>6190&plusmn;5902</td><td>10191.3836&plusmn;9171.5752</td><td>503.45&plusmn;480.80</td><td>2099&plusmn;1549</td><td>4430.2329&plusmn;2915.4710</td><td>297.71&plusmn;224.01</td><td>4682&plusmn;537</td><td>16786.2427&plusmn;1374.7237</td><td>412.67&plusmn;50.85</td><td>19&plusmn;7</td><td>39.3034&plusmn;19.0214</td><td>0.87&plusmn;0.32</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>487&plusmn;302</td><td>439.3664&plusmn;306.7495</td><td>61.10&plusmn;37.53</td><td>48&plusmn;27</td><td>31.6648&plusmn;20.3307</td><td>16.66&plusmn;9.26</td><td>746&plusmn;203</td><td>984.7203&plusmn;209.4563</td><td>74.03&plusmn;19.97</td><td>1&plusmn;1</td><td>0.9079&plusmn;0.9079</td><td>0.29&plusmn;0.29</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>2536&plusmn;1314</td><td>8446.7209&plusmn;3393.6591</td><td>364.03&plusmn;120.96</td><td>1714&plusmn;894</td><td>6891.4572&plusmn;3821.8060</td><td>477.79&plusmn;180.27</td><td>2463&plusmn;517</td><td>11448.8111&plusmn;2003.2178</td><td>380.55&plusmn;108.22</td><td>185&plusmn;114</td><td>1025.4888&plusmn;654.5475</td><td>40.54&plusmn;23.17</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_3"></canvas></div>
+<div class="chart-box"><canvas id="chart_4"></canvas></div>
+<div class="chart-box"><canvas id="chart_5"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_3');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [6189.75, 2099.0, 4681.75, 19.0], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [5902.176609, 1548.57273, 537.206722, 6.916165], "_dataPoints": [[102.0, 23892.0, 109.0, 656.0], [632.0, 6738.0, 321.0, 705.0], [4236.0, 5623.0, 5496.0, 3372.0], [33.0, 23.0, 20.0, 0.0]]}, {"label": "AP", "data": [486.75, 47.75, 745.5, 1.25], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [301.587847, 27.496591, 203.429144, 1.25], "_dataPoints": [[1360.0, 158.0, 24.0, 405.0], [72.0, 2.0, 114.0, 3.0], [991.0, 876.0, 140.0, 975.0], [0.0, 0.0, 5.0, 0.0]]}, {"label": "APTR", "data": [2536.5, 1714.5, 2462.75, 185.25], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [1314.338395, 893.993801, 517.035359, 113.777103], "_dataPoints": [[6465.0, 1173.0, 982.0, 1526.0], [4260.0, 1452.0, 106.0, 1040.0], [1576.0, 1604.0, 3619.0, 3052.0], [526.0, 75.0, 54.0, 86.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Central segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_4');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [10191.383615, 4430.232882, 16786.242668, 39.303361], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [9171.575168, 2915.471046, 1374.723664, 19.021362], "_dataPoints": [[252.823853, 37660.385244, 322.922895, 2529.402469], [2506.458572, 13106.816073, 725.621424, 1382.03546], [16208.519454, 18439.788534, 19333.109015, 13163.553668], [66.335124, 76.990546, 13.887775, 0.0]]}, {"label": "AP", "data": [439.36639, 31.664849, 984.720331, 0.907861], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [306.749501, 20.330682, 209.456288, 0.907861], "_dataPoints": [[1347.03632, 115.266307, 25.18737, 269.975564], [37.870188, 0.652949, 86.80051, 1.335748], [1009.590048, 1341.751727, 390.37847, 1197.161081], [0.0, 0.0, 3.631443, 0.0]]}, {"label": "APTR", "data": [8446.720901, 6891.457247, 11448.81108, 1025.488845], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [3393.659103, 3821.806017, 2003.217822, 654.547523], "_dataPoints": [[18580.899529, 4641.212566, 4577.559068, 5987.212443], [17980.551245, 3361.499672, 737.49049, 5486.287579], [14024.496672, 5683.885325, 11778.435494, 14308.426828], [2981.50066, 280.791992, 303.659237, 536.00349]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Central segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_5');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [503.446463, 297.70812, 412.670092, 0.870105], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [480.804398, 224.010031, 50.846452, 0.324871], "_dataPoints": [[8.283226, 1945.539486, 8.563125, 51.400014], [84.869308, 969.038383, 45.288675, 91.636114], [401.391333, 532.253889, 431.770061, 285.265084], [1.571845, 0.991697, 0.916879, 0.0]]}, {"label": "AP", "data": [61.1013, 16.657927, 74.02637, 0.286369], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [37.528103, 9.256982, 19.972893, 0.286369], "_dataPoints": [[170.747018, 24.007597, 3.965304, 45.685279], [33.684211, 0.533867, 31.666667, 0.746965], [81.639378, 96.849088, 15.536135, 102.080879], [0.0, 0.0, 1.145475, 0.0]]}, {"label": "APTR", "data": [364.03199, 477.786255, 380.54821, 40.544255], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [120.9602, 180.274814, 108.223701, 23.169885], "_dataPoints": [[634.170939, 135.306982, 186.117034, 500.533005], [928.726807, 537.218876, 60.014154, 385.185185], [187.368526, 198.919411, 568.354927, 567.549977], [109.583121, 14.730148, 12.8, 25.063752]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Central segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+<div class="summary-box"><h3>Source Segment: Posterior</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>36</td><td>25.0256</td><td>2.92</td><td>310</td><td>669.6404</td><td>41.63</td><td>4,436</td><td>16350.2623</td><td>420.34</td><td>36</td><td>93.3119</td><td>1.71</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>1,832</td><td>3569.0623</td><td>149.18</td><td>3,426</td><td>6747.6028</td><td>492.72</td><td>6,441</td><td>16971.7977</td><td>609.68</td><td>112</td><td>261.9610</td><td>4.83</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>4</td><td>1.1270</td><td>0.31</td><td>37</td><td>87.2811</td><td>5.22</td><td>5,394</td><td>17510.7375</td><td>423.76</td><td>18</td><td>12.8372</td><td>0.83</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>105</td><td>325.9564</td><td>8.23</td><td>568</td><td>890.6969</td><td>73.83</td><td>4,785</td><td>13620.3658</td><td>404.80</td><td>2</td><td>0.6896</td><td>0.10</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>757</td><td>552.4385</td><td>95.04</td><td>957</td><td>680.2611</td><td>447.72</td><td>1,696</td><td>2340.5868</td><td>139.72</td><td>13</td><td>9.4272</td><td>2.43</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>12</td><td>5.8412</td><td>1.82</td><td>17</td><td>326.1522</td><td>4.54</td><td>3</td><td>1.4041</td><td>0.33</td><td>81</td><td>42.9379</td><td>17.31</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>20</td><td>133.5612</td><td>3.30</td><td>95</td><td>1181.8950</td><td>26.39</td><td>64</td><td>36.3222</td><td>7.10</td><td>18</td><td>167.2076</td><td>4.12</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>30</td><td>16.5243</td><td>3.38</td><td>19</td><td>429.2764</td><td>4.73</td><td>8</td><td>4.2626</td><td>0.84</td><td>32</td><td>19.3476</td><td>8.04</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>233</td><td>4482.9396</td><td>22.86</td><td>277</td><td>3472.8789</td><td>60.39</td><td>56</td><td>2751.6446</td><td>6.66</td><td>29</td><td>478.0742</td><td>6.04</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>181</td><td>2596.0664</td><td>20.88</td><td>66</td><td>854.0910</td><td>24.42</td><td>223</td><td>5196.4015</td><td>27.66</td><td>24</td><td>110.8887</td><td>4.71</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>1,325</td><td>7149.0574</td><td>251.13</td><td>111</td><td>969.3421</td><td>62.85</td><td>1,717</td><td>11305.0429</td><td>269.65</td><td>48</td><td>497.2029</td><td>11.38</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>147</td><td>2147.4615</td><td>48.22</td><td>105</td><td>1149.7585</td><td>38.89</td><td>471</td><td>6207.0985</td><td>87.59</td><td>17</td><td>106.0060</td><td>4.95</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>494&plusmn;446</td><td>980.2928&plusmn;866.0824</td><td>40.16&plusmn;36.38</td><td>1085&plusmn;788</td><td>2098.8053&plusmn;1558.8347</td><td>153.35&plusmn;113.99</td><td>5264&plusmn;439</td><td>16113.2908&plusmn;864.1336</td><td>464.65&plusmn;48.52</td><td>42&plusmn;24</td><td>92.1999&plusmn;60.2029</td><td>1.87&plusmn;1.04</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>205&plusmn;184</td><td>177.0913&plusmn;128.4162</td><td>25.89&plusmn;23.05</td><td>272&plusmn;229</td><td>654.3962&plusmn;190.9073</td><td>120.84&plusmn;109.08</td><td>443&plusmn;418</td><td>595.6439&plusmn;581.7015</td><td>37.00&plusmn;34.27</td><td>36&plusmn;16</td><td>59.7301&plusmn;36.5086</td><td>7.97&plusmn;3.32</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>472&plusmn;285</td><td>4093.8812&plusmn;1137.1553</td><td>85.77&plusmn;55.47</td><td>140&plusmn;47</td><td>1611.5176&plusmn;623.4295</td><td>46.64&plusmn;9.15</td><td>617&plusmn;377</td><td>6365.0469&plusmn;1799.3267</td><td>97.89&plusmn;59.77</td><td>30&plusmn;7</td><td>298.0430&plusmn;109.5372</td><td>6.77&plusmn;1.56</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_6"></canvas></div>
+<div class="chart-box"><canvas id="chart_7"></canvas></div>
+<div class="chart-box"><canvas id="chart_8"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_6');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [494.25, 1085.25, 5264.0, 42.0], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [446.414302, 787.744605, 439.436571, 24.344746], "_dataPoints": [[36.0, 1832.0, 4.0, 105.0], [310.0, 3426.0, 37.0, 568.0], [4436.0, 6441.0, 5394.0, 4785.0], [36.0, 112.0, 18.0, 2.0]]}, {"label": "AP", "data": [204.75, 272.0, 442.75, 36.0], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [184.120149, 229.053851, 417.978742, 15.529542], "_dataPoints": [[757.0, 12.0, 20.0, 30.0], [957.0, 17.0, 95.0, 19.0], [1696.0, 3.0, 64.0, 8.0], [13.0, 81.0, 18.0, 32.0]]}, {"label": "APTR", "data": [471.5, 139.75, 616.75, 29.5], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [285.048972, 46.824806, 376.527196, 6.639528], "_dataPoints": [[233.0, 181.0, 1325.0, 147.0], [277.0, 66.0, 111.0, 105.0], [56.0, 223.0, 1717.0, 471.0], [29.0, 24.0, 48.0, 17.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Posterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_7');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [980.292818, 2098.80531, 16113.290819, 92.199926], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [866.082395, 1558.834664, 864.133571, 60.202875], "_dataPoints": [[25.025556, 3569.062267, 1.127005, 325.956445], [669.640418, 6747.602814, 87.281083, 890.696927], [16350.262272, 16971.79771, 17510.7375, 13620.365796], [93.311912, 261.960983, 12.837226, 0.689582]]}, {"label": "AP", "data": [177.091288, 654.396177, 595.643905, 59.730087], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [128.416224, 190.907278, 581.701471, 36.508583], "_dataPoints": [[552.438461, 5.841244, 133.56119, 16.524258], [680.261064, 326.152203, 1181.895042, 429.276398], [2340.586769, 1.40406, 36.322185, 4.262606], [9.427162, 42.937939, 167.207607, 19.347639]]}, {"label": "APTR", "data": [4093.881244, 1611.517619, 6365.046883, 298.042951], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [1137.155315, 623.429473, 1799.326652, 109.537241], "_dataPoints": [[4482.939642, 2596.066432, 7149.057372, 2147.461531], [3472.878874, 854.090975, 969.342098, 1149.758529], [2751.644569, 5196.401545, 11305.042926, 6207.098492], [478.074213, 110.888669, 497.202947, 106.005975]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Posterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_8');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [40.161425, 153.348673, 464.646228, 1.866146], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [36.377065, 113.987372, 48.521202, 1.04167], "_dataPoints": [[2.923491, 149.180828, 0.314243, 8.227136], [41.628933, 492.716756, 5.22019, 73.828812], [420.342765, 609.682963, 423.756861, 404.802321], [1.71474, 4.829133, 0.825191, 0.095518]]}, {"label": "AP", "data": [25.88817, 120.84421, 36.997335, 7.974827], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [23.053671, 109.078956, 34.27477, 3.324802], "_dataPoints": [[95.040804, 1.823362, 3.30442, 3.384095], [447.719298, 4.537871, 26.388889, 4.730781], [139.717846, 0.331675, 7.102233, 0.837587], [2.432749, 17.307692, 4.123711, 8.035154]]}, {"label": "APTR", "data": [85.769009, 46.635496, 97.88769, 6.771886], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [55.469032, 9.15373, 59.766268, 1.562233], "_dataPoints": [[22.855658, 20.878571, 251.125326, 48.216482], [60.389044, 24.41904, 62.845011, 38.888889], [6.657765, 27.655255, 269.650569, 87.587169], [6.041655, 4.713647, 11.377778, 4.954463]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Posterior segment (Left)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+</div>
+<div id="tab-right" class="tab-content">
+<h2>Right Hemisphere</h2>
+<div class="summary-box"><h3>Source Segment: Anterior</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>1,198</td><td>2877.1106</td><td>91.30</td><td>427</td><td>1111.7647</td><td>71.84</td><td>6,249</td><td>14174.2551</td><td>548.43</td><td>8</td><td>2.7976</td><td>0.39</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>5,950</td><td>10022.8856</td><td>423.42</td><td>1,649</td><td>2378.7680</td><td>239.47</td><td>1,162</td><td>2145.8167</td><td>87.22</td><td>20</td><td>31.6635</td><td>1.00</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>1,042</td><td>1594.7359</td><td>80.65</td><td>311</td><td>728.9933</td><td>39.17</td><td>2,778</td><td>10077.7920</td><td>237.26</td><td>17</td><td>8.6750</td><td>0.77</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>498</td><td>1909.4032</td><td>35.90</td><td>139</td><td>244.5020</td><td>16.14</td><td>1,612</td><td>6417.8119</td><td>144.90</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>268</td><td>5084.6006</td><td>33.22</td><td>24</td><td>336.8397</td><td>11.72</td><td>367</td><td>9942.7716</td><td>32.43</td><td>1</td><td>0.6370</td><td>0.13</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>283</td><td>365.5364</td><td>42.85</td><td>63</td><td>50.6289</td><td>15.01</td><td>1,008</td><td>2263.2146</td><td>96.97</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>27</td><td>1343.7101</td><td>4.15</td><td>137</td><td>93.8734</td><td>31.47</td><td>45</td><td>4352.7624</td><td>5.07</td><td class="zero">0</td><td>0.0000</td><td>0.00</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>1,923</td><td>1868.5174</td><td>238.73</td><td>392</td><td>227.4054</td><td>91.94</td><td>2,849</td><td>3535.0649</td><td>272.89</td><td>13</td><td>4.9376</td><td>3.27</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>293</td><td>4973.1230</td><td>31.03</td><td>258</td><td>2170.7021</td><td>55.30</td><td>51</td><td>3328.8582</td><td>6.92</td><td>139</td><td>52.8726</td><td>32.28</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>1,152</td><td>4600.0354</td><td>164.88</td><td>506</td><td>2258.0616</td><td>137.98</td><td>794</td><td>3562.8961</td><td>81.28</td><td>38</td><td>10.4287</td><td>5.85</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>446</td><td>2380.5225</td><td>64.05</td><td>444</td><td>1813.3666</td><td>177.78</td><td>202</td><td>1876.4299</td><td>24.23</td><td>92</td><td>35.1530</td><td>19.80</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>911</td><td>6612.1973</td><td>205.53</td><td>4,310</td><td>8512.3202</td><td>1268.58</td><td>132</td><td>3649.8855</td><td>19.95</td><td>19</td><td>37.8829</td><td>6.40</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>2172&plusmn;1268</td><td>4101.0338&plusmn;1992.7178</td><td>157.82&plusmn;89.34</td><td>632&plusmn;344</td><td>1116.0070&plusmn;456.7899</td><td>91.65&plusmn;50.58</td><td>2950&plusmn;1151</td><td>8203.9189&plusmn;2566.5654</td><td>254.45&plusmn;102.75</td><td>11&plusmn;5</td><td>10.7840&plusmn;7.1907</td><td>0.54&plusmn;0.22</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>625&plusmn;437</td><td>2165.5911&plusmn;1021.6227</td><td>79.74&plusmn;53.63</td><td>154&plusmn;83</td><td>177.1868&plusmn;65.1722</td><td>37.53&plusmn;18.64</td><td>1067&plusmn;627</td><td>5023.4534&plusmn;1695.1828</td><td>101.84&plusmn;60.18</td><td>4&plusmn;3</td><td>1.3936&plusmn;1.1908</td><td>0.85&plusmn;0.81</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>700&plusmn;200</td><td>4641.4695&plusmn;871.1755</td><td>116.37&plusmn;41.15</td><td>1380&plusmn;978</td><td>3688.6126&plusmn;1610.7770</td><td>409.91&plusmn;287.36</td><td>295&plusmn;169</td><td>3104.5174&plusmn;414.9362</td><td>33.10&plusmn;16.48</td><td>72&plusmn;27</td><td>34.0843&plusmn;8.7947</td><td>16.08&plusmn;6.29</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_9"></canvas></div>
+<div class="chart-box"><canvas id="chart_10"></canvas></div>
+<div class="chart-box"><canvas id="chart_11"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_9');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [2172.0, 631.5, 2950.25, 11.25], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [1268.238148, 344.287065, 1151.092696, 4.534589], "_dataPoints": [[1198.0, 5950.0, 1042.0, 498.0], [427.0, 1649.0, 311.0, 139.0], [6249.0, 1162.0, 2778.0, 1612.0], [8.0, 20.0, 17.0, 0.0]]}, {"label": "AP", "data": [625.25, 154.0, 1067.25, 3.5], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [436.541402, 82.72142, 626.730188, 3.175426], "_dataPoints": [[268.0, 283.0, 27.0, 1923.0], [24.0, 63.0, 137.0, 392.0], [367.0, 1008.0, 45.0, 2849.0], [1.0, 0.0, 0.0, 13.0]]}, {"label": "APTR", "data": [700.5, 1379.5, 294.75, 72.0], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [199.789264, 978.253333, 169.251969, 27.163088], "_dataPoints": [[293.0, 1152.0, 446.0, 911.0], [258.0, 506.0, 444.0, 4310.0], [51.0, 794.0, 202.0, 132.0], [139.0, 38.0, 92.0, 19.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Anterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_10');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [4101.033837, 1116.007005, 8203.91894, 10.784011], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [1992.717809, 456.789887, 2566.565412, 7.190716], "_dataPoints": [[2877.110625, 10022.885646, 1594.73589, 1909.403188], [1111.764663, 2378.768049, 728.993295, 244.502013], [14174.255132, 2145.81665, 10077.792034, 6417.811946], [2.797614, 31.663459, 8.674969, 0.0]]}, {"label": "AP", "data": [2165.591121, 177.186825, 5023.453391, 1.393649], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [1021.622667, 65.172205, 1695.182797, 1.190819], "_dataPoints": [[5084.600603, 365.536429, 1343.710093, 1868.517359], [336.839715, 50.628873, 93.873355, 227.405359], [9942.771624, 2263.214639, 4352.76243, 3535.064869], [0.636999, 0.0, 0.0, 4.937598]]}, {"label": "APTR", "data": [4641.469522, 3688.612645, 3104.517419, 34.084291], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [871.175462, 1610.777017, 414.936247, 8.794689], "_dataPoints": [[4973.122977, 4600.035382, 2380.522466, 6612.197262], [2170.702131, 2258.061595, 1813.366623, 8512.320232], [3328.858152, 3562.896098, 1876.429908, 3649.885516], [52.872595, 10.428701, 35.153007, 37.882863]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Anterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_11');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [157.816565, 91.65386, 254.450497, 0.541221], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [89.343089, 50.580093, 102.748585, 0.220522], "_dataPoints": [[91.300387, 423.416285, 80.652327, 35.89726], [71.837907, 239.471562, 39.167765, 16.138206], [548.42656, 87.215033, 237.264851, 144.895543], [0.388949, 1.004127, 0.771808, 0.0]]}, {"label": "AP", "data": [79.741313, 37.534998, 101.839945, 0.8519], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [53.63201, 18.641446, 60.183965, 0.807828], "_dataPoints": [[33.224857, 42.854439, 4.152249, 238.733706], [11.721612, 15.013405, 31.467126, 91.937848], [32.427656, 96.969697, 5.069708, 272.89272], [0.134071, 0.0, 0.0, 3.273528]]}, {"label": "APTR", "data": [116.370212, 409.908569, 33.097894, 16.081667], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [41.153378, 287.357964, 16.478365, 6.288448], "_dataPoints": [[31.028246, 164.879295, 64.045952, 205.527355], [55.300374, 137.976287, 177.777778, 1268.579838], [6.9216, 81.283807, 24.231519, 19.954649], [32.276413, 5.852032, 19.800915, 6.397306]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Anterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+<div class="summary-box"><h3>Source Segment: Central</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>2,908</td><td>6567.1249</td><td>221.62</td><td>2,488</td><td>5782.2181</td><td>418.58</td><td>5,589</td><td>19735.1488</td><td>490.50</td><td>66</td><td>162.6527</td><td>3.21</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>22,113</td><td>25867.0415</td><td>1573.61</td><td>4,367</td><td>6963.5374</td><td>634.19</td><td>4,760</td><td>17277.2689</td><td>357.27</td><td>109</td><td>158.4189</td><td>5.47</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>1,493</td><td>2903.5951</td><td>115.56</td><td>1,290</td><td>3648.4484</td><td>162.46</td><td>3,640</td><td>15581.8765</td><td>310.89</td><td>38</td><td>106.7917</td><td>1.73</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>1,104</td><td>2718.0591</td><td>79.58</td><td>933</td><td>2212.1967</td><td>108.32</td><td>3,673</td><td>12916.8028</td><td>330.15</td><td>11</td><td>5.0583</td><td>0.51</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>245</td><td>8822.0460</td><td>30.37</td><td>51</td><td>976.7587</td><td>24.91</td><td>135</td><td>10979.9546</td><td>11.93</td><td>9</td><td>3.4887</td><td>1.21</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td>89</td><td>594.0677</td><td>13.48</td><td>31</td><td>105.0351</td><td>7.39</td><td>131</td><td>2201.5653</td><td>12.60</td><td>2</td><td>1.0980</td><td>0.41</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>272</td><td>2898.2335</td><td>41.83</td><td>31</td><td>240.1638</td><td>7.12</td><td>152</td><td>4847.7328</td><td>17.12</td><td>1</td><td>1.1693</td><td>0.23</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>309</td><td>6862.8535</td><td>38.36</td><td>99</td><td>1617.5368</td><td>23.22</td><td>70</td><td>7932.0190</td><td>6.70</td><td>136</td><td>34.7983</td><td>34.25</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>1,393</td><td>8920.0502</td><td>147.52</td><td>1,229</td><td>4738.6844</td><td>263.43</td><td>1,528</td><td>12643.3843</td><td>207.38</td><td>47</td><td>230.0179</td><td>10.91</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>603</td><td>4323.6833</td><td>86.30</td><td>218</td><td>2733.4455</td><td>59.44</td><td>138</td><td>2250.7695</td><td>14.13</td><td>69</td><td>24.7072</td><td>10.63</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>1,507</td><td>9088.3424</td><td>216.41</td><td>377</td><td>2106.7053</td><td>150.95</td><td>5,080</td><td>19495.6309</td><td>609.39</td><td>18</td><td>215.9545</td><td>3.87</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>4,931</td><td>13530.6392</td><td>1112.46</td><td>5,558</td><td>8234.6796</td><td>1635.91</td><td>1,485</td><td>12091.9634</td><td>224.49</td><td>42</td><td>66.9315</td><td>14.14</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>6904&plusmn;5084</td><td>9513.9551&plusmn;5522.5923</td><td>497.59&plusmn;359.94</td><td>2270&plusmn;774</td><td>4651.6001&plusmn;1063.8121</td><td>330.89&plusmn;121.65</td><td>4416&plusmn;470</td><td>16377.7743&plusmn;1434.4811</td><td>372.20&plusmn;40.56</td><td>56&plusmn;21</td><td>108.2304&plusmn;36.6597</td><td>2.73&plusmn;1.07</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>229&plusmn;48</td><td>4794.3002&plusmn;1864.9994</td><td>31.01&plusmn;6.32</td><td>53&plusmn;16</td><td>734.8736&plusmn;351.0742</td><td>15.66&plusmn;4.87</td><td>122&plusmn;18</td><td>6490.3179&plusmn;1900.1496</td><td>12.09&plusmn;2.13</td><td>37&plusmn;33</td><td>10.1386&plusmn;8.2387</td><td>9.02&plusmn;8.41</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>2108&plusmn;962</td><td>8965.6788&plusmn;1879.8075</td><td>390.67&plusmn;242.06</td><td>1846&plusmn;1257</td><td>4453.3787&plusmn;1379.7549</td><td>527.43&plusmn;371.84</td><td>2058&plusmn;1058</td><td>11620.4370&plusmn;3548.2168</td><td>263.85&plusmn;124.66</td><td>44&plusmn;10</td><td>134.4028&plusmn;51.9442</td><td>9.89&plusmn;2.16</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_12"></canvas></div>
+<div class="chart-box"><canvas id="chart_13"></canvas></div>
+<div class="chart-box"><canvas id="chart_14"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_12');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [6904.5, 2269.5, 4415.5, 56.0], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [5084.294584, 774.21471, 469.795079, 20.932431], "_dataPoints": [[2908.0, 22113.0, 1493.0, 1104.0], [2488.0, 4367.0, 1290.0, 933.0], [5589.0, 4760.0, 3640.0, 3673.0], [66.0, 109.0, 38.0, 11.0]]}, {"label": "AP", "data": [228.75, 53.0, 122.0, 37.0], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [48.39486, 16.041613, 17.921123, 33.047945], "_dataPoints": [[245.0, 89.0, 272.0, 309.0], [51.0, 31.0, 31.0, 99.0], [135.0, 131.0, 152.0, 70.0], [9.0, 2.0, 1.0, 136.0]]}, {"label": "APTR", "data": [2108.5, 1845.5, 2057.75, 44.0], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [962.062844, 1257.244905, 1057.832404, 10.464225], "_dataPoints": [[1393.0, 603.0, 1507.0, 4931.0], [1229.0, 218.0, 377.0, 5558.0], [1528.0, 138.0, 5080.0, 1485.0], [47.0, 69.0, 18.0, 42.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Central segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_13');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [9513.955145, 4651.600119, 16377.774253, 108.230413], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [5522.592268, 1063.812072, 1434.481053, 36.659719], "_dataPoints": [[6567.124947, 25867.041477, 2903.595073, 2718.059083], [5782.218056, 6963.537383, 3648.44838, 2212.196655], [19735.148765, 17277.268947, 15581.876458, 12916.802844], [162.652741, 158.418862, 106.791725, 5.058325]]}, {"label": "AP", "data": [4794.300177, 734.873603, 6490.317923, 10.138571], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [1864.99936, 351.074197, 1900.149646, 8.238653], "_dataPoints": [[8822.04602, 594.067673, 2898.233506, 6862.853508], [976.758662, 105.035073, 240.163836, 1617.53684], [10979.954611, 2201.565337, 4847.732785, 7932.018957], [3.488722, 1.097984, 1.169251, 34.798325]]}, {"label": "APTR", "data": [8965.678794, 4453.378681, 11620.437016, 134.402771], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [1879.807471, 1379.754881, 3548.216775, 51.944222], "_dataPoints": [[8920.05023, 4323.683347, 9088.342406, 13530.639195], [4738.684391, 2733.445461, 2106.705271, 8234.679602], [12643.384303, 2250.769471, 19495.630935, 12091.963354], [230.017889, 24.707226, 215.954507, 66.931463]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Central segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_14');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [497.593666, 330.887812, 372.201637, 2.72816], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [359.93825, 121.648596, 40.565, 1.068715], "_dataPoints": [[221.620639, 1573.614169, 115.560388, 79.579469], [418.577779, 634.185756, 162.464364, 108.323351], [490.503448, 357.266401, 310.88699, 330.149709], [3.208827, 5.472493, 1.725217, 0.506105]]}, {"label": "AP", "data": [31.010498, 15.658817, 12.089993, 9.024968], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [6.317433, 4.865112, 2.133689, 8.409717], "_dataPoints": [[30.37347, 13.477191, 41.830065, 38.361266], [24.908425, 7.387548, 7.120299, 23.218997], [11.928429, 12.602213, 17.124349, 6.704981], [1.206637, 0.4144, 0.232693, 34.246144]]}, {"label": "APTR", "data": [390.672921, 527.432752, 263.845122, 9.888793], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [242.060208, 371.838878, 124.664706, 2.157453], "_dataPoints": [[147.516539, 86.304006, 216.40639, 1112.464749], [263.426974, 59.444329, 150.950951, 1635.908756], [207.376564, 14.127412, 609.386715, 224.489796], [10.913607, 10.626059, 3.874092, 14.141414]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Central segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+<div class="summary-box"><h3>Source Segment: Posterior</h3>
+<table><thead><tr><th>Subject</th><th>Group</th><th colspan="3">Striatum</th><th colspan="3">Thalamus</th><th colspan="3">Paleocortex</th><th colspan="3">Cerebellum</th></tr><tr><th></th><th></th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th><th>Count</th><th>SIFT2</th><th>Density</th></tr></thead><tbody>
+<tr><td>sub-129-1014-L1M</td><td class="group-ctrl">CTRL</td><td>20</td><td>130.6650</td><td>1.52</td><td>346</td><td>524.9561</td><td>58.21</td><td>6,434</td><td>17472.5957</td><td>564.66</td><td>30</td><td>43.6038</td><td>1.46</td></tr>
+<tr><td>sub-129-921-R1F</td><td class="group-ctrl">CTRL</td><td>4,363</td><td>8403.7550</td><td>310.48</td><td>4,849</td><td>10426.0224</td><td>704.18</td><td>4,564</td><td>14232.0337</td><td>342.56</td><td>144</td><td>438.6206</td><td>7.23</td></tr>
+<tr><td>sub-129-921-R1L1F</td><td class="group-ctrl">CTRL</td><td>67</td><td>54.9037</td><td>5.19</td><td>786</td><td>957.9430</td><td>98.99</td><td>8,018</td><td>18333.8483</td><td>684.81</td><td>91</td><td>103.5757</td><td>4.13</td></tr>
+<tr><td>sub-138-1010-L1F</td><td class="group-ctrl">CTRL</td><td>134</td><td>159.4820</td><td>9.66</td><td>698</td><td>1032.1987</td><td>81.04</td><td>5,432</td><td>14272.9458</td><td>488.26</td><td>17</td><td>15.4706</td><td>0.78</td></tr>
+<tr><td>sub-596-C-OO-NmM</td><td class="group-ap">AP</td><td>206</td><td>223.5522</td><td>25.54</td><td>456</td><td>491.0908</td><td>222.71</td><td>949</td><td>1629.4564</td><td>83.85</td><td>11</td><td>8.4820</td><td>1.47</td></tr>
+<tr><td>sub-769-C-O5-R1M</td><td class="group-ap">AP</td><td class="zero">0</td><td>0.0000</td><td>0.00</td><td>33</td><td>26.5187</td><td>7.86</td><td class="zero">0</td><td>0.0000</td><td>0.00</td><td>4</td><td>2.4959</td><td>0.83</td></tr>
+<tr><td>sub-769-C-OO-NmM</td><td class="group-ap">AP</td><td>70</td><td>26.8903</td><td>10.77</td><td>752</td><td>432.0438</td><td>172.72</td><td>15</td><td>5.2703</td><td>1.69</td><td>34</td><td>21.1465</td><td>7.91</td></tr>
+<tr><td>sub-875-C-OO-NM</td><td class="group-ap">AP</td><td>863</td><td>527.5215</td><td>107.14</td><td>175</td><td>73.3539</td><td>41.04</td><td>1,825</td><td>1489.0852</td><td>174.81</td><td>8</td><td>1.7915</td><td>2.01</td></tr>
+<tr><td>sub-AP72-862-901-NmF</td><td class="group-aptr">APTR</td><td>24</td><td>2265.5628</td><td>2.54</td><td>60</td><td>1479.9651</td><td>12.86</td><td>18</td><td>1976.7313</td><td>2.44</td><td>19</td><td>99.7750</td><td>4.41</td></tr>
+<tr><td>sub-AP72-862-901-R1M</td><td class="group-aptr">APTR</td><td>34</td><td>390.0741</td><td>4.87</td><td>22</td><td>169.4017</td><td>6.00</td><td>13</td><td>108.1187</td><td>1.33</td><td>9</td><td>2.7031</td><td>1.39</td></tr>
+<tr><td>sub-Apallial17NmF</td><td class="group-aptr">APTR</td><td>1,633</td><td>6301.2807</td><td>234.50</td><td>191</td><td>1156.4740</td><td>76.48</td><td>5,492</td><td>13266.6164</td><td>658.81</td><td>18</td><td>35.4082</td><td>3.87</td></tr>
+<tr><td>sub-Apallial20R1F</td><td class="group-aptr">APTR</td><td>92</td><td>3496.5451</td><td>20.76</td><td>33</td><td>858.0676</td><td>9.71</td><td>66</td><td>2911.2260</td><td>9.98</td><td>31</td><td>12.1576</td><td>10.44</td></tr>
+<tr class="group-mean"><td>CTRL Mean &plusmn; SEM</td><td class="group-ctrl">CTRL</td><td>1146&plusmn;1073</td><td>2187.2014&plusmn;2072.3019</td><td>81.71&plusmn;76.27</td><td>1670&plusmn;1064</td><td>3235.2801&plusmn;2399.5219</td><td>235.61&plusmn;156.42</td><td>6112&plusmn;741</td><td>16077.8559&plusmn;1068.4709</td><td>520.07&plusmn;71.68</td><td>70&plusmn;29</td><td>150.3177&plusmn;97.8413</td><td>3.40&plusmn;1.47</td></tr>
+<tr class="group-mean"><td>AP Mean &plusmn; SEM</td><td class="group-ap">AP</td><td>285&plusmn;197</td><td>194.4910&plusmn;121.6794</td><td>35.86&plusmn;24.33</td><td>354&plusmn;159</td><td>255.7518&plusmn;119.8193</td><td>111.09&plusmn;51.49</td><td>697&plusmn;437</td><td>780.9530&plusmn;450.2759</td><td>65.09&plusmn;41.48</td><td>14&plusmn;7</td><td>8.4790&plusmn;4.4813</td><td>3.06&plusmn;1.64</td></tr>
+<tr class="group-mean"><td>APTR Mean &plusmn; SEM</td><td class="group-aptr">APTR</td><td>446&plusmn;396</td><td>3113.3657&plusmn;1239.7821</td><td>65.67&plusmn;56.42</td><td>76&plusmn;39</td><td>915.9771&plusmn;279.3817</td><td>26.26&plusmn;16.80</td><td>1397&plusmn;1365</td><td>4565.6731&plusmn;2958.2656</td><td>168.14&plusmn;163.57</td><td>19&plusmn;5</td><td>37.5110&plusmn;21.8625</td><td>5.03&plusmn;1.92</td></tr>
+</tbody></table>
+<div class="chart-grid">
+<div class="chart-box"><canvas id="chart_15"></canvas></div>
+<div class="chart-box"><canvas id="chart_16"></canvas></div>
+<div class="chart-box"><canvas id="chart_17"></canvas></div>
+</div>
+<script>
+
+(function() {
+  var ctx = document.getElementById('chart_15');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [1146.0, 1669.75, 6112.0, 70.5], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [1072.58838, 1064.004102, 741.351469, 29.33286], "_dataPoints": [[20.0, 4363.0, 67.0, 134.0], [346.0, 4849.0, 786.0, 698.0], [6434.0, 4564.0, 8018.0, 5432.0], [30.0, 144.0, 91.0, 17.0]]}, {"label": "AP", "data": [284.75, 354.0, 697.25, 14.25], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [197.436646, 159.135686, 436.541402, 6.737643], "_dataPoints": [[206.0, 0.0, 70.0, 863.0], [456.0, 33.0, 752.0, 175.0], [949.0, 0.0, 15.0, 1825.0], [11.0, 4.0, 34.0, 8.0]]}, {"label": "APTR", "data": [445.75, 76.5, 1397.25, 19.25], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [396.033748, 38.992521, 1364.968948, 4.516175], "_dataPoints": [[24.0, 34.0, 1633.0, 92.0], [60.0, 22.0, 191.0, 33.0], [18.0, 13.0, 5492.0, 66.0], [19.0, 9.0, 18.0, 31.0]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Streamline Count: Posterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Count', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_16');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [2187.201415, 3235.280073, 16077.855909, 150.317667], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [2072.301856, 2399.521874, 1068.470906, 97.841286], "_dataPoints": [[130.665009, 8403.754974, 54.903713, 159.481966], [524.956124, 10426.022411, 957.943048, 1032.198708], [17472.595741, 14232.033747, 18333.848335, 14272.945814], [43.603767, 438.620632, 103.5757, 15.470571]]}, {"label": "AP", "data": [194.491002, 255.751803, 780.952977, 8.478967], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [121.679445, 119.81935, 450.275894, 4.481321], "_dataPoints": [[223.552187, 0.0, 26.890278, 527.521544], [491.090767, 26.518727, 432.043844, 73.353874], [1629.456424, 0.0, 5.270274, 1489.085209], [8.481954, 2.495913, 21.146533, 1.791469]]}, {"label": "APTR", "data": [3113.36567, 915.977106, 4565.673102, 37.510986], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [1239.782081, 279.381695, 2958.265555, 21.862456], "_dataPoints": [[2265.562803, 390.074083, 6301.280666, 3496.545128], [1479.965147, 169.401723, 1156.473991, 858.067565], [1976.731286, 108.118662, 13266.616427, 2911.226033], [99.774957, 2.703126, 35.40824, 12.15762]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'SIFT2 Weighted: Posterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'SIFT2 Sum', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+
+(function() {
+  var ctx = document.getElementById('chart_17');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Striatum", "Thalamus", "Paleocortex", "Cerebellum"],
+      datasets: [{"label": "CTRL", "data": [81.712692, 235.605681, 520.070477, 3.400469], "backgroundColor": "rgba(46,204,113,0.5)", "borderColor": "#2ecc71", "borderWidth": 1.5, "_errorBars": [76.274425, 156.415115, 71.676164, 1.46697], "_dataPoints": [[1.524213, 310.481555, 5.185898, 9.659102], [58.210575, 704.182901, 98.989915, 81.039334], [564.662584, 342.555431, 684.805462, 488.258432], [1.458558, 7.229715, 4.131441, 0.782162]]}, {"label": "AP", "data": [35.860506, 111.085783, 65.087693, 3.057408], "backgroundColor": "rgba(231,76,60,0.5)", "borderColor": "#e74c3c", "borderWidth": 1.5, "_errorBars": [24.329065, 51.494381, 41.479356, 1.636104], "_dataPoints": [[25.538509, 0.0, 10.76509, 107.138423], [222.710623, 7.864164, 172.724663, 41.043682], [83.852441, 0.0, 1.689903, 174.808429], [1.474778, 0.828801, 7.911576, 2.014479]]}, {"label": "APTR", "data": [65.665916, 26.262255, 168.140126, 5.027423], "backgroundColor": "rgba(243,156,18,0.5)", "borderColor": "#f39c12", "borderWidth": 1.5, "_errorBars": [56.423388, 16.796705, 163.567704, 1.920073], "_dataPoints": [[2.541563, 4.866229, 234.50009, 20.755781], [12.860552, 5.998969, 76.476476, 9.713024], [2.442918, 1.330843, 658.809417, 9.977324], [4.411884, 1.386008, 3.874092, 10.43771]]}]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Density: Posterior segment (Right)', font: {size: 13} },
+        legend: { position: 'top', labels: {font: {size: 11}} }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Streamlines / mm³', font: {size: 11} }
+        }
+      }
+    },
+    plugins: [errorBarsPlugin, dataPointsPlugin]
+  });
+})();
+</script>
+</div>
+</div>
+
+<script>
+function showTab(hemi) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + hemi).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+<div class="footer">
+<p>MBRAIN Tract Metrics Report | Generated 2026-03-06 17:38:25</p>
+<p>Metrics: Streamline Count, SIFT2 Weighted, Density (Count / Target ROI Volume)</p>
+</div>
+</div>
+</body>
+</html>

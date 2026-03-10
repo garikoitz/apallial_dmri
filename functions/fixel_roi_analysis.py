@@ -609,13 +609,20 @@ def run_fixel_roi_analysis(roi_path, fod_path, output_dir, subject_id='',
 
 def _load_mif_as_array(mif_path, conda_env='mbrain'):
     """Convert .mif to temporary NIfTI and load as numpy array."""
-    import tempfile, os
+    import tempfile, os, shutil
     with tempfile.NamedTemporaryFile(suffix='.nii.gz', delete=False) as tmp:
         tmp_path = tmp.name
     try:
-        subprocess.run(
-            f'micromamba run -n {conda_env} mrconvert "{mif_path}" "{tmp_path}" -force -quiet',
-            shell=True, check=True, capture_output=True)
+        # Try bare mrconvert first (works when mrtrix is loaded via modules)
+        if shutil.which('mrconvert'):
+            subprocess.run(
+                f'mrconvert "{mif_path}" "{tmp_path}" -force -quiet',
+                shell=True, check=True, capture_output=True)
+        else:
+            # Fall back to micromamba wrapper
+            subprocess.run(
+                f'micromamba run -n {conda_env} mrconvert "{mif_path}" "{tmp_path}" -force -quiet',
+                shell=True, check=True, capture_output=True)
         data = nib.load(tmp_path).get_fdata()
     finally:
         if os.path.exists(tmp_path):

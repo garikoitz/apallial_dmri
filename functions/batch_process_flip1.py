@@ -765,7 +765,16 @@ def main():
                         help="Show what would be done without executing")
     parser.add_argument("--force", action="store_true",
                         help="Force reprocessing even if files exist")
+    parser.add_argument("--derivatives-dir", type=str,
+                        help="Override derivatives directory (default: from config1.yaml)")
     args = parser.parse_args()
+    
+    # Override derivatives directory if specified
+    if args.derivatives_dir:
+        os.environ['MBRAIN_DERIVATIVES_DIR'] = args.derivatives_dir
+        global config
+        config = load_config()
+        log_message(f"Derivatives override: {args.derivatives_dir}")
     
     if not args.subject and not args.group:
         parser.error("Must specify --subject or --group")

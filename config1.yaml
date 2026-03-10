@@ -385,10 +385,20 @@
 #              from ANY source (Slicer or old pipeline), the function:
 #                1. Converts each .mif to temp .nii.gz
 #                2. Computes voxel centroid on axis 2 (L/R axis in flip1)
-#                3. Checks: left ROI centroid Z >= midline, right Z < midline
+#                3. Checks: left ROI centroid k < midline, right k >= midline
 #                4. If wrong, auto-swaps the file pair and re-verifies
 #              This eliminates the need for hardcoded L/R swaps and prevents
 #              the recurring L/R confusion regardless of the source data.
+#     NEWMASK L/R FIX (2026-03-04): In mrtrix_newmask pipeline, 5 subjects had
+#              swapped L/R labels. Fixed by renaming left<->right file pairs in:
+#              manual_roi/, manual_roi/fod_space/, fod_space/shrink/,
+#              graft_segments_fod/, graft_segments_fod/shrink/.
+#              All stale L/R .tck tracks deleted (to be recalculated).
+#              SWAPPED subjects: sub-596-C-OO-NmM, sub-769-C-OO-NmM,
+#                sub-875-C-OO-NM, sub-AP72-862-901-NmF, sub-AP72-862-901-R1M
+#              ALREADY CORRECT (not touched): sub-769-C-O5-R1M,
+#                sub-Apallial17NmF, sub-Apallial20R1F
+#              CTRL atlas ROIs verified correct (2026-03-04).
 #     SUBJECTS WITH CORRECTED ROIS (manual_roi_flip folder):
 #       - sub-Apallial17NmF/ses-240816091633/manual_roi_flip/ (validated)
 #       - sub-596-C-OO-NmM/ses-240911103349/manual_roi_flip/
@@ -476,16 +486,18 @@
 #     This means: High voxel Z index → LOW world Z coordinate (inverted!)
 #
 #     VOXEL INDEX vs WORLD COORDINATE:
-#       - HIGH voxel Z index (>= midline) = LOW world Z coord = LEFT hemisphere
-#       - LOW voxel Z index (< midline) = HIGH world Z coord = RIGHT hemisphere
+#       - HIGH voxel Z index (>= midline) = LOW world Z coord = RIGHT hemisphere
+#       - LOW voxel Z index (< midline) = HIGH world Z coord = LEFT hemisphere
 #
 #     HEMISPHERE SPLITTING (in voxel indices):
-#       - LEFT mask: keep data[:, :, midline_z:], zero out data[:, :, :midline_z]
-#       - RIGHT mask: keep data[:, :, :midline_z], zero out data[:, :, midline_z:]
+#       - LEFT mask: keep data[:, :, :midline_z], zero out data[:, :, midline_z:]
+#       - RIGHT mask: keep data[:, :, midline_z:], zero out data[:, :, :midline_z]
 #
-# VALIDATED against AP manual ROIs (2026-01-23) in WORLD coordinates:
-#   Graft_left world Z = 73.9 (LOW world Z → HIGH voxel Z → LEFT ✓)
-#   Graft_right world Z = 107.7 (HIGH world Z → LOW voxel Z → RIGHT ✓)
+# VALIDATED against AP manual ROIs (2026-03-04) using mrview volume render:
+#   Convention confirmed: LOW voxel k (axis 2) = anatomical LEFT
+#                         HIGH voxel k (axis 2) = anatomical RIGHT
+#   Centroid check (sub-596-C-OO-NmM after fix):
+#     Graft_left: low k → LEFT ✓, Graft_right: high k → RIGHT ✓
 #
 # VALIDATED for CTRL Allen atlas ROIs (2026-01-29):
 #   Same convention applies to atlas-derived ROIs after warping to flip1 space.
@@ -503,33 +515,47 @@
 # PATHS
 # -----------------------------------------------------------------------------
 paths:
-  # Base directories
-  # Note: 'data' and 'local' are symlinks pointing to Google Drive shared folder
-  # Updated 2026-01-31: Migrated to shared drive "DTI Collab" for unlimited storage
-  repo_dir: "/Users/glerma/soft/mbrain"
-  data_dir: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data"
-  bids_dir: "/Users/glerma/soft/mbrain/data/bids"
-  derivatives_flip1: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1"
-  local: "/Users/glerma/soft/mbrain/local"
+  # =========================================================================
+  # MACHINE-SPECIFIC BASE PATHS (change these when moving between machines)
+  # =========================================================================
+  # Mac:   repo_dir: "/Users/glerma/soft/mbrain"
+  #        data_base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data"
+  #        matlab_path: "/Applications/MATLAB_R2025b.app/bin/matlab"
+  #        rtp2_pipeline_path: "/Users/glerma/soft/gitlab/rtp2-pipeline"
+  # Linux: repo_dir: "/export/home/glerma/glerma/soft/mbrain"
+  #        data_base: "/export/home/glerma/glerma/PROYECTOS/mbrain"
+  #        matlab_path: "/opt/MATLAB/R2024a/bin/matlab"  # requires: module load matlab/R2024A
+  #        rtp2_pipeline_path: "/export/home/glerma/glerma/soft/gitlab/rtp2-pipeline"
+  # =========================================================================
+  repo_dir: "/export/home/glerma/glerma/soft/mbrain"
+  data_base: "/export/home/glerma/glerma/PROYECTOS/mbrain"
+  matlab_path: "/opt/MATLAB/R2024a/bin/matlab"  # requires: module load matlab/R2024A
+  rtp2_pipeline_path: "/export/home/glerma/glerma/soft/rtp2-pipeline"
+
+  # =========================================================================
+  # DERIVED PATHS (relative to repo_dir and data_base, DO NOT edit)
+  # =========================================================================
+  # Note: 'data' and 'local' are symlinks in repo_dir pointing to data_base
+  # Updated 2026-02-28: Migrated to Linux with rclone bisync to Google Drive
+  data_dir: "{data_base}/data"
+  bids_dir: "{repo_dir}/data/bids"
+  derivatives_flip1: "{data_base}/data/derivatives/mrtrix_preproc_flip1"
+  local: "{data_base}/local"
   
-  # Legacy paths (for compatibility) - updated to shared drive
-  derivatives_dir: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1"
-  derivatives_dir_old: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc"  # OBSOLETE - no longer exists
+  # Legacy paths (for compatibility)
+  derivatives_dir: "{repo_dir}/data/derivatives/mrtrix_preproc_flip1"
+  derivatives_dir_old: "{data_base}/data/derivatives/mrtrix_preproc"  # OBSOLETE - no longer exists
   
   # Original 3D Slicer manual ROI segmentations (.seg.nrrd files)
   # These are the SOURCE files for AP/APTR manual ROIs.
   # Each file contains 10 segments: {Graft,Striatum,Palecortex,Thalamus,cerebellum}_{left,right}
-  manual_roi_slicer_dir: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/local/manual_roi_Slicer"
+  manual_roi_slicer_dir: "{data_base}/local/manual_roi_Slicer"
   
   # Atlas paths - local workspace
-  atlas_dir: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf"
-  allen_template: "/Users/glerma/soft/mbrain/local/atlas/average_template_25.nii.gz"
-  allen_annotation: "/Users/glerma/soft/mbrain/local/atlas/annotation_25.nii.gz"
-  allen_structures: "/Users/glerma/soft/mbrain/local/atlas/allen_ccf/structures.json"
-  
-  # External tools
-  matlab_path: "/Applications/MATLAB_R2025b.app/bin/matlab"
-  rtp2_pipeline_path: "/Users/glerma/soft/gitlab/rtp2-pipeline"
+  atlas_dir: "{repo_dir}/local/atlas/allen_ccf"
+  allen_template: "{repo_dir}/local/atlas/average_template_25.nii.gz"
+  allen_annotation: "{repo_dir}/local/atlas/annotation_25.nii.gz"
+  allen_structures: "{repo_dir}/local/atlas/allen_ccf/structures.json"
 
 # -----------------------------------------------------------------------------
 # ATLAS ROI EXTRACTION (for CTRL subjects)
@@ -801,10 +827,10 @@ matlab_cleaning:
   required: true
   
   # Path to MATLAB executable
-  matlab_bin: "/Applications/MATLAB_R2025b.app/bin/matlab"
+  matlab_bin: "{matlab_path}"
   
   # Path to vistasoft/AFQ toolbox
-  afq_path: "/Users/glerma/soft/gitlab/rtp2-pipeline"
+  afq_path: "{rtp2_pipeline_path}"
   
   # Maximum Gaussian distance from tract core (in std deviations)
   # Higher = more permissive, Lower = stricter
@@ -875,7 +901,7 @@ atlas_coreg:
   
   # Use R1F affine as initialization for other CTRL subjects
   use_r1f_affine_init: true
-  r1f_affine_path: "/Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc/sub-129-921-R1F/ses-260115121231/dwi/atlas/atlas_coreg_0GenericAffine.mat"
+  r1f_affine_path: "{repo_dir}/data/derivatives/mrtrix_preproc/sub-129-921-R1F/ses-260115121231/dwi/atlas/atlas_coreg_0GenericAffine.mat"
 
 # -----------------------------------------------------------------------------
 # ROI DEFINITIONS (Allen CCF structure IDs)
@@ -1072,7 +1098,7 @@ preprocessing:
 file_tree:
   # Base paths
   base_paths:
-    derivatives: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1"
+    derivatives: "{data_base}/data/derivatives/mrtrix_preproc_flip1"
     # Pattern: {derivatives}/{subject_id}/{session}/dwi/
   
   # ---------------------------------------------------------------------------
@@ -1357,7 +1383,7 @@ file_tree:
     APTR:
       subject: "sub-AP72-862-901-NmF"
       session: "ses-251210093342"
-      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-AP72-862-901-NmF/ses-251210093342"
+      base: "{data_base}/data/derivatives/mrtrix_preproc_flip1/sub-AP72-862-901-NmF/ses-251210093342"
       files:
         # Visualization background (USE THIS)
         background: "dwi/t2w_highres_flip.mif"
@@ -1383,7 +1409,7 @@ file_tree:
     AP:
       subject: "sub-596-C-OO-NmM"
       session: "ses-240911103349"
-      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-596-C-OO-NmM/ses-240911103349"
+      base: "{data_base}/data/derivatives/mrtrix_preproc_flip1/sub-596-C-OO-NmM/ses-240911103349"
       files:
         background: "dwi/t2w_highres_flip.mif"
         fod: "dwi/fod_wm_norm.mif"
@@ -1402,7 +1428,7 @@ file_tree:
     CTRL:
       subject: "sub-129-921-R1F"
       session: "ses-260115121231"
-      base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data/data/derivatives/mrtrix_preproc_flip1/sub-129-921-R1F/ses-260115121231"
+      base: "{data_base}/data/derivatives/mrtrix_preproc_flip1/sub-129-921-R1F/ses-260115121231"
       files:
         background: "dwi/t2w_highres_flip.mif"
         fod: "dwi/fod_wm_norm.mif"
@@ -2325,7 +2351,7 @@ workflows:
   quick_visualization:
     description: "Quick visualization of existing processed data"
     example_ctrl: |
-      cd /Users/glerma/soft/mbrain/data/derivatives/mrtrix_preproc_flip1
+      cd {repo_dir}/data/derivatives/mrtrix_preproc_flip1
       micromamba activate mbrain
       mrview sub-129-1014-L1M/ses-260115113814/dwi/t2w_highres_flip.mif \
         -overlay.load sub-129-1014-L1M/ses-260115113814/dwi/atlas/rois/fod_space/roi_thalamus_left.nii.gz \
