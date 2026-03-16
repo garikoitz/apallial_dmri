@@ -60,6 +60,21 @@ SUBJECT_MAP = {
         'group': 'APTR',
         'roi_type': 'graft',   # AP/APTR → graft;  CTRL → isocortex
     },
+    'sub-AP72-862-901-R1M': {
+        'ses': 'ses-251210100043',
+        'group': 'APTR',
+        'roi_type': 'graft',
+    },
+    'sub-Apallial17NmF': {
+        'ses': 'ses-240816091633',
+        'group': 'APTR',
+        'roi_type': 'graft',
+    },
+    'sub-Apallial20R1F': {
+        'ses': 'ses-240909094232',
+        'group': 'APTR',
+        'roi_type': 'graft',
+    },
 }
 
 # K-range for silhouette scan
@@ -395,6 +410,7 @@ def run_fixel_clustering(subject_id: str,
                           spatial_weight: float = SPATIAL_WEIGHT,
                           k_min: int = K_MIN,
                           k_max: int = K_MAX,
+                          k_force: int | None = None,
                           min_cluster_size: int = MIN_CLUSTER_SIZE,
                           use_agglomerative: bool = USE_AGGLOMERATIVE,
                           random_state: int = 42):
@@ -457,39 +473,51 @@ def run_fixel_clustering(subject_id: str,
                            connectivity=connectivity,
                            use_agglomerative=use_agglomerative)
 
-    # Pick best k using elbow detection on the Calinski-Harabasz curve,
-    # clamped to the [K_CLAMP_MIN, K_CLAMP_MAX] window so we don't
-    # collapse to 2 or explode to 20.
-    ks = sorted(scan.keys())
-    cal_arr = np.array([scan[k][1] for k in ks])
-
-    # Elbow = point of maximum second-derivative (steepest deceleration)
-    # of the calinski curve.  We look only inside the clamp window.
-    clamp_lo = K_CLAMP_MIN
-    clamp_hi = K_CLAMP_MAX
-    # Indices within ks that fall in the clamp window
-    window_idx = [i for i, k in enumerate(ks) if clamp_lo <= k <= clamp_hi]
-
-    if len(window_idx) >= 3:
-        # Second derivative of calinski within the window
-        cal_window = cal_arr[window_idx]
-        d2 = np.diff(cal_window, n=2)
-        # The elbow is right before the biggest jump in 2nd derivative
-        elbow_local = int(np.argmax(np.abs(d2)))
-        best_idx = window_idx[elbow_local]
-    elif window_idx:
-        # Too few points in window — pick the one with highest calinski
-        best_idx = window_idx[int(np.argmax(cal_arr[window_idx]))]
+    # --- 5a. Select best k -------------------------------------------------
+    if k_force is not None:
+        # User forced a specific k
+        best_k = k_force
+        if best_k not in scan:
+            print(f'  k_force={best_k} not in scan range; running single fit …')
+            if use_agglomerative:
+                model = AgglomerativeClustering(
+                    n_clusters=best_k, connectivity=connectivity, linkage='ward')
+                forced_labels = model.fit_predict(features)
+            else:
+                km = KMeans(n_clusters=best_k, n_init=10, random_state=random_state)
+                forced_labels = km.fit_predict(features)
+            best_sil = silhouette_score(features, forced_labels)
+            best_cal = calinski_harabasz_score(features, forced_labels)
+            scan[best_k] = (best_sil, best_cal, forced_labels)
+        best_sil = scan[best_k][0]
+        best_cal = scan[best_k][1]
+        labels = scan[best_k][2]
+        print(f'  → Forced k = {best_k}  (silhouette={best_sil:.4f}  calinski={best_cal:.1f})')
     else:
-        # Fallback: pick k closest to the midpoint of the clamp range
-        mid = (clamp_lo + clamp_hi) // 2
-        best_idx = int(np.argmin([abs(k - mid) for k in ks]))
+        # Pick best k using elbow detection on the Calinski-Harabasz curve,
+        # clamped to the [K_CLAMP_MIN, K_CLAMP_MAX] window.
+        ks = sorted(scan.keys())
+        cal_arr = np.array([scan[k][1] for k in ks])
+        clamp_lo = K_CLAMP_MIN
+        clamp_hi = K_CLAMP_MAX
+        window_idx = [i for i, k in enumerate(ks) if clamp_lo <= k <= clamp_hi]
 
-    best_k = ks[best_idx]
-    best_sil = scan[best_k][0]
-    best_cal = scan[best_k][1]
-    labels = scan[best_k][2]
-    print(f'  → Best k = {best_k}  (silhouette={best_sil:.4f}  calinski={best_cal:.1f})')
+        if len(window_idx) >= 3:
+            cal_window = cal_arr[window_idx]
+            d2 = np.diff(cal_window, n=2)
+            elbow_local = int(np.argmax(np.abs(d2)))
+            best_idx = window_idx[elbow_local]
+        elif window_idx:
+            best_idx = window_idx[int(np.argmax(cal_arr[window_idx]))]
+        else:
+            mid = (clamp_lo + clamp_hi) // 2
+            best_idx = int(np.argmin([abs(k - mid) for k in ks]))
+
+        best_k = ks[best_idx]
+        best_sil = scan[best_k][0]
+        best_cal = scan[best_k][1]
+        labels = scan[best_k][2]
+        print(f'  → Best k = {best_k}  (silhouette={best_sil:.4f}  calinski={best_cal:.1f})')
 
     # --- 5b. Merge tiny clusters -------------------------------------------
     labels = _merge_tiny_clusters(labels, features, min_size=min_cluster_size)
@@ -633,29 +661,67 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fixel cluster analysis')
     parser.add_argument('--subject', '-s', default='sub-AP72-862-901-NmF',
                         help='Subject ID (default: AP72-NmF)')
+    parser.add_argument('--all', action='store_true',
+                        help='Run on ALL subjects in SUBJECT_MAP')
+    parser.add_argument('--group', default=None,
+                        help='Run on all subjects in this group (e.g. APTR)')
     parser.add_argument('--spatial-weight', type=float, default=SPATIAL_WEIGHT,
                         help='α weight for spatial vs direction features (default: 2.5)')
     parser.add_argument('--k-min', type=int, default=K_MIN)
     parser.add_argument('--k-max', type=int, default=K_MAX)
+    parser.add_argument('--k-force', type=int, default=None,
+                        help='Force exactly this many clusters (skip auto selection)')
     parser.add_argument('--min-cluster-size', type=int, default=MIN_CLUSTER_SIZE,
                         help='Merge clusters smaller than this into nearest neighbour')
     parser.add_argument('--no-agglomerative', action='store_true',
                         help='Use KMeans instead of agglomerative clustering')
     args = parser.parse_args()
 
-    sid = args.subject
-    if sid not in SUBJECT_MAP:
-        raise SystemExit(f'Subject {sid} not in SUBJECT_MAP. Add it first.')
+    # Build subject list
+    if args.all:
+        subjects = list(SUBJECT_MAP.keys())
+    elif args.group:
+        subjects = [s for s, v in SUBJECT_MAP.items() if v['group'] == args.group]
+        if not subjects:
+            raise SystemExit(f'No subjects in group {args.group}')
+    else:
+        subjects = [args.subject]
 
-    info = SUBJECT_MAP[sid]
-    run_fixel_clustering(
-        subject_id=sid,
-        session=info['ses'],
-        group=info['group'],
-        roi_type=info['roi_type'],
-        spatial_weight=args.spatial_weight,
-        k_min=args.k_min,
-        k_max=args.k_max,
-        min_cluster_size=args.min_cluster_size,
-        use_agglomerative=not args.no_agglomerative,
-    )
+    all_results = []
+    for sid in subjects:
+        if sid not in SUBJECT_MAP:
+            print(f'WARNING: {sid} not in SUBJECT_MAP. Skipping.')
+            continue
+        info = SUBJECT_MAP[sid]
+        meta = run_fixel_clustering(
+            subject_id=sid,
+            session=info['ses'],
+            group=info['group'],
+            roi_type=info['roi_type'],
+            spatial_weight=args.spatial_weight,
+            k_min=args.k_min,
+            k_max=args.k_max,
+            k_force=args.k_force,
+            min_cluster_size=args.min_cluster_size,
+            use_agglomerative=not args.no_agglomerative,
+        )
+        if meta:
+            all_results.append(meta)
+
+    # Print summary table if multiple subjects
+    if len(all_results) > 1:
+        print('\n' + '=' * 100)
+        print('SUMMARY TABLE  (all subjects)')
+        print('=' * 100)
+        print(f'{"Subject":<28} {"k":>3} {"Sil":>6} {"Cluster":>8} {"Voxels":>7} '
+              f'{"Dir":>4} {"Coh":>6} {"Peak":>6} {"MeanVec":>24}')
+        print('-' * 100)
+        for meta in all_results:
+            sid = meta['subject']
+            for ci in meta['clusters']:
+                vec_str = ','.join(f'{v:6.3f}' for v in ci['mean_direction_vector'])
+                print(f'{sid:<28} {meta["best_k"]:>3} {meta["silhouette_score"]:>6.4f} '
+                      f'{ci["cluster_id"]:>8} {ci["n_voxels"]:>7} '
+                      f'{ci["main_direction"]:>4} {ci["coherence"]:>6.3f} '
+                      f'{ci["avg_peak_amplitude"]:>6.4f} [{vec_str}]')
+        print('=' * 100)
