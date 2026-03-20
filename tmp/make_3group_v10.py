@@ -273,31 +273,24 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
     fig = plt.figure(figsize=(2.4 * n_cols, 3.5 * n_rows))
 
     def _draw_radar(ax, directions_list, color, marker='o',
-                    linewidth_solid=1.3, linewidth_dash=1.0,
-                    alpha_solid=0.75, alpha_dash=0.45,
-                    fill_solid=0.18, fill_dash=0.08,
+                    linewidth_solid=1.3,
+                    alpha_solid=0.75,
+                    fill_solid=0.18,
                     show_marker=True, zorder_base=2):
-        for k_idx, d in enumerate(directions_list):
-            abs_d = np.abs(d)[reorder]
-            vals = np.concatenate([abs_d, [abs_d[0]]])
-            if k_idx == 0:
-                # Solid line (DV-dominant cluster)
-                kw = dict(color=color, linewidth=linewidth_solid,
-                          linestyle='-', alpha=alpha_solid,
-                          zorder=zorder_base + 1)
-                if show_marker:
-                    kw['marker'] = marker
-                    kw['markersize'] = 5
-                ax.plot(angles_closed, vals, **kw)
-                ax.fill(angles_closed, vals, color=color, alpha=fill_solid)
-            else:
-                # Dashed line (other cluster)
-                ax.plot(angles_closed, vals, color=color,
-                        linewidth=linewidth_dash, linestyle='--',
-                        alpha=alpha_dash, zorder=zorder_base)
-                ax.fill(angles_closed, vals, color=color, alpha=fill_dash)
+        # Only draw Dir 1 (solid/filled), skip Dir 2 (dashed)
+        d = directions_list[0]
+        abs_d = np.abs(d)[reorder]
+        vals = np.concatenate([abs_d, [abs_d[0]]])
+        kw = dict(color=color, linewidth=linewidth_solid,
+                  linestyle='-', alpha=alpha_solid,
+                  zorder=zorder_base + 1)
+        if show_marker:
+            kw['marker'] = marker
+            kw['markersize'] = 5
+        ax.plot(angles_closed, vals, **kw)
+        ax.fill(angles_closed, vals, color=color, alpha=fill_solid)
 
-    def _setup_radar_axes(ax, show_labels=False):
+    def _setup_radar_axes(ax, show_labels=False, show_rtick_numbers=False):
         ax.set_facecolor('white')
         ax.set_theta_zero_location('S')
         ax.set_theta_direction(-1)
@@ -310,6 +303,8 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
             ax.set_xticklabels(['', '', ''])
         ax.grid(True, alpha=0.25)
         thin_radial_grid(ax, n_ticks=3)
+        if not show_rtick_numbers:
+            ax.set_yticklabels([])
 
     for row_idx, (group, label) in enumerate(zip(row_groups, group_labels)):
         subjects_data = all_group_data.get(group, {})
@@ -320,7 +315,10 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
         for col_idx in range(target_n_slices):
             ax_idx = row_idx * n_cols + col_idx + 1
             ax = fig.add_subplot(n_rows, n_cols, ax_idx, projection='polar')
-            _setup_radar_axes(ax, show_labels=(col_idx == 0))
+            # Show radial tick numbers only on the first slice of the AP row
+            show_rticks = (row_idx == 1 and col_idx == 0)
+            _setup_radar_axes(ax, show_labels=(col_idx == 0),
+                              show_rtick_numbers=show_rticks)
 
             for si, subj in enumerate(subject_ids):
                 color = colors[si % len(colors)]
@@ -355,7 +353,7 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
             if sd2_list:
                 avg_dirs.append(np.mean(sd2_list, axis=0))
             if avg_dirs:
-                _draw_radar(ax_avg, avg_dirs, color, marker=marker,
+                _draw_radar(ax_avg, [avg_dirs[0]], color, marker=marker,
                             zorder_base=len(subject_ids) - si + 2)
 
         if row_idx == 0:
@@ -390,10 +388,10 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
             norm2 = np.linalg.norm(grp_sd2)
             grp_dirs_unit.append(grp_sd2 / norm2 if norm2 > 1e-8 else grp_sd2)
         if grp_dirs:
-            _draw_radar(ax_grp, grp_dirs, 'black',
-                        linewidth_solid=3, linewidth_dash=2,
-                        alpha_solid=0.85, alpha_dash=0.55,
-                        fill_solid=0.15, fill_dash=0.08,
+            _draw_radar(ax_grp, [grp_dirs[0]], 'black',
+                        linewidth_solid=3,
+                        alpha_solid=0.85,
+                        fill_solid=0.15,
                         show_marker=False)
 
         if row_idx == 0:
@@ -446,14 +444,12 @@ def plot_3group_radar_v10(all_group_data, target_n_slices, y_max,
                 label=f'{group} {short}'))
     legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=1.3,
                                        linestyle='-', label='Dir 1 (solid)'))
-    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=1.0,
-                                       linestyle='--', label='Dir 2 (dashed)'))
     fig.legend(handles=legend_elements, loc='upper right', fontsize=7,
                bbox_to_anchor=(0.99, 0.98), title='Subjects', ncol=1)
 
     fig.suptitle(
         f'Fixel K-means Direction × Peak Amplitude — Bilateral (L+R) v10 [newmask]\n'
-        f'Radar scaled by FOD peak amplitude | Solid = Dir 1, Dashed = Dir 2 | '
+        f'Radar scaled by FOD peak amplitude | Solid = Dir 1 only | '
         f'Outer ring = {y_max:.2f} | Slices start at 1 (slice 0 removed)',
         fontsize=13, fontweight='bold', y=0.99)
 
@@ -592,14 +588,6 @@ if __name__ == '__main__':
         all_group_data, target_n_slices, y_max,
         save_png=REPORTS / 'fixel_3group_comparison_bilateral_v10.png',
         save_svg=REPORTS / 'fixel_3group_comparison_bilateral_v10.svg',
-    )
-
-    # Generate component lines figure
-    print('\n--- Generating component lines ---')
-    plot_3group_components_v10(
-        all_group_data, target_n_slices, y_max,
-        save_png=REPORTS / 'fixel_3group_components_bilateral_v10.png',
-        save_svg=REPORTS / 'fixel_3group_components_bilateral_v10.svg',
     )
 
     print('\n✅ All done!')
