@@ -11,9 +11,9 @@ Three groups of mice were used in this study (N = 4 per group, 12 total):
 
 All imaging was performed ex vivo on a 7 T Bruker scanner (Stanford 70/40, Stanford University) running ParaVision 360.3.5 software and equipped with an RF CP F2.5 300 1 coil. Medical air was used as the breathing gas to minimize the effects of high O₂ concentration on relaxation.
 
-**Diffusion-weighted imaging (DWI).** Data were acquired with a 4-segment diffusion-weighted EPI sequence (Bruker:DtiEpi) using the following parameters: b = 1000 s/mm², 40 non-collinear diffusion-encoding directions plus 5 b = 0 images (45 volumes total), diffusion timing δ/Δ = 4.5/10.3 ms, TR/TE = 3500/21 ms, in-plane resolution 150 × 150 µm², slice thickness 500 µm, FOV = 18 × 15 mm², matrix = 120 × 100, bandwidth = 250 kHz, second-order B₀ map shimming, three FOV saturation bands.
+**Diffusion-weighted imaging (DWI).** Data were acquired with a 4-segment diffusion-weighted EPI sequence (Bruker:DtiEpi) using the following parameters: b = 1000 s/mm², 40 non-collinear diffusion-encoding directions plus 5 b = 0 images (45 volumes total), diffusion timing δ/Δ = 4.5/10.3 ms, TR/TE = 3500/21 ms, voxel size = 0.15 × 0.15 × 0.5 mm³ (150 × 150 µm² in-plane, 500 µm slice thickness), FOV = 18 × 15 mm², matrix = 120 × 100, bandwidth = 250 kHz, second-order B₀ map shimming, three FOV saturation bands.
 
-**T2-weighted anatomical imaging.** Two RARE (Rapid Acquisition with Relaxation Enhancement) sequences were acquired per animal: (i) a low-resolution scan (200 × 200 × 500 µm³) for co-registration reference, and (ii) a high-resolution scan (100 × 100 × 300 µm³; RARE factor = 4, TR/TE = 4000/30 ms, 2 averages, flip angle = 180°) used as the primary anatomical reference for visualization and registration.
+**T2-weighted anatomical imaging.** Two RARE (Rapid Acquisition with Relaxation Enhancement) sequences were acquired per animal: (i) a low-resolution scan (voxel size = 0.2 × 0.2 × 0.5 mm³) for co-registration reference, and (ii) a high-resolution scan (voxel size = 0.1 × 0.1 × 0.3 mm³; RARE factor = 4, TR/TE = 4000/30 ms, 2 averages, flip angle = 180°) used as the primary anatomical reference for visualization and registration.
 
 ## Image preprocessing
 
