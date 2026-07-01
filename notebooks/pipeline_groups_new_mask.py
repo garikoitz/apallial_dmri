@@ -16,6 +16,118 @@
 #
 # ---
 
+# %% [markdown] Execution Guide + Proposed Notebook Split
+# ## Execution Guide + Proposed Notebook Split
+#
+# This section documents each processing stage in detail and proposes a split
+# into smaller notebooks, each ending with a QC gate. The goal is to reduce
+# cognitive load, isolate failures, and make reruns predictable.
+#
+# ### Stage-by-stage detail (current monolithic flow)
+#
+# 1. Stage 0 - Environment, configuration, subject manifest
+#    - Inputs: config1.yaml, derivatives_flip1 root, subject-group map.
+#    - Outputs: `subjects` list with canonical paths, helper wrappers, tool checks.
+#    - Critical assumptions:
+#      - Paths resolve on lmc02 exactly as configured.
+#      - Module strings are valid for the current shell environment.
+#    - Common failure modes:
+#      - Missing module versions, missing t2w files, wrong derivatives root.
+#
+# 2. Stage 1 - Atlas-driven mask generation
+#    - Inputs: one atlas subject per group + target subject t2w files.
+#    - Core operations: N4 correction, ANTs registration, mask warping, largest CC filter.
+#    - Outputs: `mask_new.mif` and `mask_new.nii.gz` per subject.
+#    - Common failure modes:
+#      - Registration drift, bad transform chain, stale atlas mask paths.
+#
+# 3. Stage 2 and 3 - Visual QC and manual correction loop
+#    - Inputs: generated masks + t2w volumes.
+#    - Core operations: interactive overlay review, ROI edits in mrview.
+#    - Outputs: `mask_new_edited.mif` for failed subjects.
+#    - Common failure modes:
+#      - Unsaved edits, wrong file edited, inconsistent pass/fail tracking.
+#
+# 4. Stage 4 - Mask installation on DWI grid
+#    - Inputs: selected new/edited mask and DWI template.
+#    - Core operations: regrid to DWI, backup old masks, install mask/mask_anat.
+#    - Outputs: installed DWI-space masks and backup snapshots.
+#    - Common failure modes:
+#      - Grid mismatch, template missing, backup overwrite confusion.
+#
+# 5. Stage 5 (core downstream reruns)
+#    - 5b/5b-group: response functions + FOD + group normalization.
+#    - 5c: ROI regrid/segmentation and laterality checks.
+#    - 5d/5e: wholebrain tractography, downsample/trk, SIFT2.
+#    - 5e-CST: CST ROI creation/regrid/extraction/tckgen/cleaning.
+#    - 5f/5g: passthrough extraction and AFQ cleaning, including CTRL rerun branch.
+#    - 5h/5i/5j: metrics reports and fixel analyses.
+#    - Common failure modes:
+#      - Stale outputs mixed with fresh outputs, missing intermediate files,
+#        heavy steps rerun without checkpoint gating.
+#
+# 6. Stage 6 and 7 - Final QC and summary views
+#    - Inputs: all final masks/tracts/reports.
+#    - Outputs: operator validation and publication screenshots.
+#
+# ### Proposed split into smaller notebooks (recommended)
+#
+# Notebook 1: `01_setup_and_masks.ipynb`
+# - Contains: Stage 0, Stage 1.
+# - Final QC gate:
+#   - Confirm all subjects have `mask_new.mif`.
+#   - Confirm atlas registrations completed (no failed list).
+#   - Quick grid sanity for a sample of subjects.
+#
+# Notebook 2: `02_mask_qc_and_install.ipynb`
+# - Contains: Stage 2, Stage 3, Stage 4.
+# - Final QC gate:
+#   - Confirm manual edits saved where required.
+#   - Confirm installed masks match DWI grid for all subjects.
+#   - Confirm checkpoint logic marks Stage 5 as runnable.
+#
+# Notebook 3: `03_fod_and_roi_prep.ipynb`
+# - Contains: Stage 5b, 5b-group, 5c, 5c-QC.
+# - Final QC gate:
+#   - `wm_fod_norm_group.mif` present for all subjects.
+#   - ROI grid/laterality checks pass or have reviewed exceptions.
+#
+# Notebook 4: `04_tractography_and_sift2.ipynb`
+# - Contains: Stage 5d, 5d-post, 5e.
+# - Final QC gate:
+#   - Wholebrain tractograms present.
+#   - 10k downsample + trk conversion complete.
+#   - SIFT2 weights present and newer than tractograms.
+#
+# Notebook 5: `05_cst_pipeline.ipynb`
+# - Contains: Stage 5e-CST family (check/create/edit/regrid/extract/tckgen/clean).
+# - Final QC gate:
+#   - AP/APTR subjects have CST ROIs in FOD space.
+#   - CST extraction and cleaned outputs present with expected counts.
+#
+# Notebook 6: `06_passthrough_and_cleaning.ipynb`
+# - Contains: Stage 5f, 5f-QC, 5g, 5g-QC, 5fg CTRL rerun branch.
+# - Final QC gate:
+#   - Raw and cleaned passthrough tracts present by group.
+#   - Spot-check raw vs cleaned streamline counts.
+#
+# Notebook 7: `07_reports_and_fixel.ipynb`
+# - Contains: Stage 5h, 5i, 5j, Stage 6, Stage 7.
+# - Final QC gate:
+#   - Metrics CSV/HTML generated.
+#   - Fixel outputs and comparison figures generated.
+#   - Final summary table complete with no missing critical artifacts.
+#
+# ### Minimal handoff contract between notebooks
+#
+# Each notebook should start with a short preflight cell that validates its
+# required input artifacts and stop immediately if requirements are missing.
+# This prevents accidental partial reruns and keeps provenance clear.
+#
+# Suggested convention:
+# - Write one JSON checkpoint per notebook under `DERIV_BASE/logs/checkpoints/`
+# - Include: timestamp, user, notebook name, pass/fail, required artifact stats.
+
 # %% [markdown] Step 0: Setup & Configuration
 # ## Step 0: Setup & Configuration
 #
@@ -42,6 +154,46 @@ sys.path.insert(0, str(REPO_DIR / "functions"))
 
 # Load config (now resolves {variable} placeholders automatically)
 from functions.config_loader import load_config, get_subject_groups
+from functions.pipeline_new_mask import build_subject_records, summarize_subjects
+from functions.pipeline_new_mask import check_file, launch_gui, run_command, run_parallel as _run_parallel
+from functions.pipeline_new_mask import (
+    build_batch_process_tasks,
+    build_ctrl_cleaning_tasks,
+    build_ctrl_passthrough_extraction_tasks,
+    build_temp_cst_exclusion_tasks,
+    build_cst_final_qc_summary,
+    build_cst_cleaning_tasks,
+    build_cst_passthrough_extraction_tasks,
+    collect_cst_cleaned_counts,
+    collect_cst_tckgen_counts,
+    collect_temp_exclusion_rois,
+    build_cst_tckgen_tasks,
+    build_passthrough_cleaning_tasks,
+    build_passthrough_extraction_tasks,
+    build_shrink_segments_command,
+    collect_fod_verification,
+    collect_group_response_status,
+    build_mask_grid_report,
+    DEFAULT_GROUP_ATLAS_IDS,
+    build_group_atlas_info,
+    build_mask_generation_args,
+    build_mask_install_plan,
+    build_sift2_tasks,
+    build_tck_downsample_tasks,
+    build_wholebrain_tractography_tasks,
+    compute_pipeline_checkpoint,
+    copy_atlas_mask,
+    convert_tck_to_trk,
+    build_cst_regrid_plan,
+    collect_cst_status,
+    evaluate_laterality_consistency,
+    get_grid_info,
+    get_roi_pairs_for_group,
+    load_roi_data,
+    draw_single_seg_panel,
+    resolve_cst_source_rois,
+    register_and_warp_mask,
+)
 cfg = load_config()
 paths = cfg['paths']
 groups = get_subject_groups()
@@ -98,156 +250,52 @@ else:
     print(result.stderr[:500])
 
 # %% [Step 0c] Build subject list from mrtrix_newmask
-# Build flat list of all subjects with their group, session, and paths
-# All paths now point to the mrtrix_newmask directory
-# Exclude test mice — only real subjects (4 per group = 12 total)
+# Build flat list of all subjects with their group, session, and paths.
+# All paths now point to the mrtrix_newmask directory.
+# Exclude test mice — only real subjects (4 per group = 12 total).
 SKIP_IDS = {'sub-APtestmouseNmM'}
 
-subjects = []
-for group_name in ["CTRL", "AP", "APTR"]:
-    for s in groups.get(group_name, []):
-        sid = s['id']
-        if sid in SKIP_IDS:
-            continue
-        ses = s['session']
-        base_dir = DERIV_BASE / sid / ses
-        dwi_dir = base_dir / "dwi"
-        wb_dir = dwi_dir / "wholebrain"
-        subjects.append({
-            'id': sid,
-            'session': ses,
-            'group': group_name,
-            'base': base_dir,
-            'dwi_dir': dwi_dir,
-            'wb_dir': wb_dir,
-            't2w': dwi_dir / "t2w_highres_flip.mif",
-            'mask_old': dwi_dir / "mask.mif",
-            'mask_anat_old': dwi_dir / "mask_anat.mif",
-            'mask_new': dwi_dir / "mask_new.nii.gz",
-            'mask_new_mif': dwi_dir / "mask_new.mif",
-            'mask_new_edited': dwi_dir / "mask_new_edited.mif",
-            'wb_tck': wb_dir / "wholebrain_1000k.tck",
-            'sift2_weights': wb_dir / "sift2_weights.txt",
-            'sift2_mu': wb_dir / "sift2_mu.txt",
-            'pt_dir': wb_dir / "passthrough_tracts",
-            'pt_shrink_dir': wb_dir / "passthrough_tracts_shrink",
-            'fixel_dir': dwi_dir / "fixels_group",
-            'afd_voxel': dwi_dir / "afd_voxel_sum.mif",
-        })
+subjects = build_subject_records(
+    groups=groups,
+    deriv_base=DERIV_BASE,
+    skip_ids=SKIP_IDS,
+)
+subject_summary = summarize_subjects(subjects)
 
 print(f"{'=' * 70}")
-print(f" SUBJECTS TO PROCESS: {len(subjects)}")
+print(f" SUBJECTS TO PROCESS: {subject_summary['total']}")
 print(f"{'=' * 70}")
 for s in subjects:
     exists = "✅" if s['t2w'].exists() else "❌"
     print(f"  {exists} [{s['group']:>4}] {s['id']:<30} {s['session']}")
+print(f"  By group: {subject_summary['by_group']}")
 print(f"{'=' * 70}")
 print(f"DERIV_BASE: {DERIV_BASE}")
 
-# %% [Step 0] Helper Functions
-def run(cmd, check=True, timeout=None, verbose=True):
-    """Run a shell command, print it, and return the result."""
-    if verbose:
-        print(f"\n>>> {cmd}\n")
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-    if result.stdout.strip() and verbose:
-        print(result.stdout.strip())
-    if result.stderr.strip() and verbose:
-        print("STDERR:", result.stderr.strip())
-    if check and result.returncode != 0:
-        print(f"⚠️ Command failed with exit code {result.returncode}")
-    return result
 
-def check_file(path, label=""):
-    p = Path(path)
-    if p.exists():
-        size = p.stat().st_size / (1024*1024)
-        print(f"  ✅ {label or p.name}: {size:.1f} MB")
-        return True
-    else:
-        print(f"  ❌ MISSING: {label or p.name}")
-        return False
-
-def launch_gui(cmd):
-    """Launch a GUI command (mrview, etc.) in the background without blocking."""
-    print(f">>> {cmd}")
-    subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-# ── Parallel runner for lmc02 (40 cores) ──
-from concurrent.futures import ProcessPoolExecutor, as_completed
+# %% [Step 0] Helper Configuration
 import multiprocessing
 
 MAX_WORKERS = min(12, multiprocessing.cpu_count())  # 12 subjects = 12 workers max
-
-# ── Log directory for parallel runs ──
 LOG_DIR = DERIV_BASE / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-def _run_subject_cmd(args):
-    """Worker function for parallel execution.
-    Saves full stdout/stderr to LOG_DIR/<label>_<sid>.log
-    Returns (subject_id, returncode, stdout_tail, stderr_tail)."""
-    sid, cmd, timeout, log_dir, label = args
-    try:
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-        # Write full log to file
-        from datetime import datetime
-        log_file = Path(log_dir) / f"{label}_{sid}.log"
-        with open(log_file, 'w') as f:
-            f.write(f"{'=' * 70}\n")
-            f.write(f"Subject: {sid}\n")
-            f.write(f"Label:   {label}\n")
-            f.write(f"Time:    {datetime.now().isoformat()}\n")
-            f.write(f"RC:      {r.returncode}\n")
-            f.write(f"Command: {cmd[:500]}\n")
-            f.write(f"{'=' * 70}\n\n")
-            f.write("=== STDOUT ===\n")
-            f.write(r.stdout)
-            f.write("\n\n=== STDERR ===\n")
-            f.write(r.stderr)
-        return (sid, r.returncode,
-                r.stdout[-500:] if len(r.stdout) > 500 else r.stdout,
-                r.stderr[-500:] if len(r.stderr) > 500 else r.stderr)
-    except subprocess.TimeoutExpired:
-        return (sid, -1, '', 'TIMEOUT')
-    except Exception as e:
-        return (sid, -1, '', str(e))
+# Backward-compatible aliases so existing notebook cells remain unchanged.
+run = run_command
+
 
 def run_parallel(tasks, label="Processing"):
-    """Run a list of (subject_id, cmd, timeout) in parallel.
-    Logs full output per subject to LOG_DIR/<label>_<sid>.log.
-    Returns dict with 'success' and 'failed' lists of subject IDs."""
-    results = {'success': [], 'failed': []}
-    # Augment tasks with log_dir and label for the worker
-    augmented = [(sid, cmd, to, str(LOG_DIR), label.replace(' ', '_'))
-                 for sid, cmd, to in tasks]
-    print(f"  Launching {len(tasks)} tasks with {MAX_WORKERS} parallel workers...")
-    print(f"  Logs → {LOG_DIR}/")
-    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(_run_subject_cmd, t): t[0] for t in augmented}
-        for future in as_completed(futures):
-            sid = futures[future]
-            try:
-                sid_r, rc, stdout, stderr = future.result()
-                if rc == 0:
-                    results['success'].append(sid_r)
-                    print(f"  ✅ {sid_r}: done")
-                else:
-                    results['failed'].append(sid_r)
-                    print(f"  ❌ {sid_r}: FAILED (rc={rc})")
-                    if stderr.strip():
-                        print(f"     {stderr.strip()[:200]}")
-                    print(f"     Full log: {LOG_DIR}/{label.replace(' ', '_')}_{sid_r}.log")
-            except Exception as e:
-                results['failed'].append(sid)
-                print(f"  ❌ {sid}: EXCEPTION {e}")
-    print(f"\n  {label}: ✅ {len(results['success'])} / ❌ {len(results['failed'])}")
-    return results
+    return _run_parallel(
+        tasks,
+        label=label,
+        max_workers=MAX_WORKERS,
+        log_dir=LOG_DIR,
+    )
 
 print("Helpers loaded ✅")
 
 # %% [Step 0] Verify tools: MRtrix3, ANTs, FreeSurfer, MATLAB
-result_fs = run(f"{MODULE_LOAD_FS} && mri_info --version", check=False, verbose=False)
+result_fs = run_command(f"{MODULE_LOAD_FS} && mri_info --version", check=False, verbose=False)
 if result_fs.returncode == 0:
     print(f"✅ FreeSurfer found (module: {MODULE_LOAD_FS})")
 else:
@@ -255,7 +303,7 @@ else:
     print(f"   Module load: {MODULE_LOAD_FS}")
     print(f"   stderr: {result_fs.stderr[:200]}")
 
-result_mr = run(f"{MODULE_LOAD_MRTRIX} && mrconvert --version", check=False, verbose=False)
+result_mr = run_command(f"{MODULE_LOAD_MRTRIX} && mrconvert --version", check=False, verbose=False)
 if result_mr.returncode == 0:
     print(f"✅ MRtrix3 found (module: {MODULE_LOAD_MRTRIX})")
 else:
@@ -263,7 +311,7 @@ else:
     print(f"   Module load: {MODULE_LOAD_MRTRIX}")
     print(f"   stderr: {result_mr.stderr[:200]}")
 
-result_ants = run(f"{MODULE_LOAD_ANTS} && N4BiasFieldCorrection --version", check=False, verbose=False)
+result_ants = run_command(f"{MODULE_LOAD_ANTS} && N4BiasFieldCorrection --version", check=False, verbose=False)
 if result_ants.returncode == 0 or 'ANTs' in (result_ants.stdout + result_ants.stderr):
     print(f"✅ ANTs found (module: {MODULE_LOAD_ANTS})")
 else:
@@ -271,7 +319,7 @@ else:
     print(f"   Module load: {MODULE_LOAD_ANTS}")
     print(f"   stderr: {result_ants.stderr[:200]}")
 
-result_mat = run(f"{MODULE_LOAD_MATLAB} && matlab -batch \"disp('MATLAB OK')\"", check=False, verbose=False)
+result_mat = run_command(f"{MODULE_LOAD_MATLAB} && matlab -batch \"disp('MATLAB OK')\"", check=False, verbose=False)
 if result_mat.returncode == 0 and 'MATLAB OK' in result_mat.stdout:
     print(f"✅ MATLAB found (module: {MODULE_LOAD_MATLAB})")
 else:
@@ -326,26 +374,10 @@ import time
 # ============================================================
 # GROUP-SPECIFIC ATLAS DEFINITIONS — one manually corrected subject per group
 # ============================================================
-GROUP_ATLAS_IDS = {
-    "CTRL": "sub-129-921-R1F",
-    "AP":   "sub-596-C-OO-NmM",
-    "APTR": "sub-AP72-862-901-NmF",
-}
+GROUP_ATLAS_IDS = dict(DEFAULT_GROUP_ATLAS_IDS)
 
 # Build atlas info dict: {group: {t2w_n4, mask_nii, atlas_id, atlas_sub}}
-atlas_info = {}
-for group, atlas_id in GROUP_ATLAS_IDS.items():
-    asub = next(s for s in subjects if s['id'] == atlas_id)
-    info = {
-        'atlas_id':   atlas_id,
-        'atlas_sub':  asub,
-        't2w':        asub['t2w'],
-        'mask_mif':   asub['mask_new_edited'],
-        'mask_nii':   asub['dwi_dir'] / "mask_new_edited.nii.gz",
-        't2w_nii':    asub['dwi_dir'] / "_atlas_t2w.nii.gz",
-        't2w_n4':     asub['dwi_dir'] / "_atlas_t2w_n4.nii.gz",
-    }
-    atlas_info[group] = info
+atlas_info = build_group_atlas_info(subjects, GROUP_ATLAS_IDS)
 
 print(f"{'=' * 70}")
 print(f" GROUP-SPECIFIC ATLASES")
@@ -371,138 +403,6 @@ print("\n✅ All 3 group atlases prepared.")
 # %% [Step 1b] Register group atlas → each target and warp mask (PARALLEL)
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-# --- Worker function (runs in a separate process) ---
-def register_and_warp_mask(args):
-    """
-    Register atlas T2w → target T2w using ANTs SyN, then warp the atlas mask
-    into target space. Returns (sid, status, message).
-    """
-    import subprocess, os
-    from pathlib import Path
-
-    (sid, group, target_t2w_mif, dwi_dir_str, mask_nii_path, mask_mif_path,
-     atlas_t2w_n4, atlas_mask_nii, modules) = args
-
-    def _run(cmd, timeout=1800):
-        return subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-
-    dwi = Path(dwi_dir_str)
-    target_t2w = Path(target_t2w_mif)
-    mask_nii = Path(mask_nii_path)
-    mask_mif = Path(mask_mif_path)
-
-    if not target_t2w.exists():
-        return (sid, 'skipped', 'T2w not found')
-    if mask_mif.exists():
-        return (sid, 'skipped', 'mask already exists')
-
-    # Temp files
-    prefix     = dwi / f"_tmp_{sid}_"               # ANTs output prefix
-    tgt_nii    = dwi / f"_tmp_{sid}_t2w.nii.gz"
-    tgt_n4     = dwi / f"_tmp_{sid}_t2w_n4.nii.gz"
-    warped_nii = dwi / f"_tmp_{sid}_mask_warped.nii.gz"
-    mask_clean = dwi / f"_tmp_{sid}_mask_clean.mif"
-
-    # ANTs outputs: {prefix}Warped.nii.gz, {prefix}0GenericAffine.mat,
-    # {prefix}1Warp.nii.gz, {prefix}1InverseWarp.nii.gz
-    warp_file   = Path(f"{prefix}1Warp.nii.gz")
-    affine_file = Path(f"{prefix}0GenericAffine.mat")
-
-    steps = [
-        # 1) Convert target T2w to NIfTI
-        (f"{modules} && mrconvert {target_t2w} {tgt_nii} -force -quiet",
-         "convert T2w to NIfTI"),
-
-        # 2) N4 bias-correct target T2w
-        (f"{modules} && N4BiasFieldCorrection -d 3 -i {tgt_nii} -o {tgt_n4} "
-         f"-s 2 -b [50] -c [200x200x200,0.0]",
-         "N4 bias correction"),
-
-        # 3) Register atlas (moving) → target (fixed) using SyN
-        (f"{modules} && antsRegistrationSyN.sh -d 3 "
-         f"-f {tgt_n4} -m {atlas_t2w_n4} -o {prefix} -t s -n 4",
-         "ANTs SyN registration"),
-
-        # 4) Apply the transforms to warp atlas mask → target space
-        (f"{modules} && antsApplyTransforms -d 3 "
-         f"-i {atlas_mask_nii} -r {tgt_n4} -o {warped_nii} "
-         f"-t {warp_file} -t {affine_file} "
-         f"-n NearestNeighbor",
-         "warp atlas mask"),
-
-        # 5) Convert warped mask to MIF
-        (f"{modules} && mrconvert {warped_nii} {mask_mif} -force -quiet",
-         "convert mask to MIF"),
-
-        # 6) Light cleanup: keep only largest connected component
-        (f"{modules} && maskfilter {mask_mif} clean {mask_clean} -largest -force -quiet "
-         f"&& mv {mask_clean} {mask_mif}",
-         "morphological cleanup"),
-
-        # 7) Save NIfTI copy
-        (f"{modules} && mrconvert {mask_mif} {mask_nii} -force -quiet",
-         "save NIfTI copy"),
-    ]
-
-    for cmd, step_name in steps:
-        r = _run(cmd)
-        if r.returncode != 0:
-            # Cleanup temp files
-            import glob as _glob
-            for tmp in _glob.glob(str(prefix) + "*"):
-                try: os.remove(tmp)
-                except: pass
-            for tmp in [tgt_nii, tgt_n4, warped_nii, mask_clean]:
-                try: Path(tmp).unlink(missing_ok=True)
-                except: pass
-            return (sid, 'failed', f"{step_name} failed: {r.stderr[:200]}")
-
-    # Cleanup ALL temp files (ANTs produces many)
-    import glob as _glob
-    for tmp in _glob.glob(str(prefix) + "*"):
-        try: os.remove(tmp)
-        except: pass
-    for tmp in [tgt_nii, tgt_n4, warped_nii, mask_clean]:
-        try: Path(tmp).unlink(missing_ok=True)
-        except: pass
-
-    # Get brain fraction
-    frac = ""
-    st = _run(f"{modules} && mrstats {mask_mif}")
-    if st.returncode == 0:
-        lines = st.stdout.strip().split('\n')
-        if len(lines) >= 2:
-            frac = f", brain fraction={lines[1].split()[1]}"
-
-    return (sid, 'success', f"done{frac}")
-
-# --- For atlas subjects, just copy their edited mask ---
-def copy_atlas_mask(args):
-    """Atlas subject: copy mask_new_edited → mask_new (no registration needed)."""
-    import subprocess, shutil
-    from pathlib import Path
-
-    sid, _, _, _, mask_nii_path, mask_mif_path, _, atlas_mask_nii, modules = args
-    mask_mif = Path(mask_mif_path)
-    mask_nii = Path(mask_nii_path)
-    edited = mask_mif.parent / "mask_new_edited.mif"
-
-    if mask_mif.exists():
-        return (sid, 'skipped', 'mask already exists')
-    if not edited.exists():
-        return (sid, 'failed', 'mask_new_edited.mif not found')
-
-    shutil.copy2(str(edited), str(mask_mif))
-    # Also save NIfTI copy
-    r = subprocess.run(
-        f"{modules} && mrconvert {mask_mif} {mask_nii} -force -quiet",
-        shell=True, capture_output=True, text=True, timeout=60
-    )
-    if r.returncode != 0:
-        return (sid, 'failed', f"NIfTI conversion failed: {r.stderr[:150]}")
-
-    return (sid, 'success', 'copied from mask_new_edited.mif (atlas)')
-
 # --- Dispatch parallel jobs ---
 # ANTs SyN uses ~4 threads per job (-n 4). 9 targets total (3 per group).
 # lmc02: 40 cores → 40/4 = 10 concurrent jobs (we have 9 targets + 3 atlas copies)
@@ -522,19 +422,12 @@ print(f"{'=' * 70}")
 
 t0 = time.time()
 results = {'success': [], 'failed': [], 'skipped': []}
+mask_tasks = build_mask_generation_args(subjects, atlas_info, MODULES)
 
 with ProcessPoolExecutor(max_workers=N_WORKERS) as executor:
     futures = {}
-    for s in subjects:
-        group = s['group']
-        sid = s['id']
-        info = atlas_info[group]
-
-        args = (
-            sid, group, str(s['t2w']), str(s['dwi_dir']),
-            str(s['mask_new']), str(s['mask_new_mif']),
-            str(info['t2w_n4']), str(info['mask_nii']), MODULES
-        )
+    for args in mask_tasks:
+        sid = args[0]
 
         if sid in ATLAS_IDS:
             # Atlas subject: just copy its edited mask
@@ -741,64 +634,46 @@ print("\n✅ Manual correction complete.")
 # fine from the original pipeline — only the mask needs replacing.
 
 # %% [Step 4] Back up old masks and install new ones (resampled to DWI space)
-BACKUP_SUFFIX = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+BACKUP_SUFFIX = datetime.now().strftime("%Y%m%d_%H%M%S")
+install_plans = build_mask_install_plan(subjects, BACKUP_SUFFIX)
 
-for i, s in enumerate(subjects):
-    label = f"[{i+1}/{len(subjects)}] {s['id']} ({s['group']})"
-    
-    # Choose best available mask: edited > atlas-based > skip
-    if s['mask_new_edited'].exists():
-        new_mask = s['mask_new_edited']
-        source = "edited"
-    elif s['mask_new_mif'].exists():
-        new_mask = s['mask_new_mif']
-        source = "atlas-based"
-    else:
+for plan in install_plans:
+    label = plan["label"]
+    new_mask = plan["new_mask"]
+    source = plan["source"]
+    dwi_template = plan["dwi_template"]
+    mask_mif = plan["mask_mif"]
+    mask_anat = plan["mask_anat"]
+    mask_resampled = plan["mask_resampled"]
+
+    if new_mask is None:
         print(f"  ⏭️ {label}: no new mask available, skipping")
         continue
-    
-    dwi = s['dwi_dir']
-    mask_mif = dwi / "mask.mif"
-    mask_anat = dwi / "mask_anat.mif"
-    
-    # Use the registered DWI as the template for resampling
-    dwi_template = dwi / "dwi_flip_gradcheck_denoise_bias_anat.mif"
-    if not dwi_template.exists():
-        # Fallback: use existing mask or FOD as template (same grid)
-        for fallback in ["wm_fod_norm.mif", "dwi_preproc.mif"]:
-            fb = dwi / fallback
-            if fb.exists():
-                dwi_template = fb
-                break
-    
-    if not dwi_template.exists():
+    if dwi_template is None:
         print(f"  ❌ {label}: no DWI template found for resampling, skipping")
         continue
-    
+
     # Backup old masks
     if mask_mif.exists():
-        backup = dwi / f"mask_old_{BACKUP_SUFFIX}.mif"
-        run(f"mv {mask_mif} {backup}", verbose=False)
+        run(f"mv {mask_mif} {plan['backup_mask']}", verbose=False)
     if mask_anat.exists():
-        backup = dwi / f"mask_anat_old_{BACKUP_SUFFIX}.mif"
-        run(f"mv {mask_anat} {backup}", verbose=False)
-    
+        run(f"mv {mask_anat} {plan['backup_mask_anat']}", verbose=False)
+
     # Resample new mask from T2w resolution to DWI resolution
-    mask_resampled = dwi / "mask_new_dwi_space.mif"
     result = run(
         f"{MODULES} && mrgrid {new_mask} regrid {mask_resampled} "
         f"-template {dwi_template} -interp nearest -force -quiet",
-        verbose=False
+        verbose=False,
     )
-    
+
     if result.returncode != 0:
         print(f"  ❌ {label}: mrgrid resample FAILED")
         continue
-    
+
     # Install resampled mask as both mask.mif and mask_anat.mif
     run(f"cp {mask_resampled} {mask_mif}", verbose=False)
     run(f"cp {mask_resampled} {mask_anat}", verbose=False)
-    
+
     print(f"  ✅ {label}: installed {source} mask (resampled to DWI grid)")
 
 print(f"\n✅ All masks updated. Old masks backed up with suffix: {BACKUP_SUFFIX}")
@@ -808,26 +683,19 @@ print(f"{'=' * 70}")
 print(f" VERIFYING INSTALLED MASKS MATCH DWI GRID")
 print(f"{'=' * 70}")
 
-for i, s in enumerate(subjects):
-    dwi = s['dwi_dir']
-    mask_f = dwi / "mask.mif"
-    fod_f = dwi / "wm_fod_norm.mif"
-    
-    if not mask_f.exists():
-        print(f"  ❌ {s['id']}: mask.mif not found!")
+grid_rows = build_mask_grid_report(subjects)
+for row in grid_rows:
+    sid = row["subject_id"]
+    if row.get("missing_mask"):
+        print(f"  ❌ {sid}: mask.mif not found!")
         continue
-    
-    # Get dims via mrinfo
-    r_mask = subprocess.run(f"mrinfo {mask_f} -size", shell=True, capture_output=True, text=True)
-    mask_dims = r_mask.stdout.strip()
-    
-    if fod_f.exists():
-        r_fod = subprocess.run(f"mrinfo {fod_f} -size", shell=True, capture_output=True, text=True)
-        fod_dims = ' '.join(r_fod.stdout.strip().split()[:3])  # first 3 dims only
-        match = "✅" if mask_dims == fod_dims else "❌ MISMATCH"
-        print(f"  {match} {s['id']}: mask={mask_dims}  FOD={fod_dims}")
+    mask_dims = row.get("mask_dims", "")
+    if row.get("has_fod"):
+        fod_dims = row.get("fod_dims", "")
+        match = "✅" if row.get("match") else "❌ MISMATCH"
+        print(f"  {match} {sid}: mask={mask_dims}  FOD={fod_dims}")
     else:
-        print(f"  ⚠️  {s['id']}: mask={mask_dims}  (no FOD to compare)")
+        print(f"  ⚠️  {sid}: mask={mask_dims}  (no FOD to compare)")
 
 # %% [Step 4-checkpoint] Check pipeline readiness — what needs re-running?
 # Run this BEFORE any Step 5 cell to see what still needs processing.
@@ -835,50 +703,7 @@ print(f"{'=' * 70}")
 print(f" PIPELINE CHECKPOINT — WHAT NEEDS RE-RUNNING?")
 print(f"{'=' * 70}")
 
-chk = {'mask_ok': [], 'mask_bad': [],
-       'fod_ok': [], 'fod_stale': [], 'fod_missing': [],
-       'grp_ok': [], 'grp_stale': [], 'grp_missing': [],
-       'tck_ok': [], 'tck_stale': [], 'tck_missing': []}
-
-for s in subjects:
-    dwi = s['dwi_dir']; sid = s['id']
-    mask_f   = dwi / "mask.mif"
-    mask_dws = dwi / "mask_new_dwi_space.mif"
-    fod_f    = dwi / "wm_fod_norm.mif"
-    grp_f    = dwi / "wm_fod_norm_group.mif"
-    tck_f    = s['wb_tck']
-
-    # 1. Mask at DWI resolution?
-    if mask_f.exists():
-        r = subprocess.run(f"mrinfo {mask_f} -size", shell=True, capture_output=True, text=True)
-        dims = r.stdout.strip().split()
-        chk['mask_ok' if (len(dims) == 3 and dims != ['46','134','160']) else 'mask_bad'].append(sid)
-    else:
-        chk['mask_bad'].append(sid)
-
-    # 2. FOD newer than resampled mask?
-    if fod_f.exists() and mask_dws.exists():
-        chk['fod_ok' if fod_f.stat().st_mtime > mask_dws.stat().st_mtime else 'fod_stale'].append(sid)
-    elif fod_f.exists():
-        chk['fod_stale'].append(sid)
-    else:
-        chk['fod_missing'].append(sid)
-
-    # 3. Group FOD newer than per-subject FOD?
-    if grp_f.exists() and fod_f.exists():
-        chk['grp_ok' if grp_f.stat().st_mtime > fod_f.stat().st_mtime else 'grp_stale'].append(sid)
-    elif grp_f.exists():
-        chk['grp_stale'].append(sid)
-    else:
-        chk['grp_missing'].append(sid)
-
-    # 4. Tractogram newer than FOD?
-    if tck_f.exists() and fod_f.exists():
-        chk['tck_ok' if tck_f.stat().st_mtime > fod_f.stat().st_mtime else 'tck_stale'].append(sid)
-    elif tck_f.exists():
-        chk['tck_stale'].append(sid)
-    else:
-        chk['tck_missing'].append(sid)
+chk = compute_pipeline_checkpoint(subjects)
 
 print(f"\n  MASKS (DWI resolution):  ✅ {len(chk['mask_ok'])}/12")
 if chk['mask_bad']:
@@ -942,13 +767,14 @@ print(f" RE-RUNNING FOD ESTIMATION WITH NEW MASKS (PARALLEL)")
 print(f" Workers: {MAX_WORKERS} on {multiprocessing.cpu_count()} cores")
 print(f"{'=' * 70}")
 
-fod_tasks = [
-    (s['id'],
-     f"{MODULES} && cd {REPO_DIR} && python functions/batch_process_flip1.py "
-     f"--subject {s['id']} --steps 5 --force --derivatives-dir {DERIV_BASE}",
-     1800)
-    for s in subjects
-]
+fod_tasks = build_batch_process_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    steps="5",
+    timeout=1800,
+)
 fod_results = run_parallel(fod_tasks, label="FOD estimation")
 
 # %% [markdown] Step 5b-group: Group Response & Normalized FOD
@@ -1021,96 +847,16 @@ _fod_files = [
 ]
 _mask_files = ['mask.mif', 'mask_anat.mif', 'mask_new_dwi_space.mif']
 
-_issues = []
-_table_rows = []
-
-for s in subjects:
-    DWI = s['dwi_dir']
-    sid = s['id']
-    row = {'subject': sid, 'group': s['group']}
-
-    # -- Check key output exists --
-    fod_norm_grp = DWI / 'wm_fod_norm_group.mif'
-    if not fod_norm_grp.exists():
-        _issues.append(f"❌ {sid}: wm_fod_norm_group.mif MISSING")
-        row['status'] = 'MISSING'
-        _table_rows.append(row)
-        continue
-
-    # -- File modification time --
-    mtime = datetime.datetime.fromtimestamp(fod_norm_grp.stat().st_mtime)
-    row['mtime'] = mtime.strftime('%Y-%m-%d %H:%M')
-    row['size_MB'] = round(fod_norm_grp.stat().st_size / 1e6, 1)
-
-    # -- Check if normalised == unnormalised (mtnormalise fallback detection) --
-    fod_grp_raw = DWI / 'wm_fod_group.mif'
-    csf_fod_norm = DWI / 'csf_fod_norm_group.mif'
-    if fod_grp_raw.exists() and fod_norm_grp.exists():
-        sz_raw = fod_grp_raw.stat().st_size
-        sz_norm = fod_norm_grp.stat().st_size
-        # If sizes match exactly AND mtime within 1s → likely a raw copy (both fallbacks failed)
-        if sz_raw == sz_norm and abs(fod_grp_raw.stat().st_mtime - fod_norm_grp.stat().st_mtime) < 2:
-            row['normalised'] = '❌ RAW COPY (not normalised)'
-            _issues.append(f"❌ {sid}: mtnormalise completely failed — wm_fod_norm_group.mif is a raw copy")
-        elif not csf_fod_norm.exists() and sz_raw != sz_norm:
-            row['normalised'] = '⚠️  WM-only norm'
-            # WM-only is acceptable, just note it
-        else:
-            row['normalised'] = '✅ normalised'
-    else:
-        row['normalised'] = '? (cannot check)'
-
-    # -- Grid check: FOD vs mask vs DWI --
-    try:
-        fod_sz = run(f"{MODULES} && mrinfo {fod_norm_grp} -size -quiet", timeout=30, verbose=False)
-        mask_sz = run(f"{MODULES} && mrinfo {DWI / 'mask_anat.mif'} -size -quiet", timeout=30, verbose=False)
-        fod_grid = fod_sz.stdout.strip()
-        mask_grid = mask_sz.stdout.strip()
-        row['fod_grid'] = fod_grid
-        row['mask_grid'] = mask_grid
-        # Compare first 3 dims only (FOD has 4th dim for SH coefficients)
-        fod_dims = fod_grid.split()[:3]
-        mask_dims = mask_grid.split()[:3]
-        if fod_dims != mask_dims:
-            _issues.append(f"❌ {sid}: GRID MISMATCH — FOD {fod_dims} vs mask {mask_dims}")
-            row['grid_match'] = '❌ MISMATCH'
-        else:
-            row['grid_match'] = '✅'
-    except Exception as e:
-        row['grid_match'] = f'? error: {e}'
-
-    # -- Check per-subject response files exist --
-    missing_resp = [f for f in ['response_wm.txt', 'response_gm.txt', 'response_csf.txt']
-                    if not (DWI / f).exists()]
-    if missing_resp:
-        _issues.append(f"⚠️  {sid}: missing response files: {missing_resp}")
-        row['responses'] = f'⚠️  missing {len(missing_resp)}'
-    else:
-        row['responses'] = '✅'
-
-    # -- Check mask_anat.mif is the new mask (should be recent) --
-    mask_anat = DWI / 'mask_anat.mif'
-    if mask_anat.exists():
-        mask_mt = datetime.datetime.fromtimestamp(mask_anat.stat().st_mtime)
-        row['mask_date'] = mask_mt.strftime('%Y-%m-%d %H:%M')
-    else:
-        row['mask_date'] = 'MISSING'
-        _issues.append(f"❌ {sid}: mask_anat.mif MISSING")
-
-    row['status'] = 'OK'
-    _table_rows.append(row)
+_table_rows, _issues = collect_fod_verification(subjects, run_cmd=run, modules=MODULES)
 
 # -- Group response files --
-grp_resp_dir = DERIV_BASE / 'group_responses'
 print("  Group response files:")
-for gf in ['group_response_wm.txt', 'group_response_gm.txt', 'group_response_csf.txt']:
-    gp = grp_resp_dir / gf
-    if gp.exists():
-        gmt = datetime.datetime.fromtimestamp(gp.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-        print(f"    ✅ {gf}  (modified: {gmt})")
+for entry in collect_group_response_status(DERIV_BASE):
+    if entry['exists']:
+        print(f"    ✅ {entry['name']}  (modified: {entry['mtime']})")
     else:
-        print(f"    ❌ {gf}  MISSING")
-        _issues.append(f"❌ Group response {gf} MISSING")
+        print(f"    ❌ {entry['name']}  MISSING")
+        _issues.append(f"❌ Group response {entry['name']} MISSING")
 
 # -- Print per-subject table --
 print(f"\n  {'Subject':<28} {'Group':<6} {'Status':<8} {'Norm?':<30} {'FOD MB':<8} "
@@ -1137,13 +883,14 @@ print(f"{'=' * 70}")
 print(f" RE-RUNNING ROI RESAMPLING + SEGMENTATION (PARALLEL)")
 print(f"{'=' * 70}")
 
-seg_tasks = [
-    (s['id'],
-     f"{MODULES} && cd {REPO_DIR} && python functions/batch_process_flip1.py "
-     f"--subject {s['id']} --steps 6,7 --force --derivatives-dir {DERIV_BASE}",
-     1800)
-    for s in subjects
-]
+seg_tasks = build_batch_process_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    steps="6,7",
+    timeout=1800,
+)
 seg_results = run_parallel(seg_tasks, label="ROI resampling")
 
 # %% [markdown] Step 5c-QC: ROI Space & Laterality Verification
@@ -1164,36 +911,7 @@ seg_results = run_parallel(seg_tasks, label="ROI resampling")
 # - AP/APTR (manual+flip): left → HIGH axis-2 indices, right → LOW
 
 # %% [Step 5c-QC] ROI Space & Laterality Check
-import subprocess as _sp, tempfile as _tf, json as _json
 import numpy as np
-
-def _load_roi_data(roi_path):
-    """Load a .mif or .nii.gz ROI and return (data_array, header_dict)."""
-    p = str(roi_path)
-    if p.endswith('.mif'):
-        tmp = _tf.mktemp(suffix='.nii.gz')
-        _sp.run(['mrconvert', p, tmp, '-quiet', '-force'],
-                capture_output=True, timeout=30)
-        import nibabel as nib
-        img = nib.load(tmp)
-        data = img.get_fdata()
-        os.unlink(tmp)
-    else:
-        import nibabel as nib
-        img = nib.load(p)
-        data = img.get_fdata()
-    return data
-
-def _get_grid_info(mif_path):
-    """Return (dims_3d, voxel_sizes_3d) for a MRtrix/NIfTI image."""
-    r = _sp.run(
-        f"mrinfo {mif_path} -size -spacing",
-        shell=True, capture_output=True, text=True, timeout=10
-    )
-    lines = r.stdout.strip().split('\n')
-    dims = [int(x) for x in lines[0].split()][:3]  # first 3 spatial dims
-    vox = [float(x) for x in lines[1].split()][:3]
-    return dims, vox
 
 print(f"{'=' * 80}")
 print(f" ROI SPACE & LATERALITY VERIFICATION — {len(subjects)} SUBJECTS")
@@ -1218,27 +936,15 @@ for si, s in enumerate(subjects):
         roi_qc_issues.append((s['id'], msg))
         continue
 
-    fod_dims, fod_vox = _get_grid_info(fod_file)
+    fod_dims, fod_vox = get_grid_info(fod_file)
     print(f"  FOD grid:  {fod_dims}  voxel: {[f'{v:.4f}' for v in fod_vox]}")
 
     # --- 2. Enumerate fod_space ROIs ---
     if s['group'] == 'CTRL':
         roi_base = s['base'] / 'atlas' / 'rois' / 'fod_space'
-        roi_pairs = {
-            'isocortex': ('roi_isocortex_left.nii.gz', 'roi_isocortex_right.nii.gz'),
-            'thalamus':  ('roi_thalamus_left.nii.gz',  'roi_thalamus_right.nii.gz'),
-            'striatum':  ('roi_striatum_left.nii.gz',  'roi_striatum_right.nii.gz'),
-            'cerebellum':('roi_cerebellum_left.nii.gz', 'roi_cerebellum_right.nii.gz'),
-        }
     else:
         roi_base = s['base'] / 'manual_roi' / 'fod_space'
-        roi_pairs = {
-            'Graft':     ('roi_Graft_left_flip_fod.mif',     'roi_Graft_right_flip_fod.mif'),
-            'Thalamus':  ('roi_Thalamus_left_flip_fod.mif',  'roi_Thalamus_right_flip_fod.mif'),
-            'Striatum':  ('roi_Striatum_left_flip_fod.mif',  'roi_Striatum_right_flip_fod.mif'),
-            'Palecortex':('roi_Palecortex_left_flip_fod.mif','roi_Palecortex_right_flip_fod.mif'),
-            'cerebellum':('roi_cerebellum_left_flip_fod.mif','roi_cerebellum_right_flip_fod.mif'),
-        }
+    roi_pairs = get_roi_pairs_for_group(s['group'])
 
     left_centroids_ax2 = []
     right_centroids_ax2 = []
@@ -1253,7 +959,7 @@ for si, s in enumerate(subjects):
                 continue
 
             # Check grid match
-            roi_dims, roi_vox = _get_grid_info(roi_path)
+            roi_dims, roi_vox = get_grid_info(roi_path)
             grid_ok = (roi_dims == fod_dims)
             vox_ok = all(abs(rv - fv) < 0.01 for rv, fv in zip(roi_vox, fod_vox))
 
@@ -1267,7 +973,7 @@ for si, s in enumerate(subjects):
                 roi_qc_issues.append((s['id'], msg))
 
             # Load data and check non-empty + centroid
-            data = _load_roi_data(roi_path)
+            data = load_roi_data(roi_path)
             coords = np.argwhere(data > 0.5)
             nvox = len(coords)
 
@@ -1292,27 +998,16 @@ for si, s in enumerate(subjects):
 
     # --- 3. Left/Right consistency check ---
     if left_centroids_ax2 and right_centroids_ax2:
-        # All lefts should be on the same side, all rights on the opposite side
-        left_sides  = ['HIGH' if c > fod_dims[2]/2.0 else 'LOW' for _, c in left_centroids_ax2]
-        right_sides = ['HIGH' if c > fod_dims[2]/2.0 else 'LOW' for _, c in right_centroids_ax2]
+        laterality = evaluate_laterality_consistency(
+            left_centroids_ax2,
+            right_centroids_ax2,
+            axis_mid=fod_dims[2] / 2.0,
+        )
 
-        left_consistent = len(set(left_sides)) == 1
-        right_consistent = len(set(right_sides)) == 1
-        lr_separated = left_consistent and right_consistent and (left_sides[0] != right_sides[0])
-
-        if lr_separated:
-            print(f"\n    ✅ L/R laterality: all L={left_sides[0]}, all R={right_sides[0]} — CONSISTENT")
+        if laterality['lr_separated']:
+            print(f"\n    ✅ L/R laterality: all L={laterality['left_sides'][0]}, all R={laterality['right_sides'][0]} — CONSISTENT")
         else:
-            if not left_consistent:
-                msg = f"LEFT ROIs on mixed sides: {list(zip([r for r,_ in left_centroids_ax2], left_sides))}"
-                print(f"\n    ❌ {msg}")
-                roi_qc_issues.append((s['id'], msg))
-            if not right_consistent:
-                msg = f"RIGHT ROIs on mixed sides: {list(zip([r for r,_ in right_centroids_ax2], right_sides))}"
-                print(f"\n    ❌ {msg}")
-                roi_qc_issues.append((s['id'], msg))
-            if left_consistent and right_consistent and left_sides[0] == right_sides[0]:
-                msg = f"L and R centroids BOTH on {left_sides[0]} side — SWAP ERROR?"
+            for msg in laterality['issues']:
                 print(f"\n    ❌ {msg}")
                 roi_qc_issues.append((s['id'], msg))
 
@@ -1321,8 +1016,8 @@ for si, s in enumerate(subjects):
             lp = roi_base / lf
             rp = roi_base / rf
             if lp.exists() and rp.exists():
-                ld = _load_roi_data(lp)
-                rd = _load_roi_data(rp)
+                ld = load_roi_data(lp)
+                rd = load_roi_data(rp)
                 overlap = np.sum((ld > 0.5) & (rd > 0.5))
                 if overlap > 0:
                     msg = f"{region}: L/R OVERLAP = {overlap} voxels"
@@ -1350,42 +1045,33 @@ print(f" RE-RUNNING WHOLE-BRAIN TRACTOGRAPHY (PARALLEL)")
 print(f" 12 subjects × tckgen 1M streamlines on {multiprocessing.cpu_count()} cores")
 print(f"{'=' * 70}")
 
-tck_tasks = [
-    (s['id'],
-     f"{MODULES} && cd {REPO_DIR} && python functions/generate_wholebrain_tractogram.py "
-     f"--subject {s['id']} --force --derivatives-dir {DERIV_BASE}",
-     None)
-    for s in subjects
-]
+tck_tasks = build_wholebrain_tractography_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=None,
+)
 tck_results = run_parallel(tck_tasks, label="Tractography")
 
 # %% [Step 5d-post] Downsample to 10k + convert to .trk
 # Downsample wholebrain_1000k.tck → wholebrain_10k.tck using tckedit -number
 # Then convert wholebrain_10k.tck → wholebrain_10k.trk using nibabel
-import numpy as np
-import tempfile
-
 print(f"{'=' * 70}")
 print(f" DOWNSAMPLING TO 10k + CONVERTING TO .trk — {len(subjects)} SUBJECTS")
 print(f"{'=' * 70}")
 
 # --- Part 1: Downsample with tckedit (parallel) ---
-ds_tasks = [
-    (s['id'],
-     f"{MODULES} && tckedit "
-     f"{DERIV_BASE}/{s['id']}/{s['session']}/dwi/wholebrain/wholebrain_1000k.tck "
-     f"{DERIV_BASE}/{s['id']}/{s['session']}/dwi/wholebrain/wholebrain_10k.tck "
-     f"-number 10000 -force",
-     None)
-    for s in subjects
-]
+ds_tasks = build_tck_downsample_tasks(
+    subjects,
+    modules=MODULES,
+    derivatives_dir=DERIV_BASE,
+    number=10000,
+    timeout=None,
+)
 ds_results = run_parallel(ds_tasks, label="Downsample 10k")
 
 # --- Part 2: Convert .tck → .trk using nibabel ---
-import nibabel as nib
-from nibabel.streamlines import load as tck_load
-from nibabel.streamlines.trk import TrkFile
-
 print(f"\n  Converting .tck → .trk ...")
 trk_ok, trk_fail = 0, 0
 for s in subjects:
@@ -1403,44 +1089,14 @@ for s in subjects:
         continue
 
     try:
-        # Convert t2w .mif → temp .nii.gz for nibabel header
-        with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as tmp:
-            tmp_nii = tmp.name
-        subprocess.run(
-            f"{MODULES} && mrconvert {t2w_mif} {tmp_nii} -force -quiet",
-            shell=True, check=True, capture_output=True, timeout=30
+        n_streamlines = convert_tck_to_trk(
+            tck_path=tck_10k,
+            trk_path=trk_10k,
+            reference_mif_path=t2w_mif,
+            modules_cmd=MODULES,
         )
-        ref_img = nib.load(tmp_nii)
-        aff = ref_img.affine
-        aff_inv = np.linalg.inv(aff)
-        zooms = np.array(ref_img.header.get_zooms()[:3], dtype=np.float32)
-        dims = np.array(ref_img.shape[:3], dtype=np.int16)
-
-        # Load .tck streamlines
-        tck = tck_load(str(tck_10k))
-        streamlines = list(tck.streamlines)
-
-        # World (RAS mm) → voxel coordinates
-        vox_streamlines = []
-        for sl in streamlines:
-            ones = np.ones((sl.shape[0], 1))
-            vox = (aff_inv @ np.hstack([sl, ones]).T).T[:, :3]
-            vox_streamlines.append(vox.astype(np.float32))
-
-        # Build TrkFile and save
-        hdr = TrkFile.create_empty_header()
-        hdr['dimensions'] = dims
-        hdr['voxel_sizes'] = zooms
-        hdr['voxel_order'] = b'RAS'
-        hdr['vox_to_ras'] = aff.astype(np.float32)
-
-        tractogram = nib.streamlines.Tractogram(vox_streamlines, affine_to_rasmm=aff)
-        nib.streamlines.save(TrkFile(tractogram, header=hdr), str(trk_10k))
         trk_ok += 1
-        print(f"  ✅ {sid}: {trk_10k.name}")
-
-        # Cleanup temp file
-        os.remove(tmp_nii)
+        print(f"  ✅ {sid}: {trk_10k.name} ({n_streamlines} streamlines)")
     except Exception as e:
         trk_fail += 1
         print(f"  ❌ {sid}: {e}")
@@ -1498,13 +1154,13 @@ for s in subjects:
         print(f"  SKIP:  {s['id']} — no tractogram found")
 print(f"\n  → {stale_count} subject(s) need SIFT2 (re)computation\n")
 
-sift2_tasks = [
-    (s['id'],
-     f"{MODULES} && cd {REPO_DIR} && python functions/run_passthrough_pipeline.py "
-     f"--subject {s['id']} --step sift2 --derivatives-dir {DERIV_BASE}",
-     1800)
-    for s in subjects
-]
+sift2_tasks = build_sift2_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=1800,
+)
 sift2_results = run_parallel(sift2_tasks, label="SIFT2")
 
 # %% [markdown] Step 5e-CST: Create & Edit CST ROIs for AP/APTR Subjects
@@ -1547,46 +1203,13 @@ cst_missing = []   # subjects that need CST ROIs created
 cst_exists  = []   # subjects that already have CST ROIs in FOD space
 cst_needs_regrid = []  # subjects that have source ROIs but no FOD-space ROIs
 
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue  # CTRL subjects don't need CST ROIs
+status_snapshot = collect_cst_status(subjects, legacy_dir=CST_LEGACY_DIR)
+cst_exists = status_snapshot['complete']
+cst_needs_regrid = status_snapshot['needs_regrid']
+cst_missing = status_snapshot['missing']
 
-    sid = s['id']
-    manual_roi_dir = s['base'] / 'manual_roi'
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-
-    # Check FOD-space ROIs (final product)
-    fod_left  = cst_dir / "roi_CST_left_fod.mif"
-    fod_right = cst_dir / "roi_CST_right_fod.mif"
-    has_fod = fod_left.exists() and fod_right.exists()
-
-    # Check source ROIs in subject's manual_roi/ (new standard location)
-    src_left  = manual_roi_dir / "roi_CST_left_flip.mif"
-    src_right = manual_roi_dir / "roi_CST_right_flip.mif"
-    has_src = src_left.exists() and src_right.exists()
-
-    # Also check legacy location (manual_roi_flip/ shared dir) if not in manual_roi/
-    if not has_src:
-        for pat_l, pat_r in [
-            (CST_LEGACY_DIR / f"roi_CST_left_{sid}.mif",     CST_LEGACY_DIR / f"roi_CST_right_{sid}.mif"),
-            (CST_LEGACY_DIR / f"roi_CST_left_{sid}_CST.mif", CST_LEGACY_DIR / f"roi_CST_right_{sid}_CST.mif"),
-        ]:
-            if pat_l.exists(): src_left = pat_l
-            if pat_r.exists(): src_right = pat_r
-        has_src = src_left.exists() and src_right.exists()
-
-    status = ""
-    if has_fod:
-        status = "✅ FOD-space ROIs exist"
-        cst_exists.append(s)
-    elif has_src:
-        status = f"⚠️  Source ROIs exist ({src_left.parent.name}/), need regrid to FOD space"
-        cst_needs_regrid.append((s, src_left, src_right))
-    else:
-        status = "❌ No CST ROIs — need to create & draw"
-        cst_missing.append(s)
-
-    print(f"  [{s['group']:>4}] {sid:<30} {status}")
+for s, status, _src_left, _src_right, _fod_left, _fod_right in status_snapshot['rows']:
+    print(f"  [{s['group']:>4}] {s['id']:<30} {status}")
 
 print(f"\n  Summary:")
 print(f"    ✅ Complete (FOD-space):  {len(cst_exists)}")
@@ -1662,22 +1285,14 @@ all_need_draw = []
 for s in subjects:
     if s['group'] == 'CTRL':
         continue
-    manual_roi_dir = s['base'] / 'manual_roi'
     cst_dir = s['wb_dir'] / "passthrough_cst"
     # Skip if FOD-space ROIs already exist
     if (cst_dir / "roi_CST_left_fod.mif").exists() and (cst_dir / "roi_CST_right_fod.mif").exists():
         continue
-    # Check if source ROIs exist (either in manual_roi/ or legacy dir)
-    for hemi in ['left', 'right']:
-        roi_file = manual_roi_dir / f"roi_CST_{hemi}_flip.mif"
-        if not roi_file.exists():
-            # Check legacy location
-            for legacy in [CST_LEGACY_DIR / f"roi_CST_{hemi}_{s['id']}.mif",
-                           CST_LEGACY_DIR / f"roi_CST_{hemi}_{s['id']}_CST.mif"]:
-                if legacy.exists():
-                    roi_file = legacy
-                    break
-        if roi_file.exists():
+
+    src_left, src_right = resolve_cst_source_rois(s['id'], s['base'] / 'manual_roi', CST_LEGACY_DIR)
+    for hemi, roi_file in [('left', src_left), ('right', src_right)]:
+        if roi_file is not None and roi_file.exists():
             all_need_draw.append((s, hemi, roi_file))
 
 for s, hemi, roi_file in all_need_draw:
@@ -1728,38 +1343,12 @@ print(f"{'=' * 70}")
 print(f" REGRIDDING CST ROIs TO FOD SPACE")
 print(f"{'=' * 70}")
 
-all_to_regrid = []
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    sid = s['id']
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    fod_left  = cst_dir / "roi_CST_left_fod.mif"
-    fod_right = cst_dir / "roi_CST_right_fod.mif"
-    if fod_left.exists() and fod_right.exists():
-        print(f"  SKIP: {sid} — FOD-space CST ROIs already exist")
-        continue
-    # Find source ROIs: check manual_roi/ first, then legacy dir
-    manual_roi_dir = s['base'] / 'manual_roi'
-    src_left = src_right = None
-    # Standard location
-    sl = manual_roi_dir / "roi_CST_left_flip.mif"
-    sr = manual_roi_dir / "roi_CST_right_flip.mif"
-    if sl.exists(): src_left = sl
-    if sr.exists(): src_right = sr
-    # Legacy location fallback
-    if not src_left or not src_right:
-        for pat_l, pat_r in [
-            (CST_LEGACY_DIR / f"roi_CST_left_{sid}.mif",     CST_LEGACY_DIR / f"roi_CST_right_{sid}.mif"),
-            (CST_LEGACY_DIR / f"roi_CST_left_{sid}_CST.mif", CST_LEGACY_DIR / f"roi_CST_right_{sid}_CST.mif"),
-        ]:
-            if not src_left and pat_l.exists(): src_left = pat_l
-            if not src_right and pat_r.exists(): src_right = pat_r
-
-    if not src_left or not src_right:
-        print(f"  ❌ {sid}: Source ROIs not found (checked manual_roi/ and legacy dir)")
-        continue
-    all_to_regrid.append((s, src_left, src_right))
+regrid_plan = build_cst_regrid_plan(subjects, legacy_dir=CST_LEGACY_DIR)
+all_to_regrid = regrid_plan['to_regrid']
+for s in regrid_plan['already_complete']:
+    print(f"  SKIP: {s['id']} — FOD-space CST ROIs already exist")
+for s in regrid_plan['missing_sources']:
+    print(f"  ❌ {s['id']}: Source ROIs not found (checked manual_roi/ and legacy dir)")
 
 regrid_ok = 0
 for s, src_left, src_right in all_to_regrid:
@@ -1794,26 +1383,14 @@ print(f"\n  Regridded {regrid_ok}/{len(all_to_regrid)} subjects successfully")
 print(f"{'=' * 70}")
 print(f" CST ROI FINAL STATUS — ALL AP/APTR SUBJECTS")
 print(f"{'=' * 70}")
-all_ok = True
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    sid = s['id']
-    manual_roi_dir = s['base'] / 'manual_roi'
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    src_left  = manual_roi_dir / "roi_CST_left_flip.mif"
-    src_right = manual_roi_dir / "roi_CST_right_flip.mif"
-    fod_left  = cst_dir / "roi_CST_left_fod.mif"
-    fod_right = cst_dir / "roi_CST_right_fod.mif"
-    has_src  = src_left.exists() and src_right.exists()
-    has_fod  = fod_left.exists() and fod_right.exists()
-    icon = "✅" if has_fod else ("⚠️ " if has_src else "❌")
-    if not has_fod:
-        all_ok = False
-    print(f"  {icon} [{s['group']:>4}] {sid:<30} "
-          f"src={'YES' if has_src else 'NO':>3}  "
-          f"fod_L={'YES' if fod_left.exists() else 'NO':>3}  "
-          f"fod_R={'YES' if fod_right.exists() else 'NO':>3}")
+qc_summary = build_cst_final_qc_summary(subjects, legacy_dir=CST_LEGACY_DIR)
+all_ok = qc_summary['all_ok']
+for row in qc_summary['rows']:
+    s = row['subject']
+    print(f"  {row['icon']} [{s['group']:>4}] {s['id']:<30} "
+          f"src={'YES' if row['has_src'] else 'NO':>3}  "
+          f"fod_L={'YES' if row['has_fod_left'] else 'NO':>3}  "
+          f"fod_R={'YES' if row['has_fod_right'] else 'NO':>3}")
 if all_ok:
     print("\n  ✅ All AP/APTR subjects have CST ROIs — ready for Step 5f")
 else:
@@ -1848,50 +1425,15 @@ for s in subjects:
             t.unlink()
         print(f"  🗑  {s['id']}: deleted {len(old_tcks)} old segmented CST tracts")
 
-cst_tasks = []
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    sid = s['id']
-    wb_tck = s['wb_tck']
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    graft_fod_dir = s['base'] / 'manual_roi' / 'fod_space'
-    graft_shrink_dir = graft_fod_dir / 'shrink'
-
-    if not wb_tck.exists():
-        print(f"  ❌ {sid}: no whole-brain tractogram, skipping")
-        continue
-
-    cmds = []
-    for hemi in HEMIS:
-        cst_roi = cst_dir / f"roi_CST_{hemi}_fod.mif"
-        if not cst_roi.exists():
-            print(f"  ⚠️  {sid}: no CST ROI for {hemi}, skipping")
-            continue
-        # --- Normal whole graft ---
-        graft_roi = graft_fod_dir / f"roi_Graft_{hemi}_flip_fod.mif"
-        out_tck = cst_dir / f"graft_{hemi}_to_CST_{hemi}.tck"
-        if graft_roi.exists() and not out_tck.exists():
-            cmds.append(
-                f"{MODULES} && tckedit {wb_tck} {out_tck} "
-                f"-include {graft_roi} -include {cst_roi} -force -quiet"
-            )
-        elif not graft_roi.exists():
-            print(f"  ⚠️  {sid}: no whole graft ROI for {hemi}")
-        # --- Shrunk whole graft ---
-        graft_shrink_roi = graft_shrink_dir / f"roi_Graft_{hemi}_flip_fod_shrink.mif"
-        out_shrink_tck = cst_dir / f"graft_{hemi}_to_CST_{hemi}_shrink.tck"
-        if graft_shrink_roi.exists() and not out_shrink_tck.exists():
-            cmds.append(
-                f"{MODULES} && tckedit {wb_tck} {out_shrink_tck} "
-                f"-include {graft_shrink_roi} -include {cst_roi} -force -quiet"
-            )
-
-    if cmds:
-        compound = ' && '.join(cmds)
-        cst_tasks.append((sid, compound, None))
-    else:
-        print(f"  ⚪ {sid}: all CST tracts already exist or no graft ROIs")
+cst_plan = build_cst_passthrough_extraction_tasks(
+    subjects,
+    modules=MODULES,
+    hemis=tuple(HEMIS),
+    timeout=None,
+)
+for msg in cst_plan['skips']:
+    print(f"  {msg}")
+cst_tasks = cst_plan['tasks']
 
 if cst_tasks:
     cst_results = run_parallel(cst_tasks, label="CST_passthrough")
@@ -1900,14 +1442,9 @@ else:
 
 # Show results
 print(f"\n  CST tract counts per subject:")
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    tcks = list(cst_dir.glob('*.tck'))
-    n_normal = len([t for t in tcks if '_shrink' not in t.name and '_cleaned' not in t.name])
-    n_shrink = len([t for t in tcks if '_shrink' in t.name and '_cleaned' not in t.name])
-    print(f"  {s['id']:<30}: {n_normal} normal, {n_shrink} shrink")
+for row in collect_cst_raw_tract_counts(subjects):
+    s = row['subject']
+    print(f"  {s['id']:<30}: {row['n_normal']} normal, {row['n_shrink']} shrink")
 
 # %% [Step 5e-CST-tckgen] Targeted CST tractography: seed CST → include Graft (AP/APTR) — PARALLEL
 # ────────────────────────────────────────────────────────────────────────
@@ -1925,55 +1462,16 @@ print(f"{'=' * 70}")
 HEMIS = ['left', 'right']
 CST_TCKGEN_SELECT = 10000  # number of streamlines to select
 
-tckgen_tasks = []
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    sid = s['id']
-    fod = s['dwi_dir'] / "wm_fod_norm_group.mif"
-    mask = s['dwi_dir'] / "mask_anat.mif"
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    graft_fod_dir = s['base'] / 'manual_roi' / 'fod_space'
-
-    if not fod.exists():
-        print(f"  ❌ {sid}: no FOD image, skipping")
-        continue
-    if not mask.exists():
-        print(f"  ❌ {sid}: no mask, skipping")
-        continue
-
-    cmds = []
-    for hemi in HEMIS:
-        cst_roi = cst_dir / f"roi_CST_{hemi}_fod.mif"
-        graft_roi = graft_fod_dir / f"roi_Graft_{hemi}_flip_fod.mif"
-        out_tck = cst_dir / f"tckgen_CST_{hemi}_to_graft_{hemi}.tck"
-
-        if not cst_roi.exists():
-            print(f"  ⚠️  {sid}: no CST ROI for {hemi}, skipping")
-            continue
-        if not graft_roi.exists():
-            print(f"  ⚠️  {sid}: no Graft ROI for {hemi}, skipping")
-            continue
-        if out_tck.exists():
-            continue
-
-        cmds.append(
-            f"{MODULES} && tckgen {fod} {out_tck} "
-            f"-algorithm iFOD2 "
-            f"-seed_image {cst_roi} "
-            f"-include {graft_roi} "
-            f"-mask {mask} "
-            f"-select {CST_TCKGEN_SELECT} "
-            f"-step 0.02 -angle 60 -cutoff 0.05 "
-            f"-minlength 2 -maxlength 30 "
-            f"-nthreads 4 -force -quiet"
-        )
-
-    if cmds:
-        compound = ' && '.join(cmds)
-        tckgen_tasks.append((sid, compound, None))
-    else:
-        print(f"  ⚪ {sid}: all tckgen CST tracts already exist or missing ROIs")
+tckgen_plan = build_cst_tckgen_tasks(
+    subjects,
+    modules=MODULES,
+    hemis=tuple(HEMIS),
+    select=CST_TCKGEN_SELECT,
+    timeout=None,
+)
+for msg in tckgen_plan['skips']:
+    print(f"  {msg}")
+tckgen_tasks = tckgen_plan['tasks']
 
 if tckgen_tasks:
     tckgen_results = run_parallel(tckgen_tasks, label="CST_tckgen")
@@ -1982,20 +1480,12 @@ else:
 
 # Show results
 print(f"\n  tckgen CST tract counts per subject:")
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    for hemi in HEMIS:
-        out_tck = cst_dir / f"tckgen_CST_{hemi}_to_graft_{hemi}.tck"
-        if out_tck.exists():
-            import subprocess as _sp
-            r = _sp.run(f"tckinfo {out_tck} 2>/dev/null | awk '/^ *count:/{{print $2}}'",
-                        shell=True, capture_output=True, text=True)
-            cnt = r.stdout.strip() or '?'
-            print(f"  {s['id']:<30} {hemi:<6}: {cnt} streamlines")
-        else:
-            print(f"  {s['id']:<30} {hemi:<6}: NOT FOUND")
+for row in collect_cst_tckgen_counts(subjects, hemis=tuple(HEMIS)):
+    s = row['subject']
+    if row['exists']:
+        print(f"  {s['id']:<30} {row['hemi']:<6}: {row['count']} streamlines")
+    else:
+        print(f"  {s['id']:<30} {row['hemi']:<6}: NOT FOUND")
 
 # %% [TEMP] CST tckgen — exclude Striatum/Cerebellum/Paleocortex/Thalamus (Apallial17NmF only)
 # ────────────────────────────────────────────────────────────────────────
@@ -2012,35 +1502,34 @@ roi_dir = base / "manual_roi" / "fod_space"
 cst_dir = base / "dwi" / "wholebrain" / "passthrough_cst"
 
 # Exclusion ROIs (all 8: 4 regions × 2 hemispheres)
-exclude_rois = []
-for region in ["Striatum", "cerebellum", "Palecortex", "Thalamus"]:
-    for hemi in ["left", "right"]:
-        roi = roi_dir / f"roi_{region}_{hemi}_flip_fod.mif"
-        if roi.exists():
-            exclude_rois.append(str(roi))
-            print(f"  ✅ Exclude: {roi.name}")
-        else:
-            print(f"  ⚠️  Missing: {roi.name}")
+roi_summary = collect_temp_exclusion_rois(roi_dir)
+for roi in roi_summary['found']:
+    print(f"  ✅ Exclude: {roi.name}")
+for name in roi_summary['missing']:
+    print(f"  ⚠️  Missing: {name}")
 
-exclude_flags = " ".join(f"-exclude {r}" for r in exclude_rois)
 out_dir = Path("/tmp/cst_viz")
 out_dir.mkdir(exist_ok=True)
 
-for hemi in ["left", "right"]:
-    src = cst_dir / f"tckgen_CST_{hemi}_to_graft_{hemi}.tck"
-    dst = out_dir / f"Apallial17_CST_{hemi}_noTargets.tck"
-    if not src.exists():
-        print(f"  ❌ Source not found: {src.name}")
-        continue
-    cmd = f"{MODULES} && tckedit {src} {dst} {exclude_flags} -force -quiet"
-    print(f"\n  Processing {hemi}...")
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+temp_plan = build_temp_cst_exclusion_tasks(
+    cst_dir=cst_dir,
+    out_dir=out_dir,
+    output_prefix="Apallial17_CST",
+    modules=MODULES,
+    exclude_rois=roi_summary['found'],
+)
+for src_name in temp_plan['missing_sources']:
+    print(f"  ❌ Source not found: {src_name}")
+
+for task in temp_plan['tasks']:
+    print(f"\n  Processing {task['hemi']}...")
+    r = subprocess.run(task['cmd'], shell=True, capture_output=True, text=True, timeout=120)
     if r.returncode == 0:
         # Count remaining streamlines
-        info = subprocess.run(f"tckinfo {dst} 2>/dev/null | awk '/^ *count:/{{print $2}}'",
+        info = subprocess.run(f"tckinfo {task['dst']} 2>/dev/null | awk '/^ *count:/{{print $2}}'",
                               shell=True, capture_output=True, text=True)
         cnt = info.stdout.strip() or '?'
-        print(f"  ✅ {dst.name}: {cnt} streamlines remaining")
+        print(f"  ✅ {task['dst'].name}: {cnt} streamlines remaining")
     else:
         print(f"  ❌ Error: {r.stderr[:200]}")
 
@@ -2053,26 +1542,17 @@ print(f" CLEANING CST PASSTHROUGH TRACTS WITH MATLAB AFQ")
 print(f"{'=' * 70}")
 
 cst_clean_tasks = []
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    sid = s['id']
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    raw_tcks = [t for t in cst_dir.glob('*.tck')
-                if '_cleaned' not in t.name and '_SF' not in t.name]
-    # Check if any need cleaning (no matching _cleaned file)
-    needs_clean = [t for t in raw_tcks
-                   if not (t.parent / t.name.replace('.tck', '_cleaned.tck')).exists()]
-    if not needs_clean:
-        print(f"  ⚪ {sid}: all CST tracts already cleaned")
-        continue
-
-    # Use clean_tracts.py with --passthrough-cst flag if it exists,
-    # otherwise build MATLAB commands directly
-    base_cmd = (f"{MODULES} && {MODULE_LOAD_MATLAB} && cd {REPO_DIR} && python "
-                f"functions/clean_tracts.py --subject {sid} --passthrough-cst "
-                f"--derivatives-dir {DERIV_BASE}")
-    cst_clean_tasks.append((sid, base_cmd, None))
+cst_clean_plan = build_cst_cleaning_tasks(
+    subjects,
+    modules=MODULES,
+    module_load_matlab=MODULE_LOAD_MATLAB,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=None,
+)
+for msg in cst_clean_plan['skips']:
+    print(f"  {msg}")
+cst_clean_tasks = cst_clean_plan['tasks']
 
 if cst_clean_tasks:
     cst_clean_results = run_parallel(cst_clean_tasks, label="CST_cleaning")
@@ -2080,12 +1560,9 @@ else:
     print("  Nothing to clean (all already done or no raw CST tracts).")
 
 # Show cleaned counts
-for s in subjects:
-    if s['group'] == 'CTRL':
-        continue
-    cst_dir = s['wb_dir'] / "passthrough_cst"
-    n_cln = len(list(cst_dir.glob('*_cleaned.tck')))
-    print(f"  {s['id']:<30}: {n_cln} cleaned CST tracts")
+for row in collect_cst_cleaned_counts(subjects):
+    s = row['subject']
+    print(f"  {s['id']:<30}: {row['n_cleaned']} cleaned CST tracts")
 
 # %% [markdown] Step 5f: Passthrough Tract Extraction
 # ---
@@ -2118,13 +1595,14 @@ print(f" EXTRACTING PASSTHROUGH TRACTS (PARALLEL) — {len(subjects)} SUBJECTS")
 print(f"{'=' * 70}")
 
 # --- Step 1: Create shrunk segments ONCE (sequential, affects all AP/APTR) ---
-has_ap_aptr = any(s['group'] in ['AP', 'APTR'] for s in subjects)
-if has_ap_aptr:
+shrink_cmd = build_shrink_segments_command(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+)
+if shrink_cmd is not None:
     print("  Creating shrunk graft segments (sequential, all AP/APTR subjects)...")
-    first_ap = next(s for s in subjects if s['group'] in ['AP', 'APTR'])
-    shrink_cmd = (f"{MODULES} && cd {REPO_DIR} && python "
-                  f"functions/extract_passthrough_tracts.py --subject {first_ap['id']} "
-                  f"--create-shrink-segments --derivatives-dir {DERIV_BASE}")
     shrink_result = subprocess.run(shrink_cmd, shell=True, capture_output=True, text=True)
     if shrink_result.returncode == 0:
         print("  ✅ Shrunk segments created successfully")
@@ -2133,18 +1611,13 @@ if has_ap_aptr:
         print(f"     {shrink_result.stderr[-300:]}")
 
 # --- Step 2: Extract passthrough tracts in parallel (left + right + shrink) ---
-pt_tasks = []
-for s in subjects:
-    cmds = []
-    base_cmd = (f"{MODULES} && cd {REPO_DIR} && python "
-                f"functions/extract_passthrough_tracts.py --subject {s['id']}")
-    cmds.append(f"{base_cmd} --hemi left --derivatives-dir {DERIV_BASE}")
-    cmds.append(f"{base_cmd} --hemi right --derivatives-dir {DERIV_BASE}")
-    if s['group'] in ['AP', 'APTR']:
-        cmds.append(f"{base_cmd} --hemi left --shrink --derivatives-dir {DERIV_BASE}")
-        cmds.append(f"{base_cmd} --hemi right --shrink --derivatives-dir {DERIV_BASE}")
-    compound = ' && '.join(cmds)
-    pt_tasks.append((s['id'], compound, None))
+pt_tasks = build_passthrough_extraction_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=None,
+)
 
 pt_results = run_parallel(pt_tasks, label="Passthrough extraction")
 
@@ -2152,34 +1625,28 @@ pt_results = run_parallel(pt_tasks, label="Passthrough extraction")
 print(f"{'=' * 70}")
 print(f" PASSTHROUGH TRACT COUNTS")
 print(f"{'=' * 70}")
-for s in subjects:
-    pt_d = s['pt_dir']
-    if pt_d.exists():
-        tracts = sorted(glob.glob(str(pt_d / '*.tck')))
-        n_raw = len([t for t in tracts if '_cleaned' not in t])
-        print(f"  {s['id']:<30} ({s['group']:<4}): {n_raw} raw tracts")
+for row in collect_passthrough_tract_counts(subjects):
+    s = row['subject']
+    if row['has_dir']:
+        print(f"  {s['id']:<30} ({s['group']:<4}): {row['n_raw']} raw tracts")
     else:
         print(f"  {s['id']:<30} ({s['group']:<4}): NO passthrough dir")
 
 # %% [Step 5f-QC2] QC: View sample tract for first subject
 s = subjects[0]
-pt_d = s['pt_dir']
-if pt_d.exists():
-    sample = list(sorted(pt_d.glob('*thalamus_left*.tck')))
-    sample = sample[0] if sample else None
-    if sample:
-        if s['group'] == 'CTRL':
-            roi_overlay = s['base'] / 'atlas' / 'rois' / 'fod_space' / 'roi_thalamus_left.nii.gz'
-        else:
-            roi_overlay = s['base'] / 'manual_roi' / 'fod_space' / 'roi_Thalamus_left_flip_fod.mif'
-        launch_gui(
-            f"mrview {s['t2w']} "
-            f"-overlay.load {roi_overlay} -overlay.opacity 0.4 "
-            f"-tractography.load {sample}"
-        )
-        print(f"Showing: {sample.name} for {s['id']}")
-    else:
-        print("No thalamus tract found for visualization")
+sample_tract, roi_overlay = select_sample_tract(s, tract_pattern="*thalamus_left*.tck")
+if sample_tract and roi_overlay:
+    launch_gui(
+        f"mrview {s['t2w']} "
+        f"-overlay.load {roi_overlay} -overlay.opacity 0.4 "
+        f"-tractography.load {sample_tract}"
+    )
+    print(f"Showing: {sample_tract.name} for {s['id']}")
+elif sample_tract and not roi_overlay:
+    launch_gui(f"mrview {s['t2w']} -tractography.load {sample_tract}")
+    print(f"Showing: {sample_tract.name} (ROI overlay not found)")
+else:
+    print("No thalamus tract found for visualization")
 
 # %% [markdown] Step 5g: MATLAB AFQ Cleaning
 # ---
@@ -2206,26 +1673,21 @@ print(f"{'=' * 70}")
 print(f" CLEANING PASSTHROUGH TRACTS WITH MATLAB AFQ (PARALLEL)")
 print(f"{'=' * 70}")
 
-clean_tasks = []
-for s in subjects:
-    base_cmd = (f"{MODULES} && cd {REPO_DIR} && python "
-                f"functions/clean_tracts.py --subject {s['id']} --passthrough "
-                f"--derivatives-dir {DERIV_BASE}")
-    if s['group'] in ['AP', 'APTR']:
-        # Clean both normal and shrunk tracts
-        compound = f"{base_cmd} && {base_cmd} --shrink"
-        clean_tasks.append((s['id'], compound, 7200))
-    else:
-        clean_tasks.append((s['id'], base_cmd, 3600))
+clean_tasks = build_passthrough_cleaning_tasks(
+    subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout_ctrl=3600,
+    timeout_ap_aptr=7200,
+)
 
 clean_results = run_parallel(clean_tasks, label="MATLAB cleaning")
 
 # %% [Step 5g-QC] QC: Compare raw vs cleaned for first subject
 s = subjects[0]
-cleaned_files = sorted(glob.glob(str(s['pt_dir'] / '*_cleaned.tck'))) if s['pt_dir'].exists() else []
-if cleaned_files:
-    cleaned = Path(cleaned_files[0])
-    raw = cleaned.parent / cleaned.name.replace('_cleaned.tck', '.tck')
+raw, cleaned = select_raw_cleaned_comparison_pair(s)
+if raw and cleaned:
     print(f"Comparing: {raw.name}")
     run(f"{MODULES} && tckinfo {raw} -count")
     print(f"Cleaned: {cleaned.name}")
@@ -2273,16 +1735,13 @@ print(f"\n{'─' * 50}")
 print(f" Part 2: Extracting passthrough tracts (CTRL × left + right)")
 print(f"{'─' * 50}")
 
-pt_ctrl_tasks = []
-for s in ctrl_subjects:
-    base_cmd = (f"{MODULES} && cd {REPO_DIR} && python "
-                f"functions/extract_passthrough_tracts.py --subject {s['id']}")
-    cmds = [
-        f"{base_cmd} --hemi left --derivatives-dir {DERIV_BASE}",
-        f"{base_cmd} --hemi right --derivatives-dir {DERIV_BASE}",
-    ]
-    compound = ' && '.join(cmds)
-    pt_ctrl_tasks.append((s['id'], compound, None))
+pt_ctrl_tasks = build_ctrl_passthrough_extraction_tasks(
+    ctrl_subjects,
+    modules=MODULES,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=None,
+)
 
 pt_ctrl_results = run_parallel(pt_ctrl_tasks, label="CTRL_passthrough")
 
@@ -2298,22 +1757,24 @@ print(f"\n{'─' * 50}")
 print(f" Part 3: MATLAB AFQ cleaning (CTRL only)")
 print(f"{'─' * 50}")
 
-clean_ctrl_tasks = []
-for s in ctrl_subjects:
-    base_cmd = (f"{MODULES} && {MODULE_LOAD_MATLAB} && cd {REPO_DIR} && python "
-                f"functions/clean_tracts.py --subject {s['id']} --passthrough "
-                f"--derivatives-dir {DERIV_BASE}")
-    clean_ctrl_tasks.append((s['id'], base_cmd, None))
+clean_ctrl_tasks = build_ctrl_cleaning_tasks(
+    ctrl_subjects,
+    modules=MODULES,
+    module_load_matlab=MODULE_LOAD_MATLAB,
+    repo_dir=REPO_DIR,
+    derivatives_dir=DERIV_BASE,
+    timeout=None,
+)
 
 clean_ctrl_results = run_parallel(clean_ctrl_tasks, label="CTRL_cleaning")
 
 # Show cleaned counts
-for s in ctrl_subjects:
-    pt_d = s['pt_dir']
-    if pt_d.exists():
-        n_raw = len([f for f in pt_d.glob('*.tck') if '_cleaned' not in f.name])
-        n_cln = len(list(pt_d.glob('*_cleaned.tck')))
-        print(f"  {s['id']}: {n_raw} raw, {n_cln} cleaned")
+for row in collect_ctrl_passthrough_counts(ctrl_subjects):
+    s = row['subject']
+    if row['has_dir']:
+        print(f"  {s['id']}: {row['n_raw']} raw, {row['n_cleaned']} cleaned")
+    else:
+        print(f"  {s['id']}: NO passthrough dir")
 
 print(f"\n{'=' * 70}")
 print(f" CTRL RERUN COMPLETE")
@@ -2854,42 +2315,7 @@ else:
     seg_colors = {'anterior': '#E24A33', 'central': '#348ABD', 'posterior': '#988ED5'}
     
     plot_subjects = aptr_left['subject'].unique()
-    n_subj = len(plot_subjects)
     marker_list = ['o', 's', 'D', '^']
-    n_tgt = len(targets_order)
-    
-    def _single_seg_panel(ax, data_df, seg, color, title):
-        """Draw single-segment bars for 4 targets, with individual points + subject legend."""
-        seg_data = data_df[data_df['segment'] == seg]
-        means, sems, all_vals = [], [], []
-        for tgt in targets_order:
-            vals = seg_data[seg_data['target'] == tgt]['sift2_density'].values
-            means.append(np.mean(vals) if len(vals) > 0 else 0)
-            sems.append(np.std(vals, ddof=1) / np.sqrt(len(vals)) if len(vals) > 1 else 0)
-            all_vals.append(vals)
-        
-        x_c = np.arange(n_tgt)
-        ax.bar(x_c, means, 0.55, yerr=sems, capsize=4,
-               color=color, alpha=0.55, edgecolor='black', linewidth=0.5, zorder=2)
-        
-        for tgt_idx in range(n_tgt):
-            tgt_subjs = seg_data[seg_data['target'] == targets_order[tgt_idx]]['subject'].values
-            for val_idx, val in enumerate(all_vals[tgt_idx]):
-                subj_idx = list(plot_subjects).index(tgt_subjs[val_idx])
-                short = tgt_subjs[val_idx].replace('sub-', '')
-                jitter = (np.random.RandomState(subj_idx).rand() - 0.5) * 0.3
-                label = short if tgt_idx == 0 else None
-                ax.scatter(x_c[tgt_idx] + jitter, val,
-                           marker=marker_list[subj_idx % len(marker_list)],
-                           color=color, edgecolor='black', s=50, zorder=3,
-                           linewidth=0.6, label=label)
-        
-        ax.set_xticks(x_c)
-        ax.set_xticklabels([target_labels[t] for t in targets_order], fontsize=9,
-                           rotation=30, ha='right')
-        ax.set_title(title, fontsize=12)
-        ax.spines[['top', 'right']].set_visible(False)
-        ax.legend(title='Subject', fontsize=6, loc='upper right')
     
     import matplotlib.gridspec as gridspec
     from matplotlib.image import imread as mpl_imread
@@ -2902,18 +2328,45 @@ else:
     
     # Row 0: 3 segment bar subplots
     ax_ant = fig.add_subplot(gs[0, 0])
-    _single_seg_panel(ax_ant, aptr_left, 'anterior', seg_colors['anterior'],
-                      'Anterior Graft → Destinations')
+    draw_single_seg_panel(
+        ax_ant,
+        aptr_left,
+        'anterior',
+        seg_colors['anterior'],
+        'Anterior Graft → Destinations',
+        targets_order=targets_order,
+        target_labels=target_labels,
+        plot_subjects=plot_subjects,
+        marker_list=marker_list,
+    )
     ax_ant.set_ylabel('SIFT2 Density\n(conn / seed_vox × 1000)', fontsize=10)
     
     ax_cen = fig.add_subplot(gs[0, 1])
-    _single_seg_panel(ax_cen, aptr_left, 'central', seg_colors['central'],
-                      'Central Graft → Destinations')
+    draw_single_seg_panel(
+        ax_cen,
+        aptr_left,
+        'central',
+        seg_colors['central'],
+        'Central Graft → Destinations',
+        targets_order=targets_order,
+        target_labels=target_labels,
+        plot_subjects=plot_subjects,
+        marker_list=marker_list,
+    )
     ax_cen.set_ylabel('SIFT2 Density', fontsize=10)
     
     ax_pos = fig.add_subplot(gs[0, 2])
-    _single_seg_panel(ax_pos, aptr_left, 'posterior', seg_colors['posterior'],
-                      'Posterior Graft → Destinations')
+    draw_single_seg_panel(
+        ax_pos,
+        aptr_left,
+        'posterior',
+        seg_colors['posterior'],
+        'Posterior Graft → Destinations',
+        targets_order=targets_order,
+        target_labels=target_labels,
+        plot_subjects=plot_subjects,
+        marker_list=marker_list,
+    )
     ax_pos.set_ylabel('SIFT2 Density', fontsize=10)
     
     # Row 1: mrview screenshots by destination
