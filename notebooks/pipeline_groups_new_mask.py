@@ -128,6 +128,240 @@
 # - Write one JSON checkpoint per notebook under `DERIV_BASE/logs/checkpoints/`
 # - Include: timestamp, user, notebook name, pass/fail, required artifact stats.
 
+# %% [markdown] PRE-STEPS: BIDS→Newmask Pipeline (Optional)
+# # PRE-STEPS: BIDS→Newmask Preprocessing Pipeline
+#
+# **IMPORTANT: Read this section FIRST**
+#
+# This notebook normally assumes data is already in `mrtrix_newmask/` (preprocessed DWI, FODs, etc.).
+# If you **only have BIDS raw data + atlas + manual ROI delineations**, you must run these Pre-Steps first.
+#
+# **If you ALREADY have `mrtrix_newmask/` populated:** Skip all Pre-Step cells → go to **Step 0**
+#
+# **If starting from BIDS raw data:** Run Pre-Steps -2 → -1c in order, then proceed to Step 0
+#
+# **Data required for Pre-Steps:**
+# ```
+# data/bids/sub-*/ses-*/                    ← Raw BIDS input (anat + dwi)
+# local/atlas/                              ← Allen CCF atlas
+# local/manual_roi_Slicer/                  ← Manual ROI delineations (.seg.nrrd)
+# local/manual_roi_flip/                    ← Corrected manual ROI masks (.mif)
+# ```
+
+# %% [markdown] PRE-STEP -2: Verify BIDS Data & Configuration
+# ## PRE-STEP -2: Verify BIDS Data Exists
+
+# %% [PRE-STEP -2] Auto-download Missing Data (if needed)
+# If you're running this on a fresh machine, this cell will automatically
+# download the test data from OSF.io if the 'local/' directory is missing.
+
+import os, sys, subprocess, json, yaml, platform
+from pathlib import Path
+from datetime import datetime
+
+# Auto-detect platform and set paths
+if platform.system() == "Darwin":  # macOS
+    REPO_DIR = Path("/Users/glerma/soft/mbrain")
+    DATA_BASE = Path("/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data")
+elif platform.system() == "Linux":  # Linux
+    REPO_DIR = Path("/export/home/glerma/glerma/soft/mbrain")
+    DATA_BASE = Path("/export/home/glerma/glerma/PROYECTOS/mbrain")
+else:
+    raise RuntimeError(f"Unsupported platform: {platform.system()}")
+
+# Check if data needs to be downloaded
+local_dir = REPO_DIR / "local"
+if not local_dir.exists():
+    print("=" * 70)
+    print(" LOCAL DATA NOT FOUND — AUTO-DOWNLOADING FROM OSF.io")
+    print("=" * 70)
+    print()
+    
+    setup_script = REPO_DIR / "utils" / "setup_data.py"
+    if setup_script.exists():
+        result = subprocess.run(
+            f"cd {REPO_DIR} && python utils/setup_data.py",
+            shell=True,
+            capture_output=False
+        )
+        if result.returncode != 0:
+            print("\n⚠️  Auto-download failed. You can manually download the data from:")
+            print("   https://osf.io/XXXXX/  (replace XXXXX with actual project ID)")
+            print("   Then extract to the repository root.")
+    else:
+        print(f"❌ Setup script not found at {setup_script}")
+        print("   Download data manually from OSF.io and extract to repo root.")
+    print()
+else:
+    print(f"✅ Local data directory found at {local_dir}")
+
+# %% [PRE-STEP -2] Verify BIDS Structure & Required Files
+
+print(f"{'=' * 70}")
+print(f" PRE-STEP -2: VERIFY BIDS DATA")
+print(f"{'=' * 70}")
+print(f"Platform: {platform.system()}")
+print(f"REPO_DIR:  {REPO_DIR}")
+print(f"DATA_BASE: {DATA_BASE}")
+
+sys.path.insert(0, str(REPO_DIR))
+sys.path.insert(0, str(REPO_DIR / "functions"))
+
+from functions.config_loader import load_config, get_subject_groups
+cfg = load_config()
+groups = get_subject_groups()
+
+BIDS_DIR = DATA_BASE / "data" / "bids"
+DERIV_NEWMASK = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
+LOCAL_DIR = DATA_BASE / "local"
+
+print(f"\nData locations:")
+print(f"  BIDS:          {BIDS_DIR}")
+print(f"  Newmask:       {DERIV_NEWMASK}")
+print(f"  Atlas+ROIs:    {LOCAL_DIR}")
+
+# Check for BIDS subjects
+print(f"\n{'─' * 70}")
+print(f" BIDS Subjects")
+print(f"{'─' * 70}")
+bids_subjects = set()
+if BIDS_DIR.exists():
+    bids_subjects = {d.name for d in BIDS_DIR.iterdir() if d.is_dir() and d.name.startswith("sub-")}
+    print(f"  Found: {len(bids_subjects)} subjects in BIDS")
+else:
+    print(f"  ⚠️  BIDS directory not found at {BIDS_DIR}")
+
+# Check for required subjects from config
+required = set()
+for group, subjs in groups.items():
+    for s in subjs:
+        required.add(f"sub-{s['id']}")
+
+in_bids = required & bids_subjects
+missing_bids = required - bids_subjects
+
+for s in sorted(in_bids):
+    print(f"    ✅ {s}")
+for s in sorted(missing_bids):
+    in_deriv = (DERIV_NEWMASK / s).exists()
+    status = "  (in mrtrix_newmask — skip preprocessing)" if in_deriv else "  ❌ MISSING"
+    print(f"    ⚠️  {s}{status}")
+
+# Check atlas and ROI files
+print(f"\n{'─' * 70}")
+print(f" Atlas & ROI Files")
+print(f"{'─' * 70}")
+
+atlas_files = {
+    "Allen CCF Template": LOCAL_DIR / "atlas" / "average_template_25.nii.gz",
+    "Allen Annotation": LOCAL_DIR / "atlas" / "annotation_25.nii.gz",
+}
+for name, path in atlas_files.items():
+    status = "✅" if path.exists() else "❌"
+    print(f"  {status} {name}")
+
+slicer_dir = LOCAL_DIR / "manual_roi_Slicer"
+n_slicer = len(list(slicer_dir.glob("*.nrrd"))) if slicer_dir.exists() else 0
+print(f"  {'✅' if n_slicer > 0 else '❌'} Slicer manual ROIs: {n_slicer} files")
+
+flip_dir = LOCAL_DIR / "manual_roi_flip"
+n_flip = len(list(flip_dir.glob("*.mif"))) if flip_dir.exists() else 0
+print(f"  {'✅' if n_flip > 0 else '❌'} Flipped manual ROIs: {n_flip} files")
+
+print(f"\n{'=' * 70}")
+print(f"If all items above show ✅, proceed to PRE-STEP -1a")
+print(f"If anything shows ❌ and you need it, check your data directory structure")
+print(f"{'=' * 70}\n")
+
+# %% [markdown] PRE-STEP -1a: Run Batch Preprocessing
+# ## PRE-STEP -1a: Batch Preprocessing (BIDS→Flip1)
+#
+# This runs the complete preprocessing pipeline for all subjects with BIDS data:
+# - T2w flip1 transformation
+# - DWI formatting + preprocessing (denoise, bias correct, register to T2w)
+#
+# **Runtime:** ~30-60 min per subject | **Parallelization:** Uses all CPU cores
+
+# %% [PRE-STEP -1a] Run Batch T2w Flip + DWI Preprocessing
+print(f"{'=' * 70}")
+print(f" PRE-STEP -1a: BATCH PREPROCESSING (T2w Flip + DWI)")
+print(f"{'=' * 70}\n")
+
+cmd_preproc = (
+    f"cd {REPO_DIR} && "
+    f"python functions/batch_process_flip1.py --group CTRL AP APTR --steps 2,4 --force"
+)
+print(f"Running:\n  {cmd_preproc}\n")
+print(f"This may take 30-60 minutes per subject. Please wait...\n")
+
+result = subprocess.run(cmd_preproc, shell=True, capture_output=False, timeout=14400)
+if result.returncode == 0:
+    print(f"\n✅ Preprocessing complete!")
+else:
+    print(f"\n❌ Preprocessing failed (exit code {result.returncode})")
+
+# %% [markdown] PRE-STEP -1b: FOD Estimation + ROI Resampling
+# ## PRE-STEP -1b: FOD Estimation + ROI Resampling
+#
+# Computes FODs and resamples ROIs from T2w→FOD space
+
+# %% [PRE-STEP -1b] FOD + ROI Resampling
+print(f"{'=' * 70}")
+print(f" PRE-STEP -1b: FOD ESTIMATION + ROI RESAMPLING")
+print(f"{'=' * 70}\n")
+
+cmd_fod = (
+    f"cd {REPO_DIR} && "
+    f"python functions/batch_process_flip1.py --group CTRL AP APTR --steps 5,6 --force"
+)
+print(f"Running:\n  {cmd_fod}\n")
+
+result = subprocess.run(cmd_fod, shell=True, capture_output=False, timeout=7200)
+if result.returncode == 0:
+    print(f"\n✅ FOD + ROI resampling complete!")
+else:
+    print(f"\n❌ FOD/ROI step failed (exit code {result.returncode})")
+
+# %% [markdown] PRE-STEP -1c: Segmentation + Tractography
+# ## PRE-STEP -1c: Segmentation + Whole-Brain Tractography
+#
+# Creates graft/isocortex segments (FOD space) and generates 1M streamline whole-brain tractograms
+
+# %% [PRE-STEP -1c] Segmentation + Tractography (+ Sync to newmask)
+print(f"{'=' * 70}")
+print(f" PRE-STEP -1c: SEGMENTATION + TRACTOGRAPHY")
+print(f"{'=' * 70}\n")
+
+cmd_tck = (
+    f"cd {REPO_DIR} && "
+    f"python functions/batch_process_flip1.py --group CTRL AP APTR --steps 7,8"
+)
+print(f"Running:\n  {cmd_tck}\n")
+print(f"tckgen can take several hours (generates 1M streamlines/subject). Please wait...\n")
+
+result = subprocess.run(cmd_tck, shell=True, capture_output=False, timeout=43200)
+if result.returncode == 0:
+    print(f"\n✅ Segmentation + tractography complete!")
+
+    # Prepare mrtrix_newmask for downstream steps (Step 0+ uses only newmask)
+    deriv_flip1 = DATA_BASE / "data" / "derivatives" / "mrtrix_preproc_flip1"
+    deriv_newmask = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
+    deriv_newmask.mkdir(parents=True, exist_ok=True)
+    cmd_sync = f"rsync -av --progress {deriv_flip1}/ {deriv_newmask}/"
+    print(f"\nSyncing flip1 → newmask for downstream notebook steps...")
+    sync_res = subprocess.run(cmd_sync, shell=True, capture_output=False, timeout=3600)
+
+    if sync_res.returncode == 0:
+        print(f"\n✅ mrtrix_newmask is ready.")
+        print(f"Proceed to Step 0 to start the new-mask analysis.")
+    else:
+        print(f"\n❌ Sync to mrtrix_newmask failed (exit code {sync_res.returncode}).")
+        print(f"Please sync flip1→newmask manually before Step 0.")
+else:
+    print(f"\n❌ Tractography step failed (exit code {result.returncode})")
+
+print(f"\n{'=' * 70}\n")
+
 # %% [markdown] Step 0: Setup & Configuration
 # ## Step 0: Setup & Configuration
 #
@@ -208,46 +442,30 @@ sk  = cfg.get('shrink_analysis', {})
 # For AP/APTR: segmentation mode (9 = 3 A-P x 3 D-V — recommended)
 SEG_MODE = 9
 
-# Source (original) and destination (new mask) derivative directories
-DERIV_SRC = Path(paths['derivatives_flip1'])  # mrtrix_preproc_flip1
+# Destination derivatives directory (single source of truth for this notebook)
 DERIV_BASE = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
 
-print(f"Source derivatives: {DERIV_SRC}")
 print(f"New mask derivatives: {DERIV_BASE}")
 
-# %% [Step 0b] Copy pre-mask files to mrtrix_newmask
+# %% [Step 0b] Validate mrtrix_newmask is present
 # ============================================================
-# Copy the full mrtrix_preproc_flip1 tree to mrtrix_newmask.
-# This preserves the original pipeline outputs while we work
-# on new masks in a separate folder.
-#
-# Uses rsync to be resumable and efficient (skips existing files).
+# This notebook now uses mrtrix_newmask directly as the derivative dataset.
+# No copy from mrtrix_preproc_flip1 is performed in this workflow.
 # ============================================================
 
 print(f"{'=' * 70}")
-print(f" COPYING mrtrix_preproc_flip1 → mrtrix_newmask")
+print(f" CHECKING mrtrix_newmask")
 print(f"{'=' * 70}")
-print(f"  Source: {DERIV_SRC}")
-print(f"  Dest:   {DERIV_BASE}")
+print(f"  Path: {DERIV_BASE}")
 
-if DERIV_BASE.exists() and any(DERIV_BASE.iterdir()):
-    print(f"\n  ⚠️  Destination already exists and is not empty.")
-    print(f"      Rsync will only copy new/updated files (safe to re-run).")
+if not DERIV_BASE.exists() or not any(DERIV_BASE.iterdir()):
+    raise FileNotFoundError(
+        f"mrtrix_newmask not found or empty: {DERIV_BASE}\n"
+        "Please download the OSF package (fast-track) or prepare mrtrix_newmask before running Step 0c+."
+    )
 
-os.makedirs(DERIV_BASE, exist_ok=True)
-
-result = subprocess.run(
-    f"rsync -av --progress {DERIV_SRC}/ {DERIV_BASE}/",
-    shell=True, capture_output=True, text=True, timeout=3600
-)
-
-if result.returncode == 0:
-    # Count subjects copied
-    copied_subs = [d for d in DERIV_BASE.iterdir() if d.is_dir() and d.name.startswith("sub-")]
-    print(f"\n✅ Copy complete: {len(copied_subs)} subject folders in {DERIV_BASE.name}")
-else:
-    print(f"\n❌ rsync failed (exit code {result.returncode})")
-    print(result.stderr[:500])
+available_subs = [d for d in DERIV_BASE.iterdir() if d.is_dir() and d.name.startswith("sub-")]
+print(f"\n✅ Found {len(available_subs)} subject folders in {DERIV_BASE.name}")
 
 # %% [Step 0c] Build subject list from mrtrix_newmask
 # Build flat list of all subjects with their group, session, and paths.
@@ -337,13 +555,23 @@ else:
 
 # %% [Step 0.9] Delete existing mask_new (but NOT mask_new_edited) to allow re-run
 deleted = 0
+skipped_locked = 0
+PROTECT_EDITED_MASKS = True
 for s in subjects:
+    # If a manual edited mask exists, keep all mask variants untouched for this subject.
+    if PROTECT_EDITED_MASKS and s['mask_new_edited'].exists():
+        skipped_locked += 1
+        print(f"  🔒 Locked (has mask_new_edited): {s['id']}")
+        continue
+
     for f in [s['mask_new'], s['mask_new_mif']]:
         if f.exists():
             f.unlink()
             deleted += 1
             print(f"  🗑️ Deleted: {f.name} ({s['id']})")
-print(f"\nDeleted {deleted} mask files. mask_new_edited.mif files preserved.")
+print(f"\nDeleted {deleted} mask files.")
+print(f"Locked subjects skipped: {skipped_locked}")
+print("mask_new_edited.mif files preserved.")
 
 # %% [markdown] Step 1: Generate Brain Masks (Group-specific atlas registration)
 # ---
