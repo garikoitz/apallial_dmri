@@ -107,6 +107,7 @@ All parameters are centralized in `config1.yaml`:
 ```
 
 Key sections:
+
 - **paths**: All directory paths
 - **groups**: Subject lists (CTRL, AP, APTR) with sessions
 - **tractography**: tckgen parameters (algorithm, select, step, angle, etc.)
@@ -117,6 +118,7 @@ Key sections:
 ## Script Usage Reference
 
 All scripts are in `functions/` and use the same parameter pattern:
+
 - `--group CTRL/AP/APTR` - Process specific group
 - `--subject sub-xxx` - Process specific subject
 - `--tract Isocortex_Striatum` - Process specific tract
@@ -170,6 +172,8 @@ For a complete step-by-step guide, see [SETUP.md](SETUP.md).
 
 ### 1. Clone and Create Environment
 
+If you have micromamba, this is the code.  Equivalently, you can use conda instead of micromamba (or any other environment manager). This step takes a few minutes.
+
 ```bash
 git clone https://github.com/garikoitz/apallial_dmri.git
 cd apallial_dmri
@@ -188,10 +192,24 @@ See [SETUP.md](SETUP.md) for component-by-component download options.
 
 ### 3. Verify External Dependencies
 
-```bash
-# MRtrix3
-mrinfo --version
+Full pipeline runs require MRtrix3 3.0.4 or newer.
 
+On macOS, use the official MRtrix3 standalone installer:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MRtrix3/macos-installer/master/install)"
+```
+
+Then verify that MRtrix3 is available:
+
+```bash
+mrinfo --version
+```
+
+We recommend this installer on macOS because Homebrew and Conda may not provide
+a usable current MRtrix3 package, especially on Apple Silicon.
+
+```bash
 # ANTs (required for bias field correction)
 # macOS: brew install ants
 # Or download from: http://stnava.github.io/ANTs/
@@ -242,11 +260,11 @@ This notebook runs the complete new-mask pipeline (see stage-by-stage guide abov
 If your goal is to replicate the project results with minimal ambiguity, use this sequence.
 
 1. Edit `config1.yaml` first
+
    - `paths.repo_dir`: set to your local repository path
    - `paths.data_base`: set to your data location
    - `paths.matlab_path`: verify MATLAB binary path for your machine
    - `groups`: confirm the subject/session roster you want to run
-
 2. Install data with `setup_data.py` (preferred over manual OSF download)
 
 ```bash
@@ -257,9 +275,10 @@ python utils/setup_data.py --components local pre_bids pre_preproc post
 Component names are exactly: `local`, `pre_bids`, `pre_preproc`, `post`.
 
 3. Open `notebooks/pipeline_groups_new_mask.py` in VS Code as an interactive notebook
-   - Use **Open in Notebook** and select the `mbrain` kernel.
 
+   - Use **Open in Notebook** and select the `mbrain` kernel.
 4. Run notebook steps according to your starting point
+
    - If `data/derivatives/mrtrix_newmask/` is already populated:
      - Skip Steps 1-4
      - Start at Step 0, then continue through the downstream pipeline
@@ -269,8 +288,8 @@ Component names are exactly: `local`, `pre_bids`, `pre_preproc`, `post`.
      - Run Step 3 (FOD + ROI resampling)
      - Run Step 4 (segmentation + tractography)
      - Then run Step 0 and continue
-
 5. Validate key outputs before long downstream reruns
+
    - Confirm subject folders exist under `data/derivatives/mrtrix_newmask/`
    - Confirm masks and FODs are present for all subjects
    - Do visual QC before launching heavy tractography/cleaning branches
