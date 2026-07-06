@@ -540,7 +540,10 @@ paths:
   data_dir: "{data_base}/data"
   bids_dir: "{repo_dir}/data/bids"
   derivatives_flip1: "{data_base}/data/derivatives/mrtrix_preproc_flip1"
+  derivatives_newmask: "{data_base}/data/derivatives/mrtrix_newmask"
   local: "{data_base}/local"
+  manual_roi_flip_dir: "{local}/manual_roi_flip"
+  cst_legacy_manual_roi_flip_dir: "{manual_roi_flip_dir}"
   
   # Legacy paths (for compatibility)
   derivatives_dir: "{repo_dir}/data/derivatives/mrtrix_preproc_flip1"

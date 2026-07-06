@@ -4,21 +4,24 @@ setup_data.py — Install MBRAIN test data from component ZIPs on OSF.io
 
 Components:
   - local: atlas + manual ROI files
-  - pre: BIDS + pre-mask mrtrix_newmask files
+  - pre_bids: BIDS dataset (dataset_description.json, participants.tsv, etc.)
+  - pre_preproc: pre-mask mrtrix_newmask derivatives
   - post: remaining mrtrix_newmask outputs
 
 Usage:
     python utils/setup_data.py
-    python utils/setup_data.py --components local pre post
+    python utils/setup_data.py --components local pre_bids pre_preproc post
     python utils/setup_data.py --components local
-    python utils/setup_data.py --components pre
+    python utils/setup_data.py --components pre_bids
+    python utils/setup_data.py --components pre_preproc
     python utils/setup_data.py --components post
     python utils/setup_data.py --check-only
 
 Environment variables:
     MBRAIN_URL_LOCAL: URL for the local ZIP
-    MBRAIN_URL_PRE: URL for the pre-mask ZIP
-    MBRAIN_URL_POST: URL for the post-mask ZIP
+    MBRAIN_URL_PRE_BIDS: URL for the pre_bids ZIP
+    MBRAIN_URL_PRE_PREPROC: URL for the pre_preproc ZIP
+    MBRAIN_URL_POST: URL for the post ZIP
 """
 
 from __future__ import annotations
@@ -68,6 +71,15 @@ SAMPLE_CHECKS = {
     ],
 }
 
+# Top-level directories each component extracts into. Used by the preflight
+# check to detect symlinks / pre-existing content that would block extraction.
+COMPONENT_TARGET_DIRS = {
+    "local": [REPO_DIR / "local"],
+    "pre_bids": [REPO_DIR / "data" / "bids"],
+    "pre_preproc": [REPO_DIR / "data" / "derivatives" / "mrtrix_newmask"],
+    "post": [REPO_DIR / "data" / "derivatives" / "mrtrix_newmask"],
+}
+
 
 def log(message: str, level: str = "INFO") -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -86,7 +98,14 @@ def component_url(component: str) -> str:
 
 
 def component_installed(component: str) -> bool:
-    return MARKERS[component].exists()
+    """A component is installed only when the marker AND all sample paths exist.
+
+    Checking the marker alone is insufficient: if the user removes the extracted
+    data (or a symlink breaks) the marker becomes stale, and we must re-extract.
+    """
+    if not MARKERS[component].exists():
+        return False
+    return all(path.exists() for path in SAMPLE_CHECKS[component])
 
 
 def sample_missing(component: str) -> list[Path]:
@@ -157,6 +176,84 @@ def selected_components(args_components: list[str]) -> list[str]:
     return ["local", "pre_bids", "pre_preproc", "post"] if "all" in args_components else args_components
 
 
+def _describe_blocker(path: Path) -> str:
+    """Return a short human-readable description of why `path` blocks extraction."""
+    if path.is_symlink():
+        target = path.resolve()
+        return f"symlink -> {target}"
+    if path.is_dir():
+        # Count entries to give the user a sense of what is there.
+        try:
+            entries = list(path.iterdir())
+        except OSError as exc:
+            return f"directory (unreadable: {exc})"
+        return f"directory with {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}"
+    if path.exists():
+        return f"file ({path.stat().st_size} bytes)"
+    return "exists"
+
+
+def preflight_check(components: list[str], force: bool) -> tuple[bool, list[tuple[str, Path, str]]]:
+    """Detect symlinks / pre-existing content that would block extraction.
+
+    Returns (ok, blockers) where `blockers` is a list of (component, path, reason)
+    tuples. When `force` is True the check is skipped (caller has accepted risk).
+    """
+    if force:
+        return True, []
+
+    blockers: list[tuple[str, Path, str]] = []
+    seen: set[Path] = set()
+    for component in components:
+        for target_dir in COMPONENT_TARGET_DIRS[component]:
+            if target_dir in seen:
+                continue
+            seen.add(target_dir)
+            if target_dir.is_symlink() or target_dir.exists():
+                reason = _describe_blocker(target_dir)
+                blockers.append((component, target_dir, reason))
+
+    if not blockers:
+        return True, []
+
+    log("Pre-flight check found existing content that would block extraction:", "WARN")
+    for component, path, reason in blockers:
+        rel = path.relative_to(REPO_DIR)
+        print(f"  [{component}] {rel}  ({reason})")
+    print()
+    print("Extraction will fail or overwrite these paths.")
+    print("To proceed, remove them first, e.g.:")
+    print(f"  rm -rf {REPO_DIR / 'local'} {REPO_DIR / 'data'}")
+    print("Or re-run with --force to attempt extraction anyway (may fail on symlinks).")
+
+    if not sys.stdin.isatty():
+        log("Non-interactive shell detected — aborting. Re-run with --force to override.", "ERROR")
+        return False, blockers
+
+    try:
+        answer = input("Remove the listed paths now? [y/N]: ").strip().lower()
+    except EOFError:
+        log("No input available — aborting.", "ERROR")
+        return False, blockers
+
+    if answer not in {"y", "yes"}:
+        log("Aborted by user.", "WARN")
+        return False, blockers
+
+    for _, path, _ in blockers:
+        try:
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
+            log(f"Removed: {path.relative_to(REPO_DIR)}", "OK")
+        except OSError as exc:
+            log(f"Failed to remove {path}: {exc}", "ERROR")
+            return False, blockers
+
+    return True, []
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install MBRAIN test data from OSF component ZIPs")
     parser.add_argument(
@@ -166,12 +263,27 @@ def parse_args() -> argparse.Namespace:
         default=["all"],
         help="Which components to install",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download even if the component is already installed",
+    )
+    parser.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Check which components are installed without downloading",
+    )
+    return parser.parse_args()
 
 
 def install_component(component: str, force: bool = False) -> bool:
     if component_installed(component) and not force:
         log(f"{component}: already installed", "OK")
         return True
+
+    if MARKERS[component].exists() and not force:
+        log(f"{component}: marker present but data missing — re-extracting", "WARN")
+        MARKERS[component].unlink(missing_ok=True)
 
     url = component_url(component)
     if "XXXXX" in url:
@@ -216,6 +328,10 @@ def main() -> int:
                 log(f"{component}: already present", "OK")
         return 1 if any_missing else 0
 
+    ok_pre, _ = preflight_check(components, force=args.force)
+    if not ok_pre:
+        return 1
+
     ok = True
     for component in components:
         if not install_component(component, force=args.force):
@@ -239,111 +355,6 @@ def main() -> int:
         return 0
 
     return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-        
-        log(f"Extracted successfully", "OK")
-        return True
-        
-    except zipfile.BadZipFile:
-        log(f"Invalid ZIP file: {zip_path}", "ERROR")
-        return False
-    except Exception as e:
-        log(f"Extraction failed: {e}", "ERROR")
-        return False
-
-
-def validate_after_extract():
-    """Verify critical files after extraction."""
-    checks = [
-        ("Allen template", REPO_DIR / "local" / "atlas" / "average_template_25.nii.gz"),
-        ("Allen annotation", REPO_DIR / "local" / "atlas" / "annotation_25.nii.gz"),
-        ("BIDS subjects", REPO_DIR / "data" / "bids" / "sub-129-921-R1F"),  # Sample
-        ("Newmask derivatives", REPO_DIR / "data" / "derivatives" / "mrtrix_newmask" / "sub-129-921-R1F"),  # Sample
-    ]
-    
-    all_ok = True
-    for name, path in checks:
-        if path.exists():
-            log(f"{name}: {path.name}", "OK")
-        else:
-            log(f"{name}: NOT FOUND at {path}", "WARN")
-            all_ok = False
-    
-    return all_ok
-
-
-def main():
-    import argparse
-    
-    parser = argparse.ArgumentParser(
-        description="Auto-download and unzip mbrain test data from OSF.io"
-    )
-    parser.add_argument("--force", action="store_true", help="Re-download even if local/ exists")
-    parser.add_argument("--check-only", action="store_true", help="Check without downloading")
-    parser.add_argument("--url", default=None, help="Override OSF.io URL")
-    
-    args = parser.parse_args()
-    
-    osf_url = args.url or os.environ.get("MBRAIN_DATA_URL", DEFAULT_OSF_URL)
-    
-    # ========================================================================
-    # STEP 1: Check if data already exists
-    # ========================================================================
-    log("=" * 70)
-    log("MBRAIN Data Setup", level="INFO")
-    log("=" * 70)
-    
-    missing = check_data_structure()
-    
-    if not missing and not args.force:
-        log("All data directories found — no download needed!", "OK")
-        return 0
-    
-    if args.check_only:
-        log("Check-only mode. Missing files:", "WARN")
-        for m in missing:
-            print(f"  - {m}")
-        return 1
-    
-    # ========================================================================
-    # STEP 2: Download from OSF
-    # ========================================================================
-    if osf_url == DEFAULT_OSF_URL or "XXXXX" in osf_url:
-        log("ERROR: OSF URL not configured!", "ERROR")
-        log("Please set MBRAIN_DATA_URL environment variable or update DEFAULT_OSF_URL in this script", "ERROR")
-        log("Example: export MBRAIN_DATA_URL='https://osf.io/ABC12/download'")
-        return 1
-    
-    temp_dir = Path.home() / ".mbrain_temp"
-    temp_dir.mkdir(exist_ok=True)
-    zip_path = temp_dir / ZIP_FILENAME
-    
-    if not download_file(osf_url, zip_path):
-        return 1
-    
-    # ========================================================================
-    # STEP 3: Extract to repo root
-    # ========================================================================
-    if not unzip_file(zip_path, REPO_DIR):
-        return 1
-    
-    zip_path.unlink()  # Clean up temp ZIP
-    
-    # ========================================================================
-    # STEP 4: Validate
-    # ========================================================================
-    log("Validating extracted data...")
-    if validate_after_extract():
-        log("=" * 70)
-        log("Setup complete! You can now run the notebook.", "OK")
-        log("=" * 70)
-        return 0
-    else:
-        log("Validation found missing files — check above", "WARN")
-        return 1
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ dependencies:
   - ipykernel
   - ipywidgets
   - jupyter
+  - jupytext
   - matplotlib
   - nibabel
   - nilearn

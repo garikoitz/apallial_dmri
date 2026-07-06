@@ -1,195 +1,100 @@
-# mbrain - Mouse Brain fMRI and DTI Analysis
+# apallial_dmri - Apallial Mouse Brain dMRI Analysis
 
-Analysis pipeline for mouse brain imaging data using MRtrix3 and PyBIDS.
+Analysis pipeline for apallial mouse brain imaging data using MRtrix3.
 
-## New-Mask Pipeline: Detailed Guide and Running Schema
+## Pipeline Overview
 
-This repository currently contains a large operational notebook/script at
-`notebooks/pipeline_groups_new_mask.py` that performs mask regeneration,
-downstream reruns, CST processing, tract QC, and reporting.
+The complete pipeline is in a single notebook:
 
-To make execution safer and easier to resume, the workflow is now documented
-as staged notebooks with an explicit QC gate at the end of each stage.
+- **`notebooks/pipeline_groups_new_mask.py`** — The authoritative, complete, runnable pipeline for all subjects/groups.
 
-### Preconditions (must pass before Stage 1)
+The notebook imports reusable helper functions from `functions/pipeline_new_mask/` (11 modules with unit tests). All parameters come from `config1.yaml`.
 
-1. You are running on lmc02 with required modules available:
-    - freesurfer/7.4.1-Rocky8
-    - mrtrix3/3.0.3
-    - ants/latest
-    - matlab/R2024A
-2. `config1.yaml` paths are correct for the current machine.
-3. `DERIV_SRC` and destination `DERIV_BASE` are accessible and writable.
-4. Subject roster in config is final for the run.
+### Pipeline Stages
 
-### Stage-by-stage running schema
+The notebook runs through these stages:
 
-#### Stage 1: Setup and Atlas Mask Generation
+1. **Setup & Atlas Mask Generation** — Environment setup, config load, subject manifest, group atlas preparation, atlas-to-subject mask generation
+2. **Mask QC, Manual Edits & DWI-Space Install** — Visual QC, manual correction loop, mask regrid to DWI and install, checkpoint readiness
+3. **FOD & ROI Preparation** — FOD rerun, group response and group-normalized FODs, ROI resampling + segmentation, ROI space/laterality QC
+4. **Whole-Brain Tractography & SIFT2** — Whole-brain tractography rerun, 10k downsample and TRK conversion, SIFT2 recomputation
+5. **CST Pipeline (AP/APTR)** — CST ROI status/create/edit/regrid, CST passthrough extraction, targeted CST tckgen, CST cleaning
+6. **Passthrough & Cleaning (Global + CTRL rerun)** — Passthrough extraction, AFQ cleaning, CTRL-only rerun branch
+7. **Reports, Fixel Analyses & Final QC** — Tract metrics report generation, fixel workflows, final visual QC and summary tables
 
-- Notebook: `notebooks/newmask_split/01_setup_and_masks.py`
-- Scope:
-   - Environment setup, config load, subject manifest
-   - Copy derivatives tree
-   - Group atlas preparation
-   - Atlas-to-subject mask generation
-- Expected outputs:
-   - subject manifest in memory (`subjects`)
-   - `mask_new.mif` and `mask_new.nii.gz` per subject
-- End-of-stage QC gate:
-   - all subjects have `mask_new.mif`
-   - no failed registrations remain unresolved
+### Preconditions
 
-#### Stage 2: Mask QC, Manual Edits, and DWI-Space Install
-
-- Notebook: `notebooks/newmask_split/02_mask_qc_and_install.py`
-- Scope:
-   - visual QC (old vs new)
-   - manual correction loop
-   - mask regrid to DWI and install
-   - checkpoint readiness report
-- Expected outputs:
-   - `mask_new_edited.mif` where needed
-   - installed `mask.mif` and `mask_anat.mif` on DWI grid
-- End-of-stage QC gate:
-   - DWI-grid match for masks
-   - checkpoint indicates Stage 3 can proceed
-
-#### Stage 3: FOD and ROI Preparation
-
-- Notebook: `notebooks/newmask_split/03_fod_and_roi_prep.py`
-- Scope:
-   - FOD rerun (5b)
-   - group response and group-normalized FODs (5b-group)
-   - ROI resampling + segmentation (5c)
-   - ROI space/laterality QC
-- Expected outputs:
-   - `wm_fod_norm_group.mif` per subject
-   - updated FOD-space ROIs
-- End-of-stage QC gate:
-   - all required group-FOD outputs exist
-   - ROI QC issues reviewed/accepted
-
-#### Stage 4: Whole-Brain Tractography and SIFT2
-
-- Notebook: `notebooks/newmask_split/04_tractography_and_sift2.py`
-- Scope:
-   - whole-brain tractography rerun
-   - 10k downsample and TRK conversion
-   - SIFT2 recomputation
-- Expected outputs:
-   - wholebrain tractograms + downsample + trk
-   - sift2 weights
-- End-of-stage QC gate:
-   - expected tractogram files are present
-   - SIFT2 weights are present and up-to-date
-
-#### Stage 5: CST Pipeline (AP/APTR)
-
-- Notebook: `notebooks/newmask_split/05_cst_pipeline.py`
-- Scope:
-   - CST ROI status/create/edit/regrid
-   - CST passthrough extraction
-   - targeted CST tckgen
-   - CST cleaning
-- Expected outputs:
-   - FOD-space CST ROIs per AP/APTR subject
-   - CST raw/tckgen/cleaned tracts
-- End-of-stage QC gate:
-   - CST ROIs complete in FOD space
-   - CST tract counts look consistent
-
-#### Stage 6: Passthrough and Cleaning (Global + CTRL rerun)
-
-- Notebook: `notebooks/newmask_split/06_passthrough_and_cleaning.py`
-- Scope:
-   - passthrough extraction (5f)
-   - AFQ cleaning (5g)
-   - CTRL-only rerun branch (5fg)
-- Expected outputs:
-   - raw and cleaned passthrough tracts
-   - refreshed CTRL tract sets if rerun used
-- End-of-stage QC gate:
-   - per-subject raw/cleaned counts are non-empty where expected
-   - spot checks raw vs cleaned streamline counts
-
-#### Stage 7: Reports, Fixel Analyses, and Final QC
-
-- Notebook: `notebooks/newmask_split/07_reports_and_fixel.py`
-- Scope:
-   - tract metrics report generation (5h)
-   - fixel workflows (5i, 5j)
-   - final visual QC and summary tables
-- Expected outputs:
-   - CSV/HTML metrics reports
-   - fixel figures and per-subject outputs
-   - final summary tables
-- End-of-stage QC gate:
-   - metrics and fixel artifacts present
-   - final QC table completed
-
-### Handoff contract between stages
-
-At the top of each stage notebook:
-
-1. Validate required input artifacts from previous stage.
-2. Abort early if any critical dependency is missing.
-3. Write a stage checkpoint JSON to:
-    - `DERIV_BASE/logs/checkpoints/NN_stage_name.json`
-
-Suggested checkpoint JSON fields:
-
-- `stage`
-- `timestamp`
-- `operator`
-- `status` (pass/fail)
-- `required_inputs`
-- `produced_outputs`
-- `qc_summary`
-- `notes`
-
-### Current split files
-
-The split scaffolds are located at:
-
-- `notebooks/newmask_split/01_setup_and_masks.py`
-- `notebooks/newmask_split/02_mask_qc_and_install.py`
-- `notebooks/newmask_split/03_fod_and_roi_prep.py`
-- `notebooks/newmask_split/04_tractography_and_sift2.py`
-- `notebooks/newmask_split/05_cst_pipeline.py`
-- `notebooks/newmask_split/06_passthrough_and_cleaning.py`
-- `notebooks/newmask_split/07_reports_and_fixel.py`
+1. Required modules available: MRtrix3, ANTs, MATLAB (for AFQ cleaning)
+2. `config1.yaml` paths are correct for the current machine
+3. Subject roster in config is final for the run
+4. Data downloaded via `python utils/setup_data.py`
 
 ## Project Structure
 
 ```
-mbrain/
+apallial_dmri/
 ├── config1.yaml             # Central configuration (ALL parameters)
-├── config_loader.py         # Python config access utility
-├── main.py                  # Main analysis script
+├── mbrain_env.yml           # Micromamba environment definition
+├── README.md                # This file
+├── SETUP.md                 # Quick setup guide (new computer onboarding)
 │
-├── # Generic Pipeline Scripts (parameter-driven, no hardcoding)
-├── atlas_coregistration.py  # Atlas registration (all subjects/groups)
-├── generate_tracts.py       # Tractography generation (all tracts)
-├── clean_tracts.py          # MATLAB AFQ fiber cleaning
-├── extract_top_tracts.py    # Extract top N by SIFT2 weight
-├── split_rois.py            # Split ROIs into hemispheres
-├── transform_tracts.py      # Transform tracts to templates
-├── preprocess_subjects.py   # DWI preprocessing
-├── view_tracts.py           # Visualization with mrview
-├── build_group_templates.py # Build group average templates
+├── functions/               # Pipeline scripts (parameter-driven, no hardcoding)
+│   ├── __init__.py
+│   ├── config_loader.py     # Python config access utility
+│   ├── atlas_coregistration.py  # Atlas registration (all subjects/groups)
+│   ├── atlas_roi_extraction.py  # ROI extraction from warped atlas
+│   ├── batch_process_flip1.py   # Batch DWI preprocessing
+│   ├── build_group_templates.py # Build group average templates
+│   ├── clean_tracts.py          # MATLAB AFQ fiber cleaning
+│   ├── compute_group_response.py # Group RF computation
+│   ├── dwi_fod.py               # DWI preprocessing + FOD estimation
+│   ├── generate_tracts.py       # Tractography generation
+│   ├── generate_wholebrain_tractogram.py # Whole-brain tractography
+│   ├── resample_rois_to_fod.py  # ROI resampling to FOD space
+│   ├── segment_graft_slicewise.py   # Graft segmentation (AP/APTR)
+│   ├── segment_isocortex_slicewise.py # Isocortex segmentation (CTRL)
+│   ├── view_tracts.py           # Visualization with mrview
+│   ├── qc_viewer.py             # QC visualization
+│   ├── generate_qc_report.py    # QC report generation
+│   ├── generate_connectivity_report.py # Connectivity reporting
+│   ├── generate_tract_metrics_report.py # Tract metrics reporting
+│   ├── fixel_roi_analysis.py    # Fixel-based ROI analysis
+│   ├── fixel_cluster_analysis.py # Fixel cluster analysis
+│   ├── fod_direction_analysis.py # FOD direction analysis
+│   ├── collect_bilateral_data.py # Bilateral data collection
+│   ├── extract_passthrough_tracts.py # Passthrough tract extraction
+│   ├── run_passthrough_pipeline.py   # Full passthrough pipeline
+│   ├── matlab_clean_standalone.py    # Standalone MATLAB cleaning
+│   ├── validate_config.py       # Config validation
+│   └── _tests_/                 # Test suite
+│
+├── notebooks/               # Pipeline notebook + documentation
+│   ├── pipeline_groups_new_mask.py  # Main pipeline notebook (all subjects/groups)
+│   └── methods.md                   # Methods documentation
 │
 ├── utils/                   # Utility modules
-│   ├── __init__.py
-│   ├── config.py           # Legacy config (use config1.yaml)
-│   ├── file_utils.py       # File handling utilities
-│   ├── bids_converter.py   # Flywheel to BIDS converter
-│   └── dwi_preprocessor.py # MRtrix3 preprocessing pipeline
-├── local/                   # Local data (not in git)
+│   ├── setup_data.py        # OSF data download & extraction
+│   └── ...
+│
+├── docs/                    # Documentation
+│   ├── installation.md
+│   ├── manual_preprocessing_commands.md
+│   ├── manual_tractography_commands.md
+│   ├── OSF_DATA_PACKAGING.md
+│   ├── OSF_WORKFLOW_CHECKLIST.md
+│   ├── pipeline_all_subjects.md
+│   ├── two_stage_coregistration.md
+│   └── visualize_graft_tracts.md
+│
+├── for_checking/            # Archived/legacy scripts (not active)
+│
+├── local/                   # Downloaded data: atlas + manual ROIs (gitignored)
 │   └── atlas/allen_ccf/    # Allen CCF atlas files
-└── data/                    # Processed data
+│
+└── data/                    # Downloaded data: BIDS + derivatives (gitignored)
     ├── bids/               # BIDS-formatted dataset
     └── derivatives/        # Analysis outputs
-        └── mrtrix_preproc/ # Preprocessed DWI data
+        └── mrtrix_newmask/ # New-mask pipeline derivatives
 ```
 
 ## Configuration
@@ -209,318 +114,195 @@ Key sections:
 - **rois**: Allen CCF structure IDs for each ROI
 - **tracts**: Tract pair definitions (seed → target)
 
-## Generic Pipeline Usage
+## Script Usage Reference
 
-All scripts use the same parameter pattern:
+All scripts are in `functions/` and use the same parameter pattern:
 - `--group CTRL/AP/APTR` - Process specific group
 - `--subject sub-xxx` - Process specific subject
 - `--tract Isocortex_Striatum` - Process specific tract
 - `--hemisphere left/right/both` - Hemisphere selection
 - `--dry-run` - Preview commands without executing
 
-### Examples
+### Key Scripts
 
 ```bash
 # Atlas coregistration
-python atlas_coregistration.py                    # All subjects
-python atlas_coregistration.py --group CTRL       # CTRL only
-python atlas_coregistration.py --subject sub-129-921-R1F
+python functions/atlas_coregistration.py                    # All subjects
+python functions/atlas_coregistration.py --group CTRL       # CTRL only
+python functions/atlas_coregistration.py --subject sub-129-921-R1F
 
 # Generate tracts
-python generate_tracts.py                         # All tracts, all subjects
-python generate_tracts.py --tract Isocortex_Striatum --hemisphere left
-python generate_tracts.py --group AP --dry-run
+python functions/generate_tracts.py                         # All tracts, all subjects
+python functions/generate_tracts.py --tract Isocortex_Striatum --hemisphere left
+python functions/generate_tracts.py --group AP --dry-run
 
 # Clean tracts (MATLAB AFQ)
-python clean_tracts.py --subject sub-129-921-R1F
-python clean_tracts.py --group CTRL --tract Isocortex_Thalamus
-
-# Extract top N tracts
-python extract_top_tracts.py --top-n 100 --cleaned
-python extract_top_tracts.py --group CTRL --tract Isocortex_Striatum
+python functions/clean_tracts.py --subject sub-129-921-R1F
+python functions/clean_tracts.py --group CTRL --tract Isocortex_Thalamus
 
 # View tracts
-python view_tracts.py --subject sub-129-921-R1F
-python view_tracts.py --group CTRL --template
-python view_tracts.py --list-tracts
+python functions/view_tracts.py --subject sub-129-921-R1F
+python functions/view_tracts.py --group CTRL --template
+python functions/view_tracts.py --list-tracts
+
+# Whole-brain tractography
+python functions/generate_wholebrain_tractogram.py --subject sub-129-921-R1F
+
+# ROI resampling to FOD space
+python functions/resample_rois_to_fod.py --group CTRL
+
+# Segmentation
+python functions/segment_isocortex_slicewise.py --group CTRL
+python functions/segment_graft_slicewise.py --group AP
+
+# Fixel analysis
+python functions/fixel_roi_analysis.py --group CTRL
+python functions/fixel_cluster_analysis.py --group CTRL
+
+# Reports
+python functions/generate_tract_metrics_report.py --group CTRL
+python functions/generate_connectivity_report.py --group CTRL
 ```
 
 ## Setup
 
-### 1. Create Environment
+For a complete step-by-step guide, see [SETUP.md](SETUP.md).
+
+### 1. Clone and Create Environment
 
 ```bash
-micromamba create -n mbrain python=3.12 numpy pandas scipy matplotlib seaborn \
-  scikit-learn nibabel nilearn ipywidgets ipykernel jupyter notebook pyarrow \
-  pybids pyyaml -c conda-forge
-
+git clone https://github.com/garikoitz/apallial_dmri.git
+cd apallial_dmri
+micromamba env create -f mbrain_env.yml
 micromamba activate mbrain
 ```
 
-### 2. Install ANTs (Required for bias field correction)
+### 2. Download Test Data
 
 ```bash
-# macOS with Homebrew
-brew install ants
+python utils/setup_data.py
+```
 
+This downloads and extracts all 4 OSF components to `local/` and `data/`.
+See [SETUP.md](SETUP.md) for component-by-component download options.
+
+### 3. Verify External Dependencies
+
+```bash
+# MRtrix3
+mrinfo --version
+
+# ANTs (required for bias field correction)
+# macOS: brew install ants
 # Or download from: http://stnava.github.io/ANTs/
 ```
 
-### 3. Verify MRtrix3 Installation
-
-```bash
-mrinfo --version
-```
-
-
 ## Usage
 
-### Command-Line Options
+### Main Pipeline Notebook
+
+The primary workflow is in `notebooks/pipeline_groups_new_mask.py`. It is a
+**jupytext percent-format** Python script — a plain `.py` file that VS Code
+renders as an interactive notebook (cells, outputs, kernel) thanks to the
+`jupytext` package (already in `mbrain_env.yml`).
+
+#### Opening it as an interactive notebook in VS Code (recommended)
+
+1. Install the **Jupyter** and **Python** extensions in VS Code
+   (Extensions marketplace → search "Jupyter" / "Python").
+2. Select the `mbrain` micromamba environment as the Python interpreter:
+   `Cmd+Shift+P` → `Python: Select Interpreter` → pick `mbrain`.
+3. Open `notebooks/pipeline_groups_new_mask.py` in VS Code.
+4. VS Code detects the jupytext percent format and shows an
+   **"Open in Notebook"** button at the top-right of the editor (or run the
+   command `Jupyter: Open as Notebook`). Click it.
+5. The file opens as an interactive notebook: each `# %%` block becomes a cell,
+   you can run cells with `Shift+Enter`, see inline outputs, and the kernel is
+   the `mbrain` env. Edits save back to the same `.py` file (no `.ipynb` needed).
+
+> No `jupyter notebook` server is required — everything runs inside VS Code
+> using the `mbrain` kernel.
+
+#### Alternative: JupyterLab / classic server
+
+If you prefer a browser-based server instead of VS Code:
 
 ```bash
-# Run all steps (BIDS conversion + preprocessing)
-python main.py --all
-# or simply
-python main.py
-
-# Only run BIDS conversion
-python main.py --bids
-
-# Only run preprocessing
-python main.py --preprocess
-
-# Preview BIDS conversion (dry-run)
-python main.py --bids --dry-run
-
-# Run specific preprocessing steps
-python main.py --preprocess --steps denoise unring
-python main.py --preprocess --steps denoise unring mask bias_correct
-
-# Get help
-python main.py --help
+micromamba run -n mbrain jupyter lab notebooks/pipeline_groups_new_mask.py
 ```
 
-### Pipeline Steps
+`jupytext` (in `mbrain_env.yml`) lets JupyterLab render the `.py` file as a
+notebook. The earlier `jupyter notebook ...` form also works, but `jupyter lab`
+is recommended (notebook 7 / JupyterLab 4.6+).
 
-**Step 1: BIDS Conversion**
-- Converts Flywheel data structure to BIDS format
-- Organizes subjects, sessions, and acquisitions
-- Handles anatomical (T2w, T2*) and diffusion (DTI) data
-- Copies JSON sidecars with acquisition metadata
-- Creates BIDS metadata files
+This notebook runs the complete new-mask pipeline (see stage-by-stage guide above).
 
-**Step 2: DWI Preprocessing (MRtrix3)**
-1. **Denoising** - Marchenko-Pastur PCA (`dwidenoise`)
-2. **Unringing** - Gibbs artifact removal (`mrdegibbs`)
-3. **Brain Mask** - Mask estimation (`dwi2mask` or threshold-based)
-4. **Bias Correction** - B1 field correction (`dwibiascorrect ants`)
+### Basic Replication Workflow (Recommended)
 
-## Data Organization
+If your goal is to replicate the project results with minimal ambiguity, use this sequence.
 
-### Input (Flywheel Structure)
-```
-local/flywheel/fMRI/SUBJECTS/
-  ├── {subject_id}/
-  │   └── SESSIONS/
-  │       └── {session_name}/
-  │           └── ACQUISITIONS/
-  │               ├── T2w_highres/
-  │               ├── T2w_lowres/
-  │               ├── DTI_EPI_seg_30dir_sat/
-  │               └── ...
-```
+1. Edit `config1.yaml` first
+   - `paths.repo_dir`: set to your local repository path
+   - `paths.data_base`: set to your data location
+   - `paths.matlab_path`: verify MATLAB binary path for your machine
+   - `groups`: confirm the subject/session roster you want to run
 
-### Output (BIDS Structure)
-```
-data/bids/
-  ├── dataset_description.json
-  ├── participants.tsv
-  └── sub-{subject_id}/
-      └── ses-{session_id}/
-          ├── anat/
-          │   ├── sub-{id}_ses-{ses}_acq-highres_T2w.nii.gz
-          │   ├── sub-{id}_ses-{ses}_acq-highres_T2w.json
-          │   └── sub-{id}_ses-{ses}_acq-lowres_T2w.nii.gz
-          └── dwi/
-              ├── sub-{id}_ses-{ses}_dwi.nii.gz
-              ├── sub-{id}_ses-{ses}_dwi.json
-              ├── sub-{id}_ses-{ses}_dwi.bval
-              └── sub-{id}_ses-{ses}_dwi.bvec
-```
-
-### Preprocessed Data Structure
-```
-data/derivatives/mrtrix_preproc/
-  └── sub-{subject_id}/
-      └── ses-{session_id}/
-          └── dwi/
-              ├── sub-{id}_ses-{ses}_denoised.mif
-              ├── sub-{id}_ses-{ses}_noise.mif
-              ├── sub-{id}_ses-{ses}_unringed.mif
-              ├── sub-{id}_ses-{ses}_mask.mif
-              ├── sub-{id}_ses-{ses}_preprocessed.mif
-              └── sub-{id}_ses-{ses}_preprocessed.nii.gz
-```
-
-## Troubleshooting
-
-### Common Errors and Solutions
-
-#### 1. ANTs Not Found (`dwibiascorrect` fails)
-
-**Error:**
-```
-dwibiascorrect: [ERROR] Unable to find ANTS program "N4BiasFieldCorrection"
-```
-
-**Solution:**
-```bash
-# Install ANTs
-brew install ants
-
-# Verify installation
-which N4BiasFieldCorrection
-
-# If not in PATH, add to ~/.zshrc:
-export PATH="/opt/homebrew/bin:$PATH"
-source ~/.zshrc
-```
-
-#### 2. Brain Mask Fails for Mouse Data
-
-**Error:**
-```
-dwi2mask: [WARNING] ... failed (expected for ex-vivo/mouse data)
-```
-
-**Solution:**
-This is expected for mouse/ex-vivo data. The pipeline automatically creates a simple threshold-based mask as fallback. However, you should **manually check and correct masks** if needed:
+2. Install data with `setup_data.py` (preferred over manual OSF download)
 
 ```bash
-# View the mask
-mrview data/derivatives/mrtrix_preproc/sub-XXX/ses-YYY/dwi/sub-XXX_ses-YYY_mask.mif
-
-# If mask is poor, create manually:
-mrthreshold data/bids/sub-XXX/ses-YYY/dwi/sub-XXX_ses-YYY_dwi.nii.gz \
-  custom_mask.mif -abs 20
-
-# Or use FSL's bet (may need tuning for mouse brains)
-bet data/bids/sub-XXX/ses-YYY/dwi/sub-XXX_ses-YYY_dwi.nii.gz \
-  brain_mask -m -f 0.3
+python utils/setup_data.py --check-only
+python utils/setup_data.py --components local pre_bids pre_preproc post
 ```
 
-#### 3. Missing Gradient Information
+Component names are exactly: `local`, `pre_bids`, `pre_preproc`, `post`.
 
-**Error:**
-```
-dwidenoise: [ERROR] no diffusion gradient table found
-```
+3. Open `notebooks/pipeline_groups_new_mask.py` in VS Code as an interactive notebook
+   - Use **Open in Notebook** and select the `mbrain` kernel.
 
-**Solution:**
-Ensure `.bval` and `.bvec` files are present alongside the DWI NIfTI:
-```bash
-# Check files exist
-ls data/bids/sub-XXX/ses-YYY/dwi/
+4. Run notebook steps according to your starting point
+   - If `data/derivatives/mrtrix_newmask/` is already populated:
+     - Skip Steps 1-4
+     - Start at Step 0, then continue through the downstream pipeline
+   - If starting from BIDS + local data only:
+     - Run Step 1 (verify/download checks)
+     - Run Step 2 (batch preprocessing)
+     - Run Step 3 (FOD + ROI resampling)
+     - Run Step 4 (segmentation + tractography)
+     - Then run Step 0 and continue
 
-# Should see:
-# sub-XXX_ses-YYY_dwi.nii.gz
-# sub-XXX_ses-YYY_dwi.bval
-# sub-XXX_ses-YYY_dwi.bvec
-```
+5. Validate key outputs before long downstream reruns
+   - Confirm subject folders exist under `data/derivatives/mrtrix_newmask/`
+   - Confirm masks and FODs are present for all subjects
+   - Do visual QC before launching heavy tractography/cleaning branches
 
-If missing, check the BIDS conversion step or original Flywheel data.
+### Individual Scripts
 
-#### 4. Preprocessing Fails Mid-Pipeline
-
-**Solution:**
-The pipeline saves intermediate outputs. You can continue from where it failed:
+All pipeline scripts are in `functions/` and use `config1.yaml` for parameters:
 
 ```bash
-# Run only specific steps that failed
-python main.py --preprocess --steps mask bias_correct
+# Atlas coregistration
+python functions/atlas_coregistration.py                    # All subjects
+python functions/atlas_coregistration.py --group CTRL       # CTRL only
+python functions/atlas_coregistration.py --subject sub-129-921-R1F
 
-# Or manually run MRtrix commands on intermediate files
-dwibiascorrect ants \
-  data/derivatives/mrtrix_preproc/sub-XXX/ses-YYY/dwi/sub-XXX_ses-YYY_unringed.mif \
-  output.mif \
-  -mask mask.mif
+# Generate tracts
+python functions/generate_tracts.py                         # All tracts, all subjects
+python functions/generate_tracts.py --tract Isocortex_Striatum --hemisphere left
+python functions/generate_tracts.py --group AP --dry-run
+
+# Clean tracts (MATLAB AFQ)
+python functions/clean_tracts.py --subject sub-129-921-R1F
+python functions/clean_tracts.py --group CTRL --tract Isocortex_Thalamus
+
+# View tracts
+python functions/view_tracts.py --subject sub-129-921-R1F
+python functions/view_tracts.py --group CTRL --template
+python functions/view_tracts.py --list-tracts
 ```
-
-#### 5. Out of Memory Errors
-
-**Solution:**
-Mouse brain data can be high-resolution. Reduce memory usage:
-
-```bash
-# Limit number of threads
-export MRTRIX_NTHREADS=2
-
-# Or in commands
-dwidenoise input.mif output.mif -nthreads 2
-```
-
-#### 6. File Permission Errors
-
-**Solution:**
-```bash
-# Ensure write permissions
-chmod -R u+w data/derivatives/mrtrix_preproc/
-
-# Or run with force flag (already included in pipeline)
-dwidenoise input.mif output.mif -force
-```
-
-### Quality Control Checklist
-
-After preprocessing, always check:
-
-1. **Residuals from denoising** - Should show noise, not anatomy:
-   ```bash
-   mrcalc dwi.mif denoised.mif -subtract residuals.mif
-   mrview residuals.mif
-   ```
-
-2. **Brain mask coverage** - Should cover entire brain:
-   ```bash
-   mrview preprocessed.mif -roi.load mask.mif
-   ```
-
-3. **Bias field correction** - Compare before/after:
-   ```bash
-   mrview unringed.mif preprocessed.mif -mode 2
-   ```
-
-## Next Steps
-
-After successful preprocessing:
-
-1. **Validate preprocessed data**
-   ```bash
-   mrview data/derivatives/mrtrix_preproc/sub-XXX/ses-YYY/dwi/sub-XXX_ses-YYY_preprocessed.mif
-   ```
-
-2. **Estimate response functions**
-   ```bash
-   dwi2response tournier preprocessed.mif response.txt
-   ```
-
-3. **Compute fiber orientation distributions**
-   ```bash
-   dwi2fod csd preprocessed.mif response.txt fod.mif -mask mask.mif
-   ```
-
-4. **Perform tractography**
-   ```bash
-   tckgen fod.mif tracks.tck -seed_image mask.mif -select 10000
-   ```
 
 ## Configuration
 
-Edit `utils/config.py` to customize:
-- Data paths
-- BIDS dataset metadata
-- Modality mappings
-- Acquisition naming conventions
+Edit `config1.yaml` to customize paths, groups, processing parameters, and ROI/tract definitions.
 
 ## Getting Help
 

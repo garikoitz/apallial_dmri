@@ -1,5 +1,5 @@
-# %% [markdown] MBRAIN Pipeline: New Brain Mask for All Groups
-# # MBRAIN Pipeline: New Brain Mask (Atlas-based) + Re-run Pipeline
+# %% [markdown] Apallial_dMRI Pipeline: Version with manual Brain Mask for All Groups
+# # Apallial_dMRI Pipeline: New Brain Mask (Atlas-based) + Re-run Pipeline
 #
 # This notebook generates **new brain masks** using single-atlas segmentation
 # (ANTs SyN registration) for ALL subjects across ALL groups (CTRL, AP, APTR),
@@ -12,7 +12,7 @@
 # 4. Manual Correction — fix masks for grafted mice (AP/APTR) where needed
 # 5. Re-run downstream — bias correction, registration, FOD, tractography, etc.
 #
-# **Important:** Run each cell on lmc02. Requires modules: mrtrix3, ants, freesurfer, matlab.
+# Requires modules: mrtrix3, ants, freesurfer, matlab.
 #
 # ---
 
@@ -128,19 +128,19 @@
 # - Write one JSON checkpoint per notebook under `DERIV_BASE/logs/checkpoints/`
 # - Include: timestamp, user, notebook name, pass/fail, required artifact stats.
 
-# %% [markdown] PRE-STEPS: BIDS→Newmask Pipeline (Optional)
-# # PRE-STEPS: BIDS→Newmask Preprocessing Pipeline
+# %% [markdown] Steps 1-4: BIDS→Newmask Pipeline (Optional)
+# # Steps 1-4: BIDS→Newmask Preprocessing Pipeline
 #
 # **IMPORTANT: Read this section FIRST**
 #
 # This notebook normally assumes data is already in `mrtrix_newmask/` (preprocessed DWI, FODs, etc.).
-# If you **only have BIDS raw data + atlas + manual ROI delineations**, you must run these Pre-Steps first.
+# If you **only have BIDS raw data + atlas + manual ROI delineations**, you must run Steps 1-4 first.
 #
-# **If you ALREADY have `mrtrix_newmask/` populated:** Skip all Pre-Step cells → go to **Step 0**
+# **If you ALREADY have `mrtrix_newmask/` populated:** Skip Steps 1-4 → go to **Step 0**
 #
-# **If starting from BIDS raw data:** Run Pre-Steps -2 → -1c in order, then proceed to Step 0
+# **If starting from BIDS raw data:** Run Steps 1 → 4 in order, then proceed to Step 0
 #
-# **Data required for Pre-Steps:**
+# **Data required for Steps 1-4:**
 # ```
 # data/bids/sub-*/ses-*/                    ← Raw BIDS input (anat + dwi)
 # local/atlas/                              ← Allen CCF atlas
@@ -148,29 +148,38 @@
 # local/manual_roi_flip/                    ← Corrected manual ROI masks (.mif)
 # ```
 
-# %% [markdown] PRE-STEP -2: Verify BIDS Data & Configuration
-# ## PRE-STEP -2: Verify BIDS Data Exists
+# %% [markdown] Step 1: Verify BIDS Data & Configuration
+# ## Step 1: Verify BIDS Data Exists
 
-# %% [PRE-STEP -2] Auto-download Missing Data (if needed)
+# %% [Step 1] Auto-download Missing Data (if needed)
 # If you're running this on a fresh machine, this cell will automatically
 # download the test data from OSF.io if the 'local/' directory is missing.
 
-import os, sys, subprocess, json, yaml, platform
+import os, sys, subprocess, json, yaml
 from pathlib import Path
 from datetime import datetime
 
-# Auto-detect platform and set paths
-if platform.system() == "Darwin":  # macOS
-    REPO_DIR = Path("/Users/glerma/soft/mbrain")
-    DATA_BASE = Path("/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data")
-elif platform.system() == "Linux":  # Linux
-    REPO_DIR = Path("/export/home/glerma/glerma/soft/mbrain")
-    DATA_BASE = Path("/export/home/glerma/glerma/PROYECTOS/mbrain")
-else:
-    raise RuntimeError(f"Unsupported platform: {platform.system()}")
+# Resolve repository root by searching upward for config1.yaml.
+_cwd = Path.cwd().resolve()
+REPO_DIR = next((p for p in [_cwd, *_cwd.parents] if (p / "config1.yaml").exists()), None)
+if REPO_DIR is None:
+    raise RuntimeError("Could not find repository root containing config1.yaml")
+
+sys.path.insert(0, str(REPO_DIR))
+sys.path.insert(0, str(REPO_DIR / "functions"))
+
+from functions.config_loader import load_config, get_subject_groups
+cfg = load_config(config_path=REPO_DIR / "config1.yaml")
+groups = get_subject_groups()
+paths = cfg["paths"]
+
+DATA_BASE = Path(paths["data_base"])
+BIDS_DIR = Path(paths["bids_dir"])
+DERIV_NEWMASK = Path(paths["derivatives_newmask"])
+LOCAL_DIR = Path(paths["local"])
 
 # Check if data needs to be downloaded
-local_dir = REPO_DIR / "local"
+local_dir = LOCAL_DIR
 if not local_dir.exists():
     print("=" * 70)
     print(" LOCAL DATA NOT FOUND — AUTO-DOWNLOADING FROM OSF.io")
@@ -185,35 +194,29 @@ if not local_dir.exists():
             capture_output=False
         )
         if result.returncode != 0:
-            print("\n⚠️  Auto-download failed. You can manually download the data from:")
-            print("   https://osf.io/XXXXX/  (replace XXXXX with actual project ID)")
-            print("   Then extract to the repository root.")
+            print("\n⚠️  Auto-download failed.")
+            print("   Retry from repo root with setup_data.py:")
+            print("     python utils/setup_data.py --check-only")
+            print("     python utils/setup_data.py --components local pre_bids pre_preproc post")
+            print("   You can also install only missing components, e.g.:")
+            print("     python utils/setup_data.py --components local")
+            print("     python utils/setup_data.py --components pre_bids")
+            print("     python utils/setup_data.py --components pre_preproc")
+            print("     python utils/setup_data.py --components post")
     else:
         print(f"❌ Setup script not found at {setup_script}")
-        print("   Download data manually from OSF.io and extract to repo root.")
+        print("   Run from repository root where utils/setup_data.py exists.")
     print()
 else:
     print(f"✅ Local data directory found at {local_dir}")
 
-# %% [PRE-STEP -2] Verify BIDS Structure & Required Files
+# %% [Step 1b] Verify BIDS Structure & Required Files
 
 print(f"{'=' * 70}")
-print(f" PRE-STEP -2: VERIFY BIDS DATA")
+print(f" STEP 1: VERIFY BIDS DATA")
 print(f"{'=' * 70}")
-print(f"Platform: {platform.system()}")
 print(f"REPO_DIR:  {REPO_DIR}")
 print(f"DATA_BASE: {DATA_BASE}")
-
-sys.path.insert(0, str(REPO_DIR))
-sys.path.insert(0, str(REPO_DIR / "functions"))
-
-from functions.config_loader import load_config, get_subject_groups
-cfg = load_config()
-groups = get_subject_groups()
-
-BIDS_DIR = DATA_BASE / "data" / "bids"
-DERIV_NEWMASK = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
-LOCAL_DIR = DATA_BASE / "local"
 
 print(f"\nData locations:")
 print(f"  BIDS:          {BIDS_DIR}")
@@ -269,12 +272,12 @@ n_flip = len(list(flip_dir.glob("*.mif"))) if flip_dir.exists() else 0
 print(f"  {'✅' if n_flip > 0 else '❌'} Flipped manual ROIs: {n_flip} files")
 
 print(f"\n{'=' * 70}")
-print(f"If all items above show ✅, proceed to PRE-STEP -1a")
+print(f"If all items above show ✅, proceed to Step 2")
 print(f"If anything shows ❌ and you need it, check your data directory structure")
 print(f"{'=' * 70}\n")
 
-# %% [markdown] PRE-STEP -1a: Run Batch Preprocessing
-# ## PRE-STEP -1a: Batch Preprocessing (BIDS→Flip1)
+# %% [markdown] Step 2: Run Batch Preprocessing
+# ## Step 2: Batch Preprocessing (BIDS→Flip1)
 #
 # This runs the complete preprocessing pipeline for all subjects with BIDS data:
 # - T2w flip1 transformation
@@ -282,9 +285,9 @@ print(f"{'=' * 70}\n")
 #
 # **Runtime:** ~30-60 min per subject | **Parallelization:** Uses all CPU cores
 
-# %% [PRE-STEP -1a] Run Batch T2w Flip + DWI Preprocessing
+# %% [Step 2] Run Batch T2w Flip + DWI Preprocessing
 print(f"{'=' * 70}")
-print(f" PRE-STEP -1a: BATCH PREPROCESSING (T2w Flip + DWI)")
+print(f" STEP 2: BATCH PREPROCESSING (T2w Flip + DWI)")
 print(f"{'=' * 70}\n")
 
 cmd_preproc = (
@@ -300,14 +303,14 @@ if result.returncode == 0:
 else:
     print(f"\n❌ Preprocessing failed (exit code {result.returncode})")
 
-# %% [markdown] PRE-STEP -1b: FOD Estimation + ROI Resampling
-# ## PRE-STEP -1b: FOD Estimation + ROI Resampling
+# %% [markdown] Step 3: FOD Estimation + ROI Resampling
+# ## Step 3: FOD Estimation + ROI Resampling
 #
 # Computes FODs and resamples ROIs from T2w→FOD space
 
-# %% [PRE-STEP -1b] FOD + ROI Resampling
+# %% [Step 3] FOD + ROI Resampling
 print(f"{'=' * 70}")
-print(f" PRE-STEP -1b: FOD ESTIMATION + ROI RESAMPLING")
+print(f" STEP 3: FOD ESTIMATION + ROI RESAMPLING")
 print(f"{'=' * 70}\n")
 
 cmd_fod = (
@@ -322,14 +325,14 @@ if result.returncode == 0:
 else:
     print(f"\n❌ FOD/ROI step failed (exit code {result.returncode})")
 
-# %% [markdown] PRE-STEP -1c: Segmentation + Tractography
-# ## PRE-STEP -1c: Segmentation + Whole-Brain Tractography
+# %% [markdown] Step 4: Segmentation + Tractography
+# ## Step 4: Segmentation + Whole-Brain Tractography
 #
 # Creates graft/isocortex segments (FOD space) and generates 1M streamline whole-brain tractograms
 
-# %% [PRE-STEP -1c] Segmentation + Tractography (+ Sync to newmask)
+# %% [Step 4] Segmentation + Tractography (+ Sync to newmask)
 print(f"{'=' * 70}")
-print(f" PRE-STEP -1c: SEGMENTATION + TRACTOGRAPHY")
+print(f" STEP 4: SEGMENTATION + TRACTOGRAPHY")
 print(f"{'=' * 70}\n")
 
 cmd_tck = (
@@ -344,8 +347,8 @@ if result.returncode == 0:
     print(f"\n✅ Segmentation + tractography complete!")
 
     # Prepare mrtrix_newmask for downstream steps (Step 0+ uses only newmask)
-    deriv_flip1 = DATA_BASE / "data" / "derivatives" / "mrtrix_preproc_flip1"
-    deriv_newmask = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
+    deriv_flip1 = Path(paths["derivatives_flip1"])
+    deriv_newmask = Path(paths["derivatives_newmask"])
     deriv_newmask.mkdir(parents=True, exist_ok=True)
     cmd_sync = f"rsync -av --progress {deriv_flip1}/ {deriv_newmask}/"
     print(f"\nSyncing flip1 → newmask for downstream notebook steps...")
@@ -372,11 +375,12 @@ import os, sys, subprocess, glob, json
 from pathlib import Path
 from datetime import datetime
 
-# ============================================================
-# MACHINE-SPECIFIC: Set REPO_DIR for lmc02
-# ============================================================
-REPO_DIR = Path("/export/home/glerma/glerma/soft/mbrain")
-DATA_BASE = Path("/export/home/glerma/glerma/PROYECTOS/mbrain")
+# Resolve repository root by searching upward for config1.yaml.
+_cwd = Path.cwd().resolve()
+REPO_DIR = next((p for p in [_cwd, *_cwd.parents] if (p / "config1.yaml").exists()), None)
+if REPO_DIR is None:
+    raise RuntimeError("Could not find repository root containing config1.yaml")
+
 MODULE_LOAD_FS = "module load freesurfer/7.4.1-Rocky8"
 MODULE_LOAD_MRTRIX = "module load mrtrix3/3.0.3"
 MODULE_LOAD_MATLAB = "module load matlab/R2024A"
@@ -431,6 +435,7 @@ from functions.pipeline_new_mask import (
 cfg = load_config()
 paths = cfg['paths']
 groups = get_subject_groups()
+DATA_BASE = Path(paths['data_base'])
 
 # Config sub-sections used in downstream steps
 tck = cfg['tractography']
@@ -443,7 +448,7 @@ sk  = cfg.get('shrink_analysis', {})
 SEG_MODE = 9
 
 # Destination derivatives directory (single source of truth for this notebook)
-DERIV_BASE = DATA_BASE / "data" / "derivatives" / "mrtrix_newmask"
+DERIV_BASE = Path(paths['derivatives_newmask'])
 
 print(f"New mask derivatives: {DERIV_BASE}")
 
@@ -703,11 +708,15 @@ print(f"{'=' * 70}")
 # %% [Step 2a] QC: View ONE subject to test (pick first CTRL)
 # Quick test with the first subject to verify mrview works
 #
-# Copy-paste this into a BRODMANN126 terminal (absolute paths, no /export):
-# mrview /home/glerma/glerma/PROYECTOS/mbrain/data/derivatives/mrtrix_newmask/sub-129-921-R1F/ses-260115121231/dwi/t2w_highres_flip.mif -overlay.load /home/glerma/glerma/PROYECTOS/mbrain/data/derivatives/mrtrix_newmask/sub-129-921-R1F/ses-260115121231/dwi/mask_new.mif -overlay.opacity 0.3 -overlay.colour 0,1,0
+# Copy-paste the command printed below into any terminal that has mrview.
 #
 s = subjects[0]
 print(f"Opening QC for: {s['id']} ({s['group']})")
+print(
+    "Example command:\n  "
+    f"mrview {s['t2w']} -overlay.load {s['mask_new_mif']} "
+    "-overlay.opacity 0.3 -overlay.colour 0,1,0"
+)
 if s['mask_new_mif'].exists():
     launch_gui(
         f"mrview {s['t2w']} "
@@ -1334,7 +1343,7 @@ print(f"\n  .trk conversion: ✅ {trk_ok} / ❌ {trk_fail}")
 # --- QC: visualize in mrview ---
 # Run these on BRODMANN126 to visually check the 10k tractograms:
 #
-# D=/home/glerma/glerma/PROYECTOS/mbrain/data/derivatives/mrtrix_newmask
+# D={DERIV_BASE}
 # for d in $D/sub-*/ses-*/dwi/wholebrain; do
 #   sub=$(basename $(dirname $(dirname $(dirname "$d"))))
 #   mrview $(dirname "$d")/t2w_highres_flip.mif \
@@ -1417,8 +1426,8 @@ os.environ['MRTRIX_TMPDIR'] = '/tmp'
 
 # CST ROIs live in each subject's manual_roi/ dir as roi_CST_{hemi}_flip.mif
 # (same location & naming scheme as roi_Graft_left_flip.mif, roi_Thalamus_left_flip.mif, etc.)
-# Legacy source dir (for the two subjects already drawn on Mac):
-CST_LEGACY_DIR = Path("/home/glerma/glerma/PROYECTOS/mbrain/local/manual_roi_flip")
+# Legacy source dir is config-driven (paths.cst_legacy_manual_roi_flip_dir).
+CST_LEGACY_DIR = Path(paths["cst_legacy_manual_roi_flip_dir"])
 
 print(f"{'=' * 70}")
 print(f" CST ROI STATUS CHECK — AP & APTR SUBJECTS")
