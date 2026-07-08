@@ -4,12 +4,31 @@
 
 ### Step 1: Clone and create environment
 
+Choose the commands matching your environment manager:
+
+**Using Conda:**
+```bash
+git clone https://github.com/garikoitz/apallial_dmri.git
+cd apallial_dmri
+conda env create -f mbrain_env.yml
+conda activate mbrain
+which python     # should be inside the mbrain environment
+python --version # should show Python 3.11.x
+```
+
+**Using Micromamba:**
 ```bash
 git clone https://github.com/garikoitz/apallial_dmri.git
 cd apallial_dmri
 micromamba env create -f mbrain_env.yml
 micromamba activate mbrain
+which python     # should be inside the mbrain environment
+python --version # should show Python 3.11.x
 ```
+
+> **Note on Environment Creation:**
+> - **Conda/Micromamba Warnings:** If you saw warnings about the explicit `defaults` channel missing or `pip` not being listed under conda dependencies, they have been explicitly added in `mbrain_env.yml` to silence those warnings.
+> - **MRtrix3 Package Errors:** If your environment creation failed with `PackagesNotFoundError for mrtrix3`, this is because Conda does not reliably distribute MRtrix3 packages on macOS (especially Apple Silicon). `mrtrix3` has been commented out inside `mbrain_env.yml`. Please install MRtrix3 separately via the official standalone installer / Homebrew.
 
 ### Step 2: Download the data
 
@@ -192,12 +211,12 @@ micromamba run -n mbrain jupyter lab notebooks/pipeline_groups_new_mask.py
 
 The data is split into four ZIP components:
 
-| Component | Installs to | Contents | Purpose |
-|-----------|-------------|----------|---------|
-| `local` | `local/` | Allen CCF atlas + manual ROIs | Required reference inputs |
-| `pre_bids` | `data/bids/` | BIDS dataset (dataset_description.json, participants.tsv, etc.) | Raw data for full reproduction |
-| `pre_preproc` | `data/derivatives/mrtrix_newmask/` | Pre-mask derivatives (DWI, masks, FODs, ROIs) | Start from mask creation |
-| `post` | `data/derivatives/mrtrix_newmask/` | Post-mask derivatives (tractograms, SIFT2, cleaned tracts) | Skip downstream recomputation |
+| Component     | Installs to                        | Contents                                                        | Purpose                        |
+| ------------- | ---------------------------------- | --------------------------------------------------------------- | ------------------------------ |
+| `local`       | `local/`                           | Allen CCF atlas + manual ROIs                                   | Required reference inputs      |
+| `pre_bids`    | `data/bids/`                       | BIDS dataset (dataset_description.json, participants.tsv, etc.) | Raw data for full reproduction |
+| `pre_preproc` | `data/derivatives/mrtrix_newmask/` | Pre-mask derivatives (DWI, masks, FODs, ROIs)                   | Start from mask creation       |
+| `post`        | `data/derivatives/mrtrix_newmask/` | Post-mask derivatives (tractograms, SIFT2, cleaned tracts)      | Skip downstream recomputation  |
 
 **Total size:** ~6 GB compressed, ~9 GB unzipped (varies by component selection)
 

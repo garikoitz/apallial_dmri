@@ -12,7 +12,6 @@ You can use this repository in one of two ways, depending on your goal:
   `notebooks/generate_figures_only.py` (or `.ipynb`). This reads the
   already-processed data and produces the images used in the paper — one
   figure per cell, no preprocessing required.
-
 - **Option B — Run the full pipeline from BIDS data (complete reproduction).**
   Install the BIDS + local components, then run the preprocessing and
   downstream stages in `notebooks/pipeline_groups_new_mask.py` starting from
@@ -31,20 +30,34 @@ For a complete step-by-step guide, see [SETUP.md](SETUP.md).
 
 ### 1. Clone and Create Environment
 
-If you have micromamba, this is the code.  Equivalently, you can use conda instead of micromamba (or any other environment manager). This step takes a few minutes.
+This step takes a **few minutes**. Choose the commands matching your environment manager:
+
+**Using Conda:**
+
+```bash
+git clone https://github.com/garikoitz/apallial_dmri.git
+cd apallial_dmri
+conda env create -f mbrain_env.yml
+conda activate mbrain
+which python     # should be inside the mbrain environment
+python --version # should show Python 3.11.x
+```
+
+**Using Micromamba:**
 
 ```bash
 git clone https://github.com/garikoitz/apallial_dmri.git
 cd apallial_dmri
 micromamba env create -f mbrain_env.yml
 micromamba activate mbrain
+which python     # should be inside the mbrain environment
+python --version # should show Python 3.11.x
 ```
 
-### 2. Download Test Data
-
-```bash
-python utils/setup_data.py
-```
+> **Note on Environment Creation:**
+>
+> - **Conda/Micromamba Warnings:** If you previously saw warnings about explicit `defaults` channels being missing or `pip` not being listed under conda dependencies, `mbrain_env.yml` has been updated to include them explicitly, which silences those warnings.
+> - **MRtrix3 Package Errors:** If your environment creation failed with `PackagesNotFoundError: The following packages are not available from current channels: - mrtrix3`, this is because Conda does not reliably distribute MRtrix3 packages on macOS (especially Apple Silicon). `mrtrix3` has been commented out inside `mbrain_env.yml`. Please install MRtrix3 separately via the official standalone installer (see **Step 3** below) or Homebrew.
 
 This downloads and extracts all 4 OSF components to `local/` and `data/`.
 See [SETUP.md](SETUP.md) for component-by-component download options.
@@ -65,15 +78,13 @@ Then verify that MRtrix3 is available:
 mrinfo --version
 ```
 
-We recommend this installer on macOS because Homebrew and Conda may not provide
-a usable current MRtrix3 package, especially on Apple Silicon.
+Some users will want to install ANTS.  We may need FreeSurfer at some point.  This is just a placeholder.
 
 ```bash
 # ANTs (required for bias field correction)
 # macOS: brew install ants
 # Or download from: http://stnava.github.io/ANTs/
 ```
-
 
 ## Pipeline Overview
 
@@ -354,4 +365,3 @@ Edit `config1.yaml` to customize paths, groups, processing parameters, and ROI/t
 - MRtrix3 Documentation: https://mrtrix.readthedocs.io/
 - MRtrix3 Community Forum: https://community.mrtrix.org/
 - PyBIDS Documentation: https://bids-standard.github.io/pybids/
-

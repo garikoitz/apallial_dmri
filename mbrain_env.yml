@@ -1,6 +1,7 @@
 name: mbrain
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - ipykernel
   - ipywidgets
@@ -15,8 +16,16 @@ dependencies:
   - pyarrow
   - pybids
   - pynrrd
+  - pip
   - python=3.11
-  - mrtrix3
+  # mrtrix3 is omitted from the conda environment definition because Conda/micromamba
+  # does not reliably provide it on macOS (especially on Apple Silicon).
+  # Run `mrinfo --version` to check if MRtrix3 is already installed.
+  # If not, on macOS use the official standalone installer:
+  #   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MRtrix3/macos-installer/master/install)"
+  # On Linux, you can install mrtrix3 separately via your package manager or conda-forge,
+  # or uncomment the line below if appropriate for your system:
+  # - mrtrix3
   - scikit-learn
   - scipy
   - seaborn

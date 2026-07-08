@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -38,6 +39,7 @@ from pathlib import Path
 
 REPO_DIR = Path(__file__).parent.parent.absolute()
 TEMP_DIR = Path.home() / ".mbrain_temp"
+MIN_PYTHON = (3, 11)
 
 DEFAULT_COMPONENT_URLS = {
     "local": "https://osf.io/download/6a4715f2dea535d897daa197/",
@@ -92,6 +94,49 @@ def log(message: str, level: str = "INFO") -> None:
     print(f"[{ts}] {prefix} {message}")
 
 
+def check_python_version() -> bool:
+    if sys.version_info >= MIN_PYTHON:
+        return True
+
+    candidate_env_python = None
+    conda_roots = []
+    if os.environ.get("CONDA_ROOT"):
+        conda_roots.append(Path(os.environ["CONDA_ROOT"]))
+    if os.environ.get("CONDA_EXE"):
+        conda_roots.append(Path(os.environ["CONDA_EXE"]).resolve().parent.parent)
+    if os.environ.get("CONDA_PREFIX"):
+        conda_roots.append(Path(os.environ["CONDA_PREFIX"]).resolve())
+
+    for conda_root in conda_roots:
+        env_python = conda_root / "envs" / "mbrain" / "bin" / "python"
+        if env_python.exists():
+            candidate_env_python = env_python
+            break
+
+    required = ".".join(str(part) for part in MIN_PYTHON)
+    current = ".".join(str(part) for part in sys.version_info[:3])
+    log(f"Python {required}+ is required; found Python {current}.", "ERROR")
+    log(f"Current interpreter: {sys.executable}", "ERROR")
+
+    if candidate_env_python and Path(sys.executable).resolve() != candidate_env_python.resolve():
+        print()
+        print("A Conda mbrain Python was found, but plain python resolves elsewhere.")
+        print("For this shell, run setup with the environment Python directly:")
+        print(f"  {candidate_env_python} utils/setup_data.py")
+
+    print()
+    print("The project environment file pins python=3.11. Recreate and activate it with one of:")
+    print("  conda env remove -n mbrain")
+    print("  conda env create -f mbrain_env.yml")
+    print("  conda activate mbrain")
+    print()
+    print("or:")
+    print("  micromamba env remove -n mbrain")
+    print("  micromamba env create -f mbrain_env.yml")
+    print("  micromamba activate mbrain")
+    return False
+
+
 def component_url(component: str) -> str:
     env_name = f"MBRAIN_URL_{component.upper()}"
     return os.environ.get(env_name, DEFAULT_COMPONENT_URLS[component])
@@ -118,42 +163,92 @@ def sample_missing(component: str) -> list[Path]:
     return missing
 
 
-def download_file(url: str, destination: Path, chunk_size: int = 8192) -> bool:
+def remove_if_exists(path: Path) -> None:
+    """Remove a file if present without noisy cleanup errors."""
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def urllib_can_open(url: str) -> bool:
+    """Return False for HTTPS URLs when this Python was built without SSL."""
+    if not url.lower().startswith("https://"):
+        return True
+    return hasattr(urllib.request, "HTTPSHandler")
+
+
+def download_with_urllib(url: str, temp_path: Path, chunk_size: int = 8192) -> bool:
+    with urllib.request.urlopen(url, timeout=300) as response:
+        total_size = int(response.headers.get("content-length", 0))
+        downloaded = 0
+        with open(temp_path, "wb") as handle:
+            while True:
+                chunk = response.read(chunk_size)
+                if not chunk:
+                    break
+                handle.write(chunk)
+                downloaded += len(chunk)
+                if total_size > 0:
+                    percent = (downloaded / total_size) * 100
+                    print(
+                        f"\r  Progress: {percent:.1f}% ({downloaded / (1024 * 1024):.1f} MB / {total_size / (1024 * 1024):.1f} MB)",
+                        end="",
+                        flush=True,
+                    )
+        print()
+    return True
+
+
+def download_with_curl(url: str, temp_path: Path) -> bool:
+    curl = shutil.which("curl")
+    if not curl:
+        log("Python cannot open HTTPS URLs and curl is not available.", "ERROR")
+        return False
+
+    cmd = [
+        curl,
+        "--fail",
+        "--location",
+        "--retry",
+        "3",
+        "--retry-delay",
+        "5",
+        "--output",
+        str(temp_path),
+        url,
+    ]
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        log(f"curl download failed with exit code {result.returncode}", "ERROR")
+        return False
+    return True
+
+
+def download_file(url: str, destination: Path) -> bool:
+    temp_path = destination.with_suffix(destination.suffix + ".tmp")
+    remove_if_exists(temp_path)
+
     try:
         log(f"Downloading from: {url}")
-        temp_path = destination.with_suffix(destination.suffix + ".tmp")
-
-        with urllib.request.urlopen(url, timeout=300) as response:
-            total_size = int(response.headers.get("content-length", 0))
-            downloaded = 0
-            with open(temp_path, "wb") as handle:
-                while True:
-                    chunk = response.read(chunk_size)
-                    if not chunk:
-                        break
-                    handle.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size > 0:
-                        percent = (downloaded / total_size) * 100
-                        print(
-                            f"\r  Progress: {percent:.1f}% ({downloaded / (1024 * 1024):.1f} MB / {total_size / (1024 * 1024):.1f} MB)",
-                            end="",
-                            flush=True,
-                        )
-            print()
+        if urllib_can_open(url):
+            download_with_urllib(url, temp_path)
+        else:
+            log("This Python build lacks HTTPS support; using curl instead.", "WARN")
+            if not download_with_curl(url, temp_path):
+                remove_if_exists(temp_path)
+                return False
 
         shutil.move(temp_path, destination)
         log(f"Downloaded to: {destination}", "OK")
         return True
     except urllib.error.URLError as exc:
         log(f"Download failed: {exc}", "ERROR")
-        if temp_path.exists():
-            temp_path.unlink()
+        remove_if_exists(temp_path)
         return False
     except Exception as exc:
         log(f"Unexpected error during download: {exc}", "ERROR")
-        if temp_path.exists():
-            temp_path.unlink()
+        remove_if_exists(temp_path)
         return False
 
 
@@ -283,7 +378,7 @@ def install_component(component: str, force: bool = False) -> bool:
 
     if MARKERS[component].exists() and not force:
         log(f"{component}: marker present but data missing — re-extracting", "WARN")
-        MARKERS[component].unlink(missing_ok=True)
+        MARKERS[component].unlink()
 
     url = component_url(component)
     if "XXXXX" in url:
@@ -302,11 +397,15 @@ def install_component(component: str, force: bool = False) -> bool:
 
     # Ensure marker exists even if archive was produced without marker files.
     MARKERS[component].write_text(f"{component}\n", encoding="utf-8")
-    zip_path.unlink(missing_ok=True)
+    if zip_path.exists():
+        zip_path.unlink()
     return True
 
 
 def main() -> int:
+    if not check_python_version():
+        return 1
+
     args = parse_args()
     components = selected_components(args.components)
 
