@@ -517,15 +517,9 @@ def run_parallel(tasks, label="Processing"):
 
 print("Helpers loaded ✅")
 
-# %% [Step 0] Verify tools: MRtrix3, ANTs, FreeSurfer, MATLAB
-result_fs = run_command(f"{MODULE_LOAD_FS} && mri_info --version", check=False, verbose=False)
-if result_fs.returncode == 0:
-    print(f"✅ FreeSurfer found (module: {MODULE_LOAD_FS})")
-else:
-    print(f"❌ FreeSurfer NOT found")
-    print(f"   Module load: {MODULE_LOAD_FS}")
-    print(f"   stderr: {result_fs.stderr[:200]}")
-
+# %% [Step 0] Verify tools: MRtrix3 (required), FreeSurfer + MATLAB (Option B only)
+# MRtrix3 is required for both Option A and Option B.
+# FreeSurfer and MATLAB are only needed for Option B (full pipeline from BIDS).
 result_mr = run_command(f"{MODULE_LOAD_MRTRIX} && mrconvert --version", check=False, verbose=False)
 if result_mr.returncode == 0:
     print(f"✅ MRtrix3 found (module: {MODULE_LOAD_MRTRIX})")
@@ -534,21 +528,20 @@ else:
     print(f"   Module load: {MODULE_LOAD_MRTRIX}")
     print(f"   stderr: {result_mr.stderr[:200]}")
 
-result_ants = run_command(f"{MODULE_LOAD_ANTS} && N4BiasFieldCorrection --version", check=False, verbose=False)
-if result_ants.returncode == 0 or 'ANTs' in (result_ants.stdout + result_ants.stderr):
-    print(f"✅ ANTs found (module: {MODULE_LOAD_ANTS})")
+print("\nOptional tools (Option B / full pipeline only):")
+result_fs = run_command(f"{MODULE_LOAD_FS} && mri_info --version", check=False, verbose=False)
+if result_fs.returncode == 0:
+    print(f"  ✅ FreeSurfer found (module: {MODULE_LOAD_FS})")
 else:
-    print(f"❌ ANTs NOT found")
-    print(f"   Module load: {MODULE_LOAD_ANTS}")
-    print(f"   stderr: {result_ants.stderr[:200]}")
+    print(f"  ⚠️  FreeSurfer NOT found (only needed for Option B)")
+    print(f"     Module load: {MODULE_LOAD_FS}")
 
 result_mat = run_command(f"{MODULE_LOAD_MATLAB} && matlab -batch \"disp('MATLAB OK')\"", check=False, verbose=False)
 if result_mat.returncode == 0 and 'MATLAB OK' in result_mat.stdout:
-    print(f"✅ MATLAB found (module: {MODULE_LOAD_MATLAB})")
+    print(f"  ✅ MATLAB found (module: {MODULE_LOAD_MATLAB})")
 else:
-    print(f"❌ MATLAB NOT found")
-    print(f"   Module load: {MODULE_LOAD_MATLAB}")
-    print(f"   stderr: {result_mat.stderr[:200]}")
+    print(f"  ⚠️  MATLAB NOT found (only needed for Option B AFQ cleaning)")
+    print(f"     Module load: {MODULE_LOAD_MATLAB}")
 
 
 # %% [markdown] Step 0.9: Delete existing mask_new files (re-run safety)
