@@ -2,6 +2,79 @@
 
 Analysis pipeline for apallial mouse brain imaging data using MRtrix3.
 
+## Two Ways to Run This Pipeline
+
+You can use this repository in one of two ways, depending on your goal:
+
+- **Option A — Generate the paper figures from installed data (fast).**
+  Install the pre-computed derivatives with `python utils/setup_data.py`, then
+  run only the figure-generation cells in
+  `notebooks/generate_figures_only.py` (or `.ipynb`). This reads the
+  already-processed data and produces the images used in the paper — one
+  figure per cell, no preprocessing required.
+
+- **Option B — Run the full pipeline from BIDS data (complete reproduction).**
+  Install the BIDS + local components, then run the preprocessing and
+  downstream stages in `notebooks/pipeline_groups_new_mask.py` starting from
+  raw BIDS data. This reproduces every intermediate output (masks, FODs,
+  tractograms, cleaning, reports) end to end. This option also requires
+  external tools not bundled in the conda env: `antspyx`
+  (`pip install antspyx`).
+
+See [SETUP.md](SETUP.md) for the component-by-component install commands and
+the "Basic Replication Workflow" section below for which notebook steps to run
+for each option.
+
+## Setup
+
+For a complete step-by-step guide, see [SETUP.md](SETUP.md).
+
+### 1. Clone and Create Environment
+
+If you have micromamba, this is the code.  Equivalently, you can use conda instead of micromamba (or any other environment manager). This step takes a few minutes.
+
+```bash
+git clone https://github.com/garikoitz/apallial_dmri.git
+cd apallial_dmri
+micromamba env create -f mbrain_env.yml
+micromamba activate mbrain
+```
+
+### 2. Download Test Data
+
+```bash
+python utils/setup_data.py
+```
+
+This downloads and extracts all 4 OSF components to `local/` and `data/`.
+See [SETUP.md](SETUP.md) for component-by-component download options.
+
+### 3. Verify External Dependencies
+
+Full pipeline runs require MRtrix3 3.0.4 or newer.
+
+On macOS, use the official MRtrix3 standalone installer:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MRtrix3/macos-installer/master/install)"
+```
+
+Then verify that MRtrix3 is available:
+
+```bash
+mrinfo --version
+```
+
+We recommend this installer on macOS because Homebrew and Conda may not provide
+a usable current MRtrix3 package, especially on Apple Silicon.
+
+```bash
+# ANTs (required for bias field correction)
+# macOS: brew install ants
+# Or download from: http://stnava.github.io/ANTs/
+```
+
+
 ## Pipeline Overview
 
 The complete pipeline is in a single notebook:
@@ -24,7 +97,7 @@ The notebook runs through these stages:
 
 ### Preconditions
 
-1. Required modules available: MRtrix3, ANTs, MATLAB (for AFQ cleaning)
+1. Required modules available: MRtrix3 (for both options); MATLAB and FreeSurfer only for Option B (full pipeline)
 2. `config1.yaml` paths are correct for the current machine
 3. Subject roster in config is final for the run
 4. Data downloaded via `python utils/setup_data.py`
@@ -70,6 +143,8 @@ apallial_dmri/
 │
 ├── notebooks/               # Pipeline notebook + documentation
 │   ├── pipeline_groups_new_mask.py  # Main pipeline notebook (all subjects/groups)
+│   ├── generate_figures_only.py     # Figures-only notebook (Option A, one figure per cell)
+│   ├── generate_figures_only.ipynb  # Same as .py, in native Jupyter format
 │   └── methods.md                   # Methods documentation
 │
 ├── utils/                   # Utility modules
@@ -164,55 +239,6 @@ python functions/fixel_cluster_analysis.py --group CTRL
 # Reports
 python functions/generate_tract_metrics_report.py --group CTRL
 python functions/generate_connectivity_report.py --group CTRL
-```
-
-## Setup
-
-For a complete step-by-step guide, see [SETUP.md](SETUP.md).
-
-### 1. Clone and Create Environment
-
-If you have micromamba, this is the code.  Equivalently, you can use conda instead of micromamba (or any other environment manager). This step takes a few minutes.
-
-```bash
-git clone https://github.com/garikoitz/apallial_dmri.git
-cd apallial_dmri
-micromamba env create -f mbrain_env.yml
-micromamba activate mbrain
-```
-
-### 2. Download Test Data
-
-```bash
-python utils/setup_data.py
-```
-
-This downloads and extracts all 4 OSF components to `local/` and `data/`.
-See [SETUP.md](SETUP.md) for component-by-component download options.
-
-### 3. Verify External Dependencies
-
-Full pipeline runs require MRtrix3 3.0.4 or newer.
-
-On macOS, use the official MRtrix3 standalone installer:
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/MRtrix3/macos-installer/master/install)"
-```
-
-Then verify that MRtrix3 is available:
-
-```bash
-mrinfo --version
-```
-
-We recommend this installer on macOS because Homebrew and Conda may not provide
-a usable current MRtrix3 package, especially on Apple Silicon.
-
-```bash
-# ANTs (required for bias field correction)
-# macOS: brew install ants
-# Or download from: http://stnava.github.io/ANTs/
 ```
 
 ## Usage
@@ -328,3 +354,4 @@ Edit `config1.yaml` to customize paths, groups, processing parameters, and ROI/t
 - MRtrix3 Documentation: https://mrtrix.readthedocs.io/
 - MRtrix3 Community Forum: https://community.mrtrix.org/
 - PyBIDS Documentation: https://bids-standard.github.io/pybids/
+

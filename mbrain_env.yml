@@ -16,6 +16,7 @@ dependencies:
   - pybids
   - pynrrd
   - python=3.11
+  - mrtrix3
   - scikit-learn
   - scipy
   - seaborn
@@ -23,6 +24,9 @@ dependencies:
   - statsmodels
   - pip:
     - Glymur
+    # antspyx is only needed for Option B (full pipeline from BIDS).
+    # Skip it for Option A (paper figures from installed data):
+    #   pip install antspyx
     - ImageIO
     - allensdk
     - argschema
