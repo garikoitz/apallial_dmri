@@ -102,6 +102,13 @@ if REPO_DIR is None:
 sys.path.insert(0, str(REPO_DIR))
 sys.path.insert(0, str(REPO_DIR / "functions"))
 
+# Override derivatives to local newmask data BEFORE loading config,
+# so config['paths']['derivatives_flip1'] points to mrtrix_newmask.
+_NEWMASK = REPO_DIR / "data" / "derivatives" / "mrtrix_newmask"
+if not _NEWMASK.exists():
+    raise RuntimeError(f"Derivatives not found: {_NEWMASK}")
+os.environ["MBRAIN_DERIVATIVES_DIR"] = str(_NEWMASK)
+
 from functions.config_loader import load_config
 
 config = load_config(str(REPO_DIR / "config1.yaml"))
@@ -150,8 +157,441 @@ raise NotImplementedError("Figure 2g not yet implemented.")
 # **Output**: `reports/figures/figure_2h.png`
 
 # %% [Figure 2h] Coronal FODs + radar plots composite
-# TODO: implement Figure 2h here.
-raise NotImplementedError("Figure 2h not yet implemented.")
+# Adapted from figs/make_4x3_figure_v09.py: 2-row × 3-column composite.
+# Row 1 (top): FOD screenshots (coronal T2W + FOD glyphs, rotated 90° CW)
+#             with dashed ROI margin overlay and 1 mm scale bar.
+# Row 2 (bottom): Per-mouse radar plots (n=4 mice/group, bilateral L|R ROI,
+#                 first-thalamus slice, K-means 2 clusters, DV-dominant solid).
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from PIL import Image
+from pathlib import Path
+
+from functions.fixel_roi_analysis import (
+    load_fixel_dir, load_roi_mask, extract_slicewise_vectors,
+    slicewise_kmeans,
+)
+
+# --- Paths ---
+TMP_DIR = REPO_DIR / "tmp"
+DERIV = Path(config["paths"]["derivatives_flip1"])
+
+# --- Representative subjects for FOD screenshots ---
+REPR_SUBJECTS_2H = {
+    "CTRL": {"id": "sub-138-1010-L1F", "ses": "ses-260115101441",
+             "fod_slice": 14, "roi_name": "isocortex"},
+    "AP":   {"id": "sub-769-C-O5-R1M",  "ses": "ses-240911115733",
+             "fod_slice": 15, "roi_name": "graft"},
+    "APTR": {"id": "sub-AP72-862-901-NmF", "ses": "ses-251210093342",
+             "fod_slice": 14, "roi_name": "graft"},
+}
+
+# --- All subjects for radar (4 per group, bilateral ROI) ---
+ALL_SUBJECTS_2H = {
+    "CTRL": [
+        {"id": "sub-129-921-R1F",   "ses": "ses-260115121231", "first_thal_fod": 10,
+         "roi_l": "atlas/rois/fod_space/roi_isocortex_left.nii.gz",
+         "roi_r": "atlas/rois/fod_space/roi_isocortex_right.nii.gz"},
+        {"id": "sub-129-921-R1L1F", "ses": "ses-260116085433", "first_thal_fod": 10,
+         "roi_l": "atlas/rois/fod_space/roi_isocortex_left.nii.gz",
+         "roi_r": "atlas/rois/fod_space/roi_isocortex_right.nii.gz"},
+        {"id": "sub-129-1014-L1M",  "ses": "ses-260115113814", "first_thal_fod": 9,
+         "roi_l": "atlas/rois/fod_space/roi_isocortex_left.nii.gz",
+         "roi_r": "atlas/rois/fod_space/roi_isocortex_right.nii.gz"},
+        {"id": "sub-138-1010-L1F",  "ses": "ses-260115101441", "first_thal_fod": 9,
+         "roi_l": "atlas/rois/fod_space/roi_isocortex_left.nii.gz",
+         "roi_r": "atlas/rois/fod_space/roi_isocortex_right.nii.gz"},
+    ],
+    "AP": [
+        {"id": "sub-596-C-OO-NmM", "ses": "ses-240911103349", "first_thal_fod": 13,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-769-C-O5-R1M", "ses": "ses-240911115733", "first_thal_fod": 12,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-769-C-OO-NmM", "ses": "ses-240911111853", "first_thal_fod": 11,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-875-C-OO-NM",  "ses": "ses-240911100253", "first_thal_fod": 12,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+    ],
+    "APTR": [
+        {"id": "sub-AP72-862-901-NmF", "ses": "ses-251210093342", "first_thal_fod": 10,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-AP72-862-901-R1M", "ses": "ses-251210100043", "first_thal_fod": 10,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-Apallial17NmF",    "ses": "ses-240816091633", "first_thal_fod": 10,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+        {"id": "sub-Apallial20R1F",    "ses": "ses-240909094232", "first_thal_fod": 11,
+         "roi_l": "manual_roi/fod_space/roi_Graft_left_flip_fod.mif",
+         "roi_r": "manual_roi/fod_space/roi_Graft_right_flip_fod.mif"},
+    ],
+}
+
+# --- Screenshot file map (user-captured PNGs) ---
+# Run the mrview commands in Step 0 below to generate these files.
+SCREENSHOT_MAP_2H = {
+    ("CTRL", "fod"): REPO_DIR / "screenshots" / "ctrl_fod_v08_0000.png",
+    ("AP", "fod"):   REPO_DIR / "screenshots" / "ap_fod_v08_0000.png",
+    ("APTR", "fod"): REPO_DIR / "screenshots" / "aptr_fod_v08_0000.png",
+}
+
+# --- Per-group mouse color shades (4 shades each) ---
+GROUP_MOUSE_COLORS_2H = {
+    "CTRL": ["#1a1a1a", "#3d3d3d", "#5c5c5c", "#7a7a7a"],
+    "AP":   ["#600030", "#800040", "#a0005c", "#c03080"],
+    "APTR": ["#1a3fa0", "#3366cc", "#5588dd", "#88aaee"],
+}
+MOUSE_MARKERS_2H = ["o", "s", "^", "D"]
+
+GROUPS_ORDER_2H = ["CTRL", "AP", "APTR"]
+GROUP_TITLES_2H = ["Control (isocortex)", "Apallial (graft)", r"$t^{AP}$-hCO (graft + Tx)"]
+GROUP_DISPLAY_2H = {"CTRL": "Control", "AP": "Apallial", "APTR": r"$t^{AP}$-hCO"}
+
+
+# ============================================================
+# Helpers
+# ============================================================
+def load_rotated_2h(path):
+    """Open PNG and rotate 90° CW (mrview captures are sideways)."""
+    img = Image.open(path).rotate(-90, expand=True)
+    return np.array(img)
+
+
+def thin_radial_grid_2h(ax, n_ticks=3):
+    """Keep only n_ticks radial gridlines."""
+    ylim = ax.get_ylim()
+    ticks = np.linspace(0, ylim[1], n_ticks + 1)[1:]
+    ax.set_rticks(ticks)
+    ax.set_yticklabels([f"{t:.2f}" for t in ticks], fontsize=7, color="gray")
+
+
+def draw_radar_mice_2h(ax, mouse_data_list, title="", y_max=None, group="CTRL"):
+    """Draw per-mouse radar: DV-dominant cluster (solid+marker) + other (dashed)."""
+    colors = GROUP_MOUSE_COLORS_2H.get(group, GROUP_MOUSE_COLORS_2H["CTRL"])
+    radar_labels = ["DV", "ML", "AP"]
+    angles = np.linspace(0, 2 * np.pi, 3, endpoint=False)
+    reorder = [1, 2, 0]  # d[0]=AP, d[1]=DV, d[2]=ML → [DV, ML, AP]
+    angles_closed = np.concatenate([angles, [angles[0]]])
+
+    rmax = 0.0
+    for k, md in enumerate(mouse_data_list):
+        color = colors[k % len(colors)]
+        # DV-dominant cluster (solid)
+        sd = md["scaled_dir"]
+        abs_d = np.abs(sd)[reorder]
+        rmax = max(rmax, np.max(abs_d))
+        vals = np.concatenate([abs_d, [abs_d[0]]])
+        ax.plot(angles_closed, vals, color=color, linewidth=1.3,
+                linestyle="-", label=md["label"], alpha=0.75,
+                marker=MOUSE_MARKERS_2H[k % len(MOUSE_MARKERS_2H)],
+                markersize=5, zorder=len(mouse_data_list) - k + 2)
+        ax.fill(angles_closed, vals, color=color, alpha=0.18)
+        # # Other cluster (dashed)
+        # sd2 = md.get("scaled_dir_other")
+        # if sd2 is not None:
+        #     abs_d2 = np.abs(sd2)[reorder]
+        #     rmax = max(rmax, np.max(abs_d2))
+        #     vals2 = np.concatenate([abs_d2, [abs_d2[0]]])
+        #     ax.plot(angles_closed, vals2, color=color, linewidth=1.0,
+        #             linestyle="--", alpha=0.45,
+        #             zorder=len(mouse_data_list) - k + 1)
+        #     ax.fill(angles_closed, vals2, color=color, alpha=0.08)
+
+    ax.set_theta_zero_location("S")
+    ax.set_theta_direction(-1)
+    ax.set_xticks(angles)
+    ax.set_xticklabels(radar_labels, fontsize=10, fontweight="bold")
+    if y_max is not None:
+        ax.set_ylim(0, y_max)
+    else:
+        ax.set_ylim(0, max(rmax * 1.2, 0.01))
+    thin_radial_grid_2h(ax, n_ticks=3)
+    ax.set_title(title, fontsize=10, pad=18)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.10), fontsize=6.5,
+              framealpha=0.8, handlelength=1.5)
+
+
+def add_scale_bar(ax, bar_mm=1.0, px_per_mm=None, position="br", color="white",
+                  linewidth=2.5, pad_frac=0.05):
+    """Add a scale bar to an image axis.
+
+    px_per_mm: how many image pixels correspond to 1 mm. If None, auto-estimate
+    from the image height assuming ~755 px ≈ 160 voxels × 0.1 mm/voxel = 16 mm
+    field-of-view (i.e. px_per_mm ≈ 47). Adjust per actual capture.
+    """
+    if px_per_mm is None:
+        # Heuristic: screenshots are ~755 px tall after rotation, covering
+        # roughly 16 mm of tissue (160 slices × 0.1 mm). So ~47 px/mm.
+        px_per_mm = 47.0
+    bar_px = bar_mm * px_per_mm
+    h, w = ax.get_xlim()[1], ax.get_ylim()[0]  # xlim=(0,w), ylim=(h,0) for images
+    img_w = ax.get_xlim()[1]
+    img_h = ax.get_ylim()[0]
+    pad_x = img_w * pad_frac
+    pad_y = img_h * pad_frac
+    if position == "br":
+        x0 = img_w - pad_x - bar_px
+        y0 = img_h - pad_y
+    elif position == "bl":
+        x0 = pad_x
+        y0 = img_h - pad_y
+    elif position == "tr":
+        x0 = img_w - pad_x - bar_px
+        y0 = pad_y
+    else:  # tl
+        x0 = pad_x
+        y0 = pad_y
+    ax.plot([x0, x0 + bar_px], [y0, y0], color=color, linewidth=linewidth,
+            solid_capstyle="butt", zorder=10)
+    ax.text(x0 + bar_px / 2, y0 - img_h * 0.03, f"{bar_mm:.0f} mm",
+            color=color, fontsize=8, ha="center", va="bottom",
+            fontweight="bold", zorder=10)
+
+
+def add_dashed_margin(ax, color="white", linewidth=1.5, linestyle="--", inset_frac=0.06):
+    """Draw a dashed rectangle inset from the image border to indicate ROI margin."""
+    img_w = ax.get_xlim()[1]
+    img_h = ax.get_ylim()[0]
+    dx = img_w * inset_frac
+    dy = img_h * inset_frac
+    from matplotlib.patches import Rectangle
+    rect = Rectangle((dx, dy), img_w - 2 * dx, img_h - 2 * dy,
+                     linewidth=linewidth, edgecolor=color, facecolor="none",
+                     linestyle=linestyle, zorder=9)
+    ax.add_patch(rect)
+
+
+# ============================================================
+# Step 0: mrview screenshot capture instructions
+# ============================================================
+# Run these commands in a terminal to capture coronal FOD screenshots.
+# Each opens mrview at the first-thalamus slice for the representative subject,
+# with FOD glyphs overlaid on T2w. The -capture.grab flag auto-saves a PNG.
+# After capturing, re-run Step 1–4 below to compose the figure.
+#
+# T2w voxel coordinates → FOD slice mapping:
+#   CTRL: (24, 50, 53) → FOD slice 14  (sub-138-1010-L1F)
+#   AP:   (25, 49, 60) → FOD slice 15  (sub-769-C-O5-R1M)
+#   APTR: (24, 50, 54) → FOD slice 14  (sub-AP72-862-901-NmF)
+
+SCREENSHOTS_DIR = REPO_DIR / "screenshots"
+SCREENSHOTS_DIR.mkdir(exist_ok=True)
+
+print("=" * 72)
+print("STEP 0: Capture FOD screenshots with mrview")
+print("=" * 72)
+print(f"Screenshots will be saved to: {SCREENSHOTS_DIR}")
+print()
+print("Run these commands in a terminal (micromamba activate mbrain first):")
+print()
+
+for group in GROUPS_ORDER_2H:
+    info = REPR_SUBJECTS_2H[group]
+    sid = info["id"]
+    ses = info["ses"]
+    base = DERIV / sid / ses / "dwi"
+    voxel_str = {
+        "CTRL": "24,50,53",
+        "AP":   "25,49,60",
+        "APTR": "24,50,54",
+    }[group]
+    prefix = {"CTRL": "ctrl", "AP": "ap", "APTR": "aptr"}[group]
+
+    cmd = (
+        f'mrview "{base}/t2w_highres_flip.mif" \\\n'
+        f'  -odf.load_sh "{base}/wm_fod_norm_group.mif" \\\n'
+        f'  -voxel {voxel_str} \\\n'
+        f'  -plane 0 \\\n'
+        f'  -noannotations \\\n'
+        f'  -capture.folder "{SCREENSHOTS_DIR}" \\\n'
+        f'  -capture.prefix {prefix}_fod_v08_ \\\n'
+        f'  -capture.grab \\\n'
+        f'  -exit'
+    )
+    print(f"  # {group} — {sid} (FOD slice {info['fod_slice']})")
+    print(f"  {cmd}")
+    print()
+
+print("After capturing, re-run Steps 1–4 below.")
+print()
+
+# ============================================================
+# Step 1: Load FOD screenshots
+# ============================================================
+print("Loading FOD screenshots...")
+screenshots_2h = {}
+for key, path in SCREENSHOT_MAP_2H.items():
+    if path.exists():
+        screenshots_2h[key] = load_rotated_2h(path)
+        print(f"  ✓ {key}: {path.name}  shape={screenshots_2h[key].shape}")
+    else:
+        print(f"  ✗ {key}: {path.name} NOT FOUND")
+        screenshots_2h[key] = np.zeros((400, 400, 3), dtype=np.uint8)
+
+# ============================================================
+# Step 2: Generate per-mouse radar data (bilateral ROI)
+# ============================================================
+print("\n--- Generating per-mouse radar data (bilateral ROI) ---")
+per_mouse_data_2h = {}
+
+for group in GROUPS_ORDER_2H:
+    mice_results = []
+    print(f"\n  {group}:")
+    for info in ALL_SUBJECTS_2H[group]:
+        sid = info["id"]
+        ses = info["ses"]
+        fod_slice = info["first_thal_fod"]
+        subj_dir = DERIV / sid / ses
+        fixel_dir = subj_dir / "dwi" / "fixels_group"
+        roi_l = subj_dir / info["roi_l"]
+        roi_r = subj_dir / info["roi_r"]
+
+        if not (fixel_dir / "index.mif").exists():
+            print(f"    ⚠ Skipping {sid}: no fixels")
+            continue
+        if not roi_l.exists() or not roi_r.exists():
+            print(f"    ⚠ Skipping {sid}: ROI not found")
+            continue
+
+        print(f"    {sid}: slice={fod_slice}...")
+        fixel_data = load_fixel_dir(fixel_dir)
+        mask_l = load_roi_mask(roi_l)
+        mask_r = load_roi_mask(roi_r)
+        roi_mask = mask_l | mask_r
+        n_total = int(roi_mask.sum())
+        print(f"      ROI voxels L|R={n_total}")
+
+        slice_vecs, slice_peaks, slice_voxels = extract_slicewise_vectors(
+            fixel_data, roi_mask, slice_axis=0)
+
+        if fod_slice not in slice_vecs:
+            avail = sorted(slice_vecs.keys())
+            if not avail:
+                print(f"      ⚠ No slices with fixels!")
+                continue
+            nearest = min(avail, key=lambda s: abs(s - fod_slice))
+            print(f"      ⚠ Slice {fod_slice} → {nearest}")
+            fod_slice = nearest
+
+        vecs = slice_vecs[fod_slice]
+        peaks = slice_peaks[fod_slice]
+        n_vox = slice_voxels.get(fod_slice, len(vecs))
+
+        if len(vecs) < 4:
+            print(f"      ⚠ Only {len(vecs)} fixels, skipping")
+            continue
+
+        km_results = slicewise_kmeans(
+            {fod_slice: vecs}, n_clusters=2,
+            slice_afds={fod_slice: peaks},
+            slice_roi_voxels={fod_slice: n_vox},
+        )
+        km_slice = km_results[fod_slice]
+
+        dv_vals = [np.abs(sd[1]) for sd in km_slice["scaled_directions"]]
+        best_k = int(np.argmax(dv_vals))
+        # other_k = 1 - best_k
+        scaled_dir = km_slice["scaled_directions"][best_k]
+        # scaled_dir_other = km_slice["scaled_directions"][other_k]
+        n_cluster = km_slice["cluster_sizes"][best_k]
+
+        short = sid.replace("sub-", "")
+        mice_results.append({
+            "label": short,
+            "scaled_dir": scaled_dir,
+            # "scaled_dir_other": scaled_dir_other,
+            "n_fixels": n_cluster,
+        })
+        print(f"      DV-dom={scaled_dir}, n={n_cluster}")
+
+    per_mouse_data_2h[group] = mice_results
+
+# ============================================================
+# Step 3: Compute data-driven y_max
+# ============================================================
+all_maxes_2h = []
+for group, mice in per_mouse_data_2h.items():
+    for md in mice:
+        all_maxes_2h.append(np.max(np.abs(md["scaled_dir"])))
+        # if md.get("scaled_dir_other") is not None:
+        #     all_maxes_2h.append(np.max(np.abs(md["scaled_dir_other"])))
+y_max_2h = max(all_maxes_2h) if all_maxes_2h else 1.0
+print(f"\nRadar y_max: {y_max_2h:.4f}")
+
+# ============================================================
+# Step 4: Compose 2×3 figure
+# ============================================================
+print("\n--- Composing 2×3 figure ---")
+fig_2h = plt.figure(figsize=(16, 12))
+gs_2h = fig_2h.add_gridspec(2, 3, hspace=0.25, wspace=0.15,
+                            height_ratios=[1.0, 0.95],
+                            top=0.92, bottom=0.04, left=0.06, right=0.96)
+
+# Row 1: FOD screenshots with dashed margin + scale bar
+for col, group in enumerate(GROUPS_ORDER_2H):
+    ax = fig_2h.add_subplot(gs_2h[0, col])
+    img = screenshots_2h.get((group, "fod"), np.zeros((10, 10, 3), dtype=np.uint8))
+    ax.imshow(img)
+    repr_info = REPR_SUBJECTS_2H[group]
+    ax.set_title(f"{GROUP_TITLES_2H[col]}\n{repr_info['id'].replace('sub-', '')}",
+                 fontsize=11, fontweight="bold", pad=8)
+    ax.axis("off")
+    # Dashed margin overlay (white dashed rectangle inset)
+    add_dashed_margin(ax, color="white", linewidth=1.5, linestyle="--", inset_frac=0.06)
+    # Scale bar (1 mm, bottom-right, white)
+    add_scale_bar(ax, bar_mm=1.0, px_per_mm=47.0, position="br",
+                  color="white", linewidth=2.5, pad_frac=0.05)
+    if col == 0:
+        ax.set_ylabel("FODs", fontsize=13, fontweight="bold", labelpad=15)
+
+# Row 2: Per-mouse radar (4 mice, bilateral ROI)
+for col, group in enumerate(GROUPS_ORDER_2H):
+    ax = fig_2h.add_subplot(gs_2h[1, col], projection="polar")
+    mice = per_mouse_data_2h.get(group, [])
+    title = GROUP_DISPLAY_2H[group]
+    if mice:
+        draw_radar_mice_2h(ax, mice, title=title, y_max=y_max_2h, group=group)
+    else:
+        ax.set_title(f"{group}: no data", fontsize=10)
+
+# Row labels
+fig_2h.text(0.015, 0.72, "FOD Glyphs\n(coronal)", fontsize=11, fontweight="bold",
+            rotation=90, va="center")
+fig_2h.text(0.015, 0.30, "Individual Mice\n(first-thalamus,\nbilateral)",
+            fontsize=10, fontweight="bold", rotation=90, va="center")
+
+fig_2h.suptitle("FOD Direction Analysis — Control vs Apallial vs "
+                r"$t^{AP}$-hCO (bilateral)", fontsize=14, fontweight="bold", y=0.97)
+
+# Save PNG
+out_png_2h = FIGURES_DIR / "figure_2h.png"
+fig_2h.savefig(out_png_2h, dpi=150, bbox_inches="tight", facecolor="white")
+print(f"\n✅ Saved: {out_png_2h}")
+
+# Save SVG (try cairo, fallback to fonttype=none)
+out_svg_2h = FIGURES_DIR / "figure_2h.svg"
+try:
+    import cairo
+    from matplotlib.backends.backend_cairo import FigureCanvasCairo
+    canvas_orig = fig_2h.canvas
+    FigureCanvasCairo(fig_2h)
+    fig_2h.savefig(out_svg_2h, format="svg", bbox_inches="tight", facecolor="white")
+    fig_2h.set_canvas(canvas_orig)
+    print(f"✅ Saved (cairo SVG): {out_svg_2h}")
+except Exception as e:
+    print(f"⚠️  Cairo SVG failed ({e}), using svg.fonttype=none")
+    with matplotlib.rc_context({"svg.fonttype": "none"}):
+        fig_2h.savefig(out_svg_2h, format="svg", bbox_inches="tight", facecolor="white")
+    print(f"✅ Saved (SVG fonttype=none): {out_svg_2h}")
+
+plt.close(fig_2h)
+print("Figure 2h complete.")
 
 # %% [markdown] Extended Data Fig. 3i — tAP-hCO coronal FODs with graft margin
 # ## Extended Data Fig. 3i — tAP-hCO coronal FODs
@@ -199,79 +639,446 @@ raise NotImplementedError("Figure 3j not yet implemented.")
 # **Output**: `reports/figures/figure_3k.png`
 
 # %% [Extended Data Fig. 3k] Fixel radar plots across slices × groups
-import sys, os, importlib
+# Adapted from figs/make_3group_v11.py: bilateral (L|R) ROIs, newmask pipeline,
+# per-group color shades (grey=CTRL, magenta=AP, blue=APTR), per-mouse markers,
+# white radar backgrounds, thin radial grid, slice 0 dropped, Dir1 only.
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 from pathlib import Path
 
-# ── Resolve derivatives ───────────────────────────────────────────────
-# The config defaults to Linux paths; override with local newmask data.
-DERIV_BASE = REPO_DIR / "data" / "derivatives" / "mrtrix_newmask"
-if not DERIV_BASE.exists():
-    raise RuntimeError(f"Derivatives not found: {DERIV_BASE}")
-
-os.environ["MBRAIN_DERIVATIVES_DIR"] = str(DERIV_BASE)
-
-import functions.fixel_roi_analysis as _fri
-importlib.reload(_fri)
 from functions.fixel_roi_analysis import (
-    analyze_3group_kmeans,
-    plot_3group_kmeans_comparison,
-    plot_3group_component_lines,
+    load_fixel_dir, load_roi_mask, extract_slicewise_vectors,
+    slicewise_kmeans,
 )
 
-print("Step 3k: 3-Group Fixel K-means Direction Comparison\n")
+print("Step 3k: 3-Group Fixel K-means Direction Comparison (v11, bilateral)\n")
 
-# ── Pass 1: compute data to find unified y_max ────────────────────────
-combos = [("left", False), ("right", False)]
-all_results = {}
-global_max = 0.0
+# ── Derivatives root (newmask pipeline) ───────────────────────────────
+DERIV = Path(config['paths']['derivatives_flip1'])
+if not DERIV.exists():
+    raise RuntimeError(f"Derivatives not found: {DERIV}")
 
-for hemi, use_shrink in combos:
-    tag = f"{hemi}"
-    r = analyze_3group_kmeans(
-        config, hemisphere=hemi, use_shrink=False,
-        output_dir=FIGURES_DIR, n_clusters=2, conda_env="mbrain",
-        force=False, show=False, verbose=True, plot=False,
-    )
-    all_results[tag] = (hemi, False, r)
-    if r:
-        for group in ["CTRL", "AP", "APTR"]:
-            for subj, data in r["all_group_data"].get(group, {}).items():
-                for s_idx, res in data.items():
-                    for sd in res.get("scaled_directions", []):
-                        val = np.max(np.abs(sd))
-                        if val > global_max:
-                            global_max = val
+# ── Subject definitions (from config1.yaml groups) ───────────────────
+SUBJECT_MAP = {
+    'CTRL': [
+        ('sub-129-921-R1F',   'ses-260115121231'),
+        ('sub-129-921-R1L1F', 'ses-260116085433'),
+        ('sub-129-1014-L1M',  'ses-260115113814'),
+        ('sub-138-1010-L1F',  'ses-260115101441'),
+    ],
+    'AP': [
+        ('sub-596-C-OO-NmM', 'ses-240911103349'),
+        ('sub-769-C-O5-R1M', 'ses-240911115733'),
+        ('sub-769-C-OO-NmM', 'ses-240911111853'),
+        ('sub-875-C-OO-NM',  'ses-240911100253'),
+    ],
+    'APTR': [
+        ('sub-AP72-862-901-NmF', 'ses-251210093342'),
+        ('sub-AP72-862-901-R1M', 'ses-251210100043'),
+        ('sub-Apallial17NmF',    'ses-240816091633'),
+        ('sub-Apallial20R1F',    'ses-240909094232'),
+    ],
+}
 
-y_max_unified = max(0.05, np.ceil(global_max * 20) / 20)
-print(f"  Unified y_max = {y_max_unified:.4f} (global max = {global_max:.4f})\n")
+# Per-group mouse color shades (matching 4x3 v09 style)
+GROUP_MOUSE_COLORS = {
+    'CTRL': ['#1a1a1a', '#3d3d3d', '#5c5c5c', '#7a7a7a'],   # dark grey shades
+    'AP':   ['#600030', '#800040', '#a0005c', '#c03080'],     # magenta shades
+    'APTR': ['#1a3fa0', '#3366cc', '#5588dd', '#88aaee'],     # blue shades
+}
+MOUSE_MARKERS = ['o', 's', '^', 'D']
 
-# ── Pass 2: generate plots with forced y_max ──────────────────────────
-for tag, (hemi, use_shrink, r) in all_results.items():
-    print(f"\n{'=' * 60}")
-    print(f"  {tag.upper()}")
-    print(f"{'=' * 60}")
-    if not r:
-        print(f"  ⚠ No data for {tag}")
-        continue
 
-    tns = r["target_n_slices"]
+def get_roi_paths(subj_dir, group):
+    """Return (left_path, right_path) for ROI files."""
+    if group == 'CTRL':
+        base = subj_dir / 'atlas' / 'rois' / 'fod_space'
+        return (base / 'roi_isocortex_left.nii.gz',
+                base / 'roi_isocortex_right.nii.gz')
+    else:
+        base = subj_dir / 'manual_roi' / 'fod_space'
+        return (base / 'roi_Graft_left_flip_fod.mif',
+                base / 'roi_Graft_right_flip_fod.mif')
 
-    fig_path = FIGURES_DIR / f"figure_3k_radar_{hemi}.png"
-    plot_3group_kmeans_comparison(
-        r["all_group_data"], hemi, tns,
-        use_shrink=False, save_path=fig_path, show=False,
-        y_max=y_max_unified,
-    )
-    print(f"  ✅ Radar: {fig_path}")
 
-    lines_path = FIGURES_DIR / f"figure_3k_components_{hemi}.png"
-    plot_3group_component_lines(
-        r["all_group_data"], hemi, tns,
-        use_shrink=False, save_path=lines_path, show=False,
-        y_max=y_max_unified,
-    )
-    print(f"  ✅ Lines: {lines_path}")
+def thin_radial_grid(ax, n_ticks=3):
+    """Keep only n_ticks radial gridlines (removing ~2/3 of default)."""
+    ylim = ax.get_ylim()
+    ticks = np.linspace(0, ylim[1], n_ticks + 1)[1:]  # exclude 0
+    ax.set_rticks(ticks)
+    ax.set_yticklabels([f'{t:.2f}' for t in ticks], fontsize=7, color='gray')
+
+
+def load_all_group_data(verbose=True):
+    """Load fixels for all 12 subjects using bilateral (L|R) ROI masks.
+
+    Returns
+    -------
+    all_group_data : dict
+        {group: {subj_id: {slice_idx: kmeans_result, ...}, ...}, ...}
+    target_n_slices : int
+        Minimum number of slices across all AP/APTR graft subjects,
+        minus 1 (because we drop the first slice).
+    """
+    all_group_data = {}
+    graft_slice_counts = []
+
+    # Process AP and APTR first to determine target_n_slices
+    for group in ['AP', 'APTR']:
+        if verbose:
+            print(f'\n--- {group} (bilateral, newmask) ---')
+        all_group_data[group] = {}
+
+        for (subj, ses) in SUBJECT_MAP[group]:
+            subj_dir = DERIV / subj / ses
+            fixel_dir = subj_dir / 'dwi' / 'fixels_group'
+
+            if not (fixel_dir / 'index.mif').exists():
+                if verbose:
+                    print(f'  ⚠ Skipping {subj}: no fixels')
+                continue
+
+            roi_left, roi_right = get_roi_paths(subj_dir, group)
+            if not roi_left.exists() or not roi_right.exists():
+                if verbose:
+                    print(f'  ⚠ Skipping {subj}: ROI L/R not found')
+                continue
+
+            if verbose:
+                print(f'  Loading {subj}...')
+            fixel_data = load_fixel_dir(fixel_dir)
+
+            # Bilateral mask: L | R
+            mask_l = load_roi_mask(roi_left)
+            mask_r = load_roi_mask(roi_right)
+            roi_mask = mask_l | mask_r
+            n_l, n_r = int(mask_l.sum()), int(mask_r.sum())
+            if verbose:
+                print(f'    ROI voxels: L={n_l}, R={n_r}, L|R={int(roi_mask.sum())}')
+
+            slice_vecs, slice_peaks, slice_voxels = extract_slicewise_vectors(
+                fixel_data, roi_mask, slice_axis=0)
+            slice_km = slicewise_kmeans(slice_vecs, n_clusters=2,
+                                        slice_afds=slice_peaks,
+                                        slice_roi_voxels=slice_voxels)
+
+            if slice_km:
+                all_group_data[group][subj] = slice_km
+                graft_slice_counts.append(len(slice_km))
+                if verbose:
+                    print(f'    {len(slice_km)} slices with fixel data')
+
+    if not graft_slice_counts:
+        print('  ⚠ No graft fixel data found!')
+        return None, 0
+
+    # target_n_slices: smallest graft minus 1 (we drop the first slice)
+    raw_target = min(graft_slice_counts)
+    target_n_slices = raw_target - 1
+    if verbose:
+        print(f'\n  Raw smallest graft slice count: {raw_target}')
+        print(f'  After dropping slice 0: target_n_slices = {target_n_slices}')
+
+    # Re-index AP/APTR: skip first slice (index 0), keep next target_n_slices
+    for group in ['AP', 'APTR']:
+        for subj, subj_data in all_group_data[group].items():
+            sorted_slices = sorted(subj_data.keys())
+            # Drop the first slice, then take target_n_slices
+            kept_slices = sorted_slices[1:1 + target_n_slices]
+            all_group_data[group][subj] = {i: subj_data[s]
+                                            for i, s in enumerate(kept_slices)}
+
+    # Process CTRL
+    if verbose:
+        print(f'\n--- CTRL (bilateral, newmask) ---')
+    all_group_data['CTRL'] = {}
+
+    for (subj, ses) in SUBJECT_MAP['CTRL']:
+        subj_dir = DERIV / subj / ses
+        fixel_dir = subj_dir / 'dwi' / 'fixels_group'
+
+        if not (fixel_dir / 'index.mif').exists():
+            if verbose:
+                print(f'  ⚠ Skipping {subj}: no fixels')
+            continue
+
+        roi_left, roi_right = get_roi_paths(subj_dir, 'CTRL')
+        if not roi_left.exists() or not roi_right.exists():
+            if verbose:
+                print(f'  ⚠ Skipping {subj}: ROI L/R not found')
+            continue
+
+        if verbose:
+            print(f'  Loading {subj}...')
+        fixel_data = load_fixel_dir(fixel_dir)
+
+        mask_l = load_roi_mask(roi_left)
+        mask_r = load_roi_mask(roi_right)
+        roi_mask = mask_l | mask_r
+        n_l, n_r = int(mask_l.sum()), int(mask_r.sum())
+        if verbose:
+            print(f'    ROI voxels: L={n_l}, R={n_r}, L|R={int(roi_mask.sum())}')
+
+        slice_vecs, slice_peaks, slice_voxels = extract_slicewise_vectors(
+            fixel_data, roi_mask, slice_axis=0)
+        slice_km = slicewise_kmeans(slice_vecs, n_clusters=2,
+                                    slice_afds=slice_peaks,
+                                    slice_roi_voxels=slice_voxels)
+
+        if slice_km:
+            sorted_slices = sorted(slice_km.keys())
+            # Drop the first slice, then take target_n_slices
+            kept_slices = sorted_slices[1:1 + target_n_slices]
+            all_group_data['CTRL'][subj] = {i: slice_km[s]
+                                             for i, s in enumerate(kept_slices)}
+            if verbose:
+                print(f'    {len(kept_slices)} slices with fixel data (after drop)')
+
+    return all_group_data, target_n_slices
+
+
+def compute_global_max(all_group_data):
+    """Find the maximum |scaled_dir| component across all groups/subjects/slices."""
+    global_max = 0.0
+    for group in ['CTRL', 'AP', 'APTR']:
+        for subj, data in all_group_data.get(group, {}).items():
+            for s_idx, res in data.items():
+                for sd in res.get('scaled_directions', []):
+                    val = np.max(np.abs(sd))
+                    if val > global_max:
+                        global_max = val
+    return global_max
+
+
+def plot_3group_radar_v11(all_group_data, target_n_slices, y_max,
+                          save_png=None, save_svg=None):
+    """Generate the 3-group K-means radar comparison figure (v11 style)."""
+    row_groups = ['CTRL', 'AP', 'APTR']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+
+    radar_labels_list = ['DV', 'ML', 'AP']
+    angles_radar = np.linspace(0, 2 * np.pi, 3, endpoint=False)
+    reorder = [1, 2, 0]  # d[0]=AP, d[1]=DV, d[2]=ML -> [DV, ML, AP]
+    angles_closed = np.concatenate([angles_radar, [angles_radar[0]]])
+
+    n_cols = target_n_slices + 3  # slices + AVG/subj + GROUP AVG + INFO
+    n_rows = len(row_groups)
+
+    fig = plt.figure(figsize=(2.4 * n_cols, 3.5 * n_rows))
+
+    def _draw_radar(ax, directions_list, color, marker='o',
+                    linewidth_solid=1.3,
+                    alpha_solid=0.75,
+                    fill_solid=0.18,
+                    show_marker=True, zorder_base=2):
+        # Only draw Dir 1 (solid/filled), skip Dir 2 (dashed)
+        d = directions_list[0]
+        abs_d = np.abs(d)[reorder]
+        vals = np.concatenate([abs_d, [abs_d[0]]])
+        kw = dict(color=color, linewidth=linewidth_solid,
+                  linestyle='-', alpha=alpha_solid,
+                  zorder=zorder_base + 1)
+        if show_marker:
+            kw['marker'] = marker
+            kw['markersize'] = 5
+        ax.plot(angles_closed, vals, **kw)
+        ax.fill(angles_closed, vals, color=color, alpha=fill_solid)
+
+    def _setup_radar_axes(ax, show_labels=False, show_rtick_numbers=False):
+        ax.set_facecolor('white')
+        ax.set_theta_zero_location('S')
+        ax.set_theta_direction(-1)
+        ax.set_ylim(0, y_max)
+        if show_labels:
+            ax.set_xticks(angles_radar)
+            ax.set_xticklabels(radar_labels_list, fontsize=10, fontweight='bold')
+        else:
+            ax.set_xticks(angles_radar)
+            ax.set_xticklabels(['', '', ''])
+        ax.grid(True, alpha=0.25)
+        thin_radial_grid(ax, n_ticks=3)
+        if not show_rtick_numbers:
+            ax.set_yticklabels([])
+
+    for row_idx, (group, label) in enumerate(zip(row_groups, group_labels)):
+        subjects_data = all_group_data.get(group, {})
+        subject_ids = list(subjects_data.keys())
+        colors = GROUP_MOUSE_COLORS.get(group, GROUP_MOUSE_COLORS['CTRL'])
+
+        # Per-slice columns
+        for col_idx in range(target_n_slices):
+            ax_idx = row_idx * n_cols + col_idx + 1
+            ax = fig.add_subplot(n_rows, n_cols, ax_idx, projection='polar')
+            # Show radial tick numbers only on the first slice of the AP row
+            show_rticks = (row_idx == 1 and col_idx == 0)
+            _setup_radar_axes(ax, show_labels=(col_idx == 0),
+                              show_rtick_numbers=show_rticks)
+
+            for si, subj in enumerate(subject_ids):
+                color = colors[si % len(colors)]
+                marker = MOUSE_MARKERS[si % len(MOUSE_MARKERS)]
+                data = subjects_data[subj]
+                if col_idx in data:
+                    dirs_key = 'scaled_directions' if 'scaled_directions' in data[col_idx] else 'directions'
+                    _draw_radar(ax, data[col_idx][dirs_key], color, marker=marker,
+                                zorder_base=len(subject_ids) - si + 2)
+
+            if row_idx == 0:
+                # Label slices starting from 1 (since we dropped original slice 0)
+                ax.set_title(f'Slice {col_idx + 1}', fontsize=9, fontweight='bold', pad=8)
+
+        # AVG/subj column
+        ax_avg = fig.add_subplot(n_rows, n_cols,
+                                 row_idx * n_cols + target_n_slices + 1, projection='polar')
+        _setup_radar_axes(ax_avg)
+
+        for si, subj in enumerate(subject_ids):
+            color = colors[si % len(colors)]
+            marker = MOUSE_MARKERS[si % len(MOUSE_MARKERS)]
+            data = subjects_data[subj]
+            sd1_list = [data[s]['scaled_directions'][0] for s in range(target_n_slices)
+                        if s in data and 'scaled_directions' in data[s]]
+            sd2_list = [data[s]['scaled_directions'][1] for s in range(target_n_slices)
+                        if s in data and 'scaled_directions' in data[s]
+                        and len(data[s]['scaled_directions']) > 1]
+            avg_dirs = []
+            if sd1_list:
+                avg_dirs.append(np.mean(sd1_list, axis=0))
+            if sd2_list:
+                avg_dirs.append(np.mean(sd2_list, axis=0))
+            if avg_dirs:
+                _draw_radar(ax_avg, [avg_dirs[0]], color, marker=marker,
+                            zorder_base=len(subject_ids) - si + 2)
+
+        if row_idx == 0:
+            ax_avg.set_title('AVG/subj', fontsize=8, fontweight='bold', pad=8, color='darkred')
+
+        # GROUP AVG column
+        ax_grp = fig.add_subplot(n_rows, n_cols,
+                                 row_idx * n_cols + target_n_slices + 2, projection='polar')
+        _setup_radar_axes(ax_grp)
+
+        all_sd1, all_sd2 = [], []
+        for subj in subject_ids:
+            data = subjects_data[subj]
+            for s in range(target_n_slices):
+                if s not in data:
+                    continue
+                if 'scaled_directions' in data[s]:
+                    all_sd1.append(data[s]['scaled_directions'][0])
+                    if len(data[s]['scaled_directions']) > 1:
+                        all_sd2.append(data[s]['scaled_directions'][1])
+
+        grp_dirs = []
+        grp_dirs_unit = []
+        if all_sd1:
+            grp_sd1 = np.mean(all_sd1, axis=0)
+            grp_dirs.append(grp_sd1)
+            norm1 = np.linalg.norm(grp_sd1)
+            grp_dirs_unit.append(grp_sd1 / norm1 if norm1 > 1e-8 else grp_sd1)
+        if all_sd2:
+            grp_sd2 = np.mean(all_sd2, axis=0)
+            grp_dirs.append(grp_sd2)
+            norm2 = np.linalg.norm(grp_sd2)
+            grp_dirs_unit.append(grp_sd2 / norm2 if norm2 > 1e-8 else grp_sd2)
+        if grp_dirs:
+            _draw_radar(ax_grp, [grp_dirs[0]], 'black',
+                        linewidth_solid=3,
+                        alpha_solid=0.85,
+                        fill_solid=0.15,
+                        show_marker=False)
+
+        if row_idx == 0:
+            ax_grp.set_title('GROUP\nAVG', fontsize=8, fontweight='bold', pad=8, color='darkred')
+
+        # INFO panel
+        ax_info = fig.add_subplot(n_rows, n_cols, row_idx * n_cols + n_cols)
+        ax_info.set_facecolor('white')
+        ax_info.axis('off')
+
+        n_subj = len(subject_ids)
+        all_angles = []
+        for subj in subject_ids:
+            for s in range(target_n_slices):
+                if s in subjects_data[subj] and 'angle_between' in subjects_data[subj][s]:
+                    all_angles.append(subjects_data[subj][s]['angle_between'])
+        mean_angle = np.mean(all_angles) if all_angles else 0
+
+        all_norms = [np.linalg.norm(sd) for sd in all_sd1 + all_sd2]
+        grp_mean_peak = float(np.mean(all_norms)) if all_norms else 0.0
+
+        info_text = f'{label}\n\nn={n_subj} subjects\nmean Peak={grp_mean_peak:.3f}\n'
+        if grp_dirs_unit:
+            g1 = grp_dirs_unit[0]
+            info_text += f'\nDir1: [{g1[0]:+.2f},{g1[1]:+.2f},{g1[2]:+.2f}]'
+            dominant = ['AP', 'DV', 'ML'][int(np.argmax(np.abs(g1)))]
+            info_text += f'\nDominant: {dominant}'
+        if len(grp_dirs_unit) > 1:
+            g2 = grp_dirs_unit[1]
+            info_text += f'\n\nDir2: [{g2[0]:+.2f},{g2[1]:+.2f},{g2[2]:+.2f}]'
+            dominant2 = ['AP', 'DV', 'ML'][int(np.argmax(np.abs(g2)))]
+            info_text += f'\nDominant: {dominant2}'
+        if all_angles:
+            info_text += f'\n\n∠ Dir1-Dir2:\n{mean_angle:.1f}° (mean)'
+
+        ax_info.text(0.5, 0.5, info_text, transform=ax_info.transAxes,
+                     fontsize=8, ha='center', va='center',
+                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    # Legend — per-group style
+    legend_elements = []
+    for group in row_groups:
+        colors = GROUP_MOUSE_COLORS[group]
+        subjects = list(all_group_data.get(group, {}).keys())
+        for i, subj in enumerate(subjects):
+            short = subj.replace('sub-', '')[:15]
+            legend_elements.append(plt.Line2D(
+                [0], [0], color=colors[i % len(colors)], linewidth=2,
+                marker=MOUSE_MARKERS[i % len(MOUSE_MARKERS)],
+                label=f'{group} {short}'))
+    legend_elements.append(plt.Line2D([0], [0], color='black', linewidth=1.3,
+                                       linestyle='-', label='Dir 1 (solid)'))
+    fig.legend(handles=legend_elements, loc='upper right', fontsize=7,
+               bbox_to_anchor=(0.99, 0.98), title='Subjects', ncol=1)
+
+    fig.suptitle(
+        f'Fixel K-means Direction × Peak Amplitude — Bilateral (L+R) v11 [newmask]\n'
+        f'Radar scaled by FOD peak amplitude | Solid = Dir 1 only | '
+        f'Outer ring = {y_max:.2f} | Slices start at 1 (slice 0 removed)',
+        fontsize=13, fontweight='bold', y=0.99)
+
+    plt.tight_layout(rect=[0, 0.02, 1, 0.95])
+
+    if save_png:
+        fig.savefig(str(save_png), dpi=150, bbox_inches='tight', facecolor='white')
+        print(f'  ✅ Saved PNG: {save_png}')
+    if save_svg:
+        with matplotlib.rc_context({'svg.fonttype': 'none'}):
+            fig.savefig(str(save_svg), format='svg', facecolor='white')
+        print(f'  ✅ Saved SVG: {save_svg}')
+
+    plt.close(fig)
+    return fig
+
+
+# ── Load all data (bilateral ROIs, slice 0 dropped) ──────────────────
+all_group_data, target_n_slices = load_all_group_data(verbose=True)
+
+if all_group_data is None:
+    raise RuntimeError("Step 3k: No fixel data loaded!")
+
+# ── Compute global max for y_max (outer ring = max value, no padding) ─
+y_max = compute_global_max(all_group_data)
+print(f'\n  Global y_max (outer ring): {y_max:.4f}')
+
+# ── Generate radar comparison figure ─────────────────────────────────
+print('\n--- Generating radar comparison ---')
+plot_3group_radar_v11(
+    all_group_data, target_n_slices, y_max,
+    save_png=FIGURES_DIR / "figure_3k.png",
+    save_svg=FIGURES_DIR / "figure_3k.svg",
+)
 
 print("\nFigure 3k done.")
 
