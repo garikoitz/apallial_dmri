@@ -56,8 +56,52 @@ def load_config(config_path: Optional[Path] = None, pipeline: Optional[str] = No
     
     _current_pipeline = 'flip1'
     
+    if config_path is None:
+        config_path = get_config_path(pipeline)
+    config_path = Path(config_path).resolve()
+    
     with open(config_path, 'r') as f:
         _config = yaml.safe_load(f)
+    
+    # ── Auto-detect base paths ──────────────────────────────────────────
+    # repo_dir  = directory containing config1.yaml
+    # data_base = repo_dir (publish branch: data/ and local/ are inside repo)
+    # These can be overridden via environment variables.
+    paths = _config.setdefault('paths', {})
+    repo_dir = Path(os.environ.get(
+        'MBRAIN_REPO_DIR',
+        str(config_path.parent),
+    ))
+    data_base = Path(os.environ.get(
+        'MBRAIN_DATA_BASE',
+        str(repo_dir),
+    ))
+    paths['repo_dir'] = str(repo_dir)
+    paths['data_base'] = str(data_base)
+    
+    # Auto-detect matlab_path if not set or if the path doesn't exist
+    if not paths.get('matlab_path') or not Path(paths['matlab_path']).exists():
+        for candidate in [
+            '/Applications/MATLAB_R2025b.app/bin/matlab',
+            '/Applications/MATLAB_R2024a.app/bin/matlab',
+            '/opt/MATLAB/R2024a/bin/matlab',
+            os.environ.get('MBRAIN_MATLAB_PATH', ''),
+        ]:
+            if candidate and Path(candidate).exists():
+                paths['matlab_path'] = candidate
+                break
+    
+    # Auto-detect rtp2_pipeline_path if not set or if the path doesn't exist
+    if not paths.get('rtp2_pipeline_path') or not Path(paths['rtp2_pipeline_path']).exists():
+        for candidate in [
+            str(repo_dir / 'rtp2-pipeline'),
+            str(repo_dir.parent / 'rtp2-pipeline'),
+            str(repo_dir.parent / 'gitlab' / 'rtp2-pipeline'),
+            os.environ.get('MBRAIN_RTP2_PATH', ''),
+        ]:
+            if candidate and Path(candidate).exists():
+                paths['rtp2_pipeline_path'] = candidate
+                break
     
     # Resolve {variable} placeholders in paths
     _resolve_path_variables(_config)

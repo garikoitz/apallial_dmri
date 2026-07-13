@@ -516,27 +516,22 @@
 # -----------------------------------------------------------------------------
 paths:
   # =========================================================================
-  # MACHINE-SPECIFIC BASE PATHS (change these when moving between machines)
+  # BASE PATHS — auto-detected by config_loader.py at runtime.
+  # repo_dir  = directory containing config1.yaml (the repo root)
+  # data_base = repo_dir (on publish branch, data/ and local/ live inside repo)
+  #
+  # Override via environment variables if needed:
+  #   MBRAIN_REPO_DIR, MBRAIN_DATA_BASE, MBRAIN_MATLAB_PATH, MBRAIN_RTP2_PATH
   # =========================================================================
-  # Mac:   repo_dir: "/Users/glerma/soft/mbrain"
-  #        data_base: "/Users/glerma/Library/CloudStorage/GoogleDrive-garikoitz@gmail.com/Shared drives/DTI Collab/mbrain_data"
-  #        matlab_path: "/Applications/MATLAB_R2025b.app/bin/matlab"
-  #        rtp2_pipeline_path: "/Users/glerma/soft/gitlab/rtp2-pipeline"
-  # Linux: repo_dir: "/export/home/glerma/glerma/soft/mbrain"
-  #        data_base: "/export/home/glerma/glerma/PROYECTOS/mbrain"
-  #        matlab_path: "/opt/MATLAB/R2024a/bin/matlab"  # requires: module load matlab/R2024A
-  #        rtp2_pipeline_path: "/export/home/glerma/glerma/soft/gitlab/rtp2-pipeline"
-  # =========================================================================
-  repo_dir: "/export/home/glerma/glerma/soft/mbrain"
-  data_base: "/export/home/glerma/glerma/PROYECTOS/mbrain"
-  matlab_path: "/opt/MATLAB/R2024a/bin/matlab"  # requires: module load matlab/R2024A
-  rtp2_pipeline_path: "/export/home/glerma/glerma/soft/rtp2-pipeline"
+  # repo_dir:    auto-detected (parent of config1.yaml)
+  # data_base:   auto-detected (same as repo_dir)
+  # matlab_path: auto-detected (searches common locations)
+  # rtp2_pipeline_path: auto-detected (searches common locations)
 
   # =========================================================================
   # DERIVED PATHS (relative to repo_dir and data_base, DO NOT edit)
   # =========================================================================
-  # Note: 'data' and 'local' are symlinks in repo_dir pointing to data_base
-  # Updated 2026-02-28: Migrated to Linux with rclone bisync to Google Drive
+  # On the publish branch, data/ and local/ are real directories inside repo_dir.
   data_dir: "{data_base}/data"
   bids_dir: "{repo_dir}/data/bids"
   derivatives_flip1: "{data_base}/data/derivatives/mrtrix_preproc_flip1"
