@@ -91,7 +91,10 @@
 from __future__ import annotations
 
 import sys
+import os
+
 from pathlib import Path
+
 
 # Resolve repository root by searching upward for config1.yaml.
 _cwd = Path.cwd().resolve()
@@ -702,6 +705,66 @@ def get_roi_paths(subj_dir, group):
                 base / 'roi_Graft_right_flip_fod.mif')
 
 
+def missing_fixel_inputs(fixel_dir):
+    """Return missing required files for an existing fod2fixel directory."""
+    missing = []
+    for name in ('index.mif', 'directions.mif'):
+        if not (fixel_dir / name).exists():
+            missing.append(name)
+    if not (fixel_dir / 'afd.mif').exists() and not (fixel_dir / 'fd.mif').exists():
+        missing.append('afd.mif or fd.mif')
+    return missing
+
+
+def validate_figure_3k_inputs(max_examples=18):
+    """Fail early when the installed data cannot support Figure 3k."""
+    missing = []
+
+    for group, subjects in SUBJECT_MAP.items():
+        for subj, ses in subjects:
+            subj_dir = DERIV / subj / ses
+            if not subj_dir.exists():
+                missing.append(f'{group} {subj}: missing subject/session directory')
+                continue
+
+            fixel_dir = subj_dir / 'dwi' / 'fixels_group'
+            fixel_missing = missing_fixel_inputs(fixel_dir)
+            if fixel_missing:
+                missing.append(
+                    f'{group} {subj}: missing dwi/fixels_group/'
+                    f'{{{", ".join(fixel_missing)}}}'
+                )
+
+            roi_left, roi_right = get_roi_paths(subj_dir, group)
+            for roi_path in (roi_left, roi_right):
+                if not roi_path.exists():
+                    missing.append(
+                        f'{group} {subj}: missing '
+                        f'{roi_path.relative_to(subj_dir)}'
+                    )
+
+    if not missing:
+        return
+
+    shown = '\n'.join(f'  - {item}' for item in missing[:max_examples])
+    extra = len(missing) - max_examples
+    if extra > 0:
+        shown += f'\n  - ... {extra} more missing input(s)'
+
+    raise RuntimeError(
+        'Figure 3k inputs are incomplete under:\n'
+        f'  {DERIV}\n\n'
+        'The 3k cell expects the post mrtrix_newmask outputs: per-subject '
+        'dwi/fixels_group files plus FOD-space bilateral ROI masks.\n\n'
+        f'Missing examples:\n{shown}\n\n'
+        'This usually means the pre_preproc component is installed but the post '
+        'component is missing or stale. Reinstall the post component with:\n'
+        '  python3 utils/setup_data.py --components post --force\n\n'
+        'If the post data lives outside this repo, set MBRAIN_DATA_BASE or '
+        'MBRAIN_DERIVATIVES_DIR before running the Setup cell.'
+    )
+
+
 def thin_radial_grid(ax, n_ticks=3):
     """Keep only n_ticks radial gridlines (removing ~2/3 of default)."""
     ylim = ax.get_ylim()
@@ -1063,6 +1126,7 @@ def plot_3group_radar_v11(all_group_data, target_n_slices, y_max,
 
 
 # ── Load all data (bilateral ROIs, slice 0 dropped) ──────────────────
+validate_figure_3k_inputs()
 all_group_data, target_n_slices = load_all_group_data(verbose=True)
 
 if all_group_data is None:
@@ -1087,4 +1151,3 @@ print("\nFigure 3k done.")
 #
 # All figures are saved to `reports/figures/`. Re-run any individual cell to
 # regenerate a single figure without touching the others.
-    

@@ -1,28 +1,12 @@
-# apallial_dmri - Apallial Mouse Brain dMRI Analysis
+analys# apallial_dmri - Apallial Mouse Brain dMRI Analysis
 
 Analysis pipeline for apallial mouse brain imaging data using MRtrix3.
 
-## Two Ways to Run This Pipeline
+## Fast data reproduction pipeline
 
-You can use this repository in one of two ways, depending on your goal:
+You can use this repository in one of two ways, depending on your goal.  Here we describe the first and simplest method:  we show how to generate the paper figures from the data in the repository.  This is fairly fast (10 minutes). In this approach we install the pre-computed derivatives with `python utils/setup_data.py`, then run only the figure-generation cells in `notebooks/generate_figures_only.py` (or `.ipynb`). This reads the already-processed data and produces the images used in the paper — one figure per cell, no preprocessing required.
 
-- **Option A — Generate the paper figures from installed data (fast).**
-  Install the pre-computed derivatives with `python utils/setup_data.py`, then
-  run only the figure-generation cells in
-  `notebooks/generate_figures_only.py` (or `.ipynb`). This reads the
-  already-processed data and produces the images used in the paper — one
-  figure per cell, no preprocessing required.
-- **Option B — Run the full pipeline from BIDS data (complete reproduction).**
-  Install the BIDS + local components, then run the preprocessing and
-  downstream stages in `notebooks/pipeline_groups_new_mask.py` starting from
-  raw BIDS data. This reproduces every intermediate output (masks, FODs,
-  tractograms, cleaning, reports) end to end. This option also requires
-  external tools not bundled in the conda env: `antspyx`
-  (`pip install antspyx`).
-
-See [SETUP.md](SETUP.md) for the component-by-component install commands and
-the "Basic Replication Workflow" section below for which notebook steps to run
-for each option.
+See [SETUP.md](SETUP.md) for the component-by-component install commands and the "Basic Replication Workflow" section below for which notebook steps to run for each option.
 
 ## Setup
 
@@ -86,6 +70,19 @@ Some users will want to install ANTS.  We may need FreeSurfer at some point.  Th
 # Or download from: http://stnava.github.io/ANTs/
 ```
 
+To run the whole script at once, you can do
+
+```python
+python utils/setup_data.py
+python notebooks/generate_figures_only.py
+```
+
+But you might prefer to open the file in VScode or your favorite python IDE and step through it cell-by-cell. (Or use Jupyter notebook or equivalent for the .ipynb version).
+
+## Full pipeline methods (complete)
+
+This second approach offers you the chance to extend the analysis, but requires installing more components.
+
 ## Pipeline Overview
 
 The complete pipeline is in a single notebook:
@@ -94,9 +91,16 @@ The complete pipeline is in a single notebook:
 
 The notebook imports reusable helper functions from `functions/pipeline_new_mask/` (11 modules with unit tests). All parameters come from `config1.yaml`.
 
+### Preconditions
+
+1. Required modules available: MRtrix3 (for both options); MATLAB and FreeSurfer only for Option B (full pipeline)
+2. `config1.yaml` paths are correct for the current machine
+3. Subject roster in config is final for the run
+4. Data downloaded via `python utils/setup_data.py`
+
 ### Pipeline Stages
 
-The notebook runs through these stages:
+The complete notebook runs through these stages:
 
 1. **Setup & Atlas Mask Generation** — Environment setup, config load, subject manifest, group atlas preparation, atlas-to-subject mask generation
 2. **Mask QC, Manual Edits & DWI-Space Install** — Visual QC, manual correction loop, mask regrid to DWI and install, checkpoint readiness
@@ -106,14 +110,7 @@ The notebook runs through these stages:
 6. **Passthrough & Cleaning (Global + CTRL rerun)** — Passthrough extraction, AFQ cleaning, CTRL-only rerun branch
 7. **Reports, Fixel Analyses & Final QC** — Tract metrics report generation, fixel workflows, final visual QC and summary tables
 
-### Preconditions
-
-1. Required modules available: MRtrix3 (for both options); MATLAB and FreeSurfer only for Option B (full pipeline)
-2. `config1.yaml` paths are correct for the current machine
-3. Subject roster in config is final for the run
-4. Data downloaded via `python utils/setup_data.py`
-
-## Project Structure
+## Software Structure
 
 ```
 apallial_dmri/

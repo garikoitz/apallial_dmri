@@ -69,7 +69,10 @@ SAMPLE_CHECKS = {
         REPO_DIR / "data" / "derivatives" / "mrtrix_newmask",
     ],
     "post": [
-        REPO_DIR / "data" / "derivatives" / "mrtrix_newmask",
+        REPO_DIR / "data" / "derivatives" / "mrtrix_newmask" / "sub-Apallial17NmF" / "ses-240816091633" / "dwi" / "wm_fod_norm_group.mif",
+        REPO_DIR / "data" / "derivatives" / "mrtrix_newmask" / "sub-Apallial17NmF" / "ses-240816091633" / "dwi" / "fixels_group" / "index.mif",
+        REPO_DIR / "data" / "derivatives" / "mrtrix_newmask" / "sub-Apallial17NmF" / "ses-240816091633" / "manual_roi" / "fod_space" / "roi_Graft_left_flip_fod.mif",
+        REPO_DIR / "data" / "derivatives" / "mrtrix_newmask" / "sub-129-921-R1F" / "ses-260115121231" / "atlas" / "rois" / "fod_space" / "roi_isocortex_left.nii.gz",
     ],
 }
 
@@ -200,7 +203,7 @@ def download_with_urllib(url: str, temp_path: Path, chunk_size: int = 8192) -> b
     return True
 
 
-def download_with_curl(url: str, temp_path: Path) -> bool:
+def download_with_curl(url: str, temp_path: Path, resume: bool = True) -> bool:
     curl = shutil.which("curl")
     if not curl:
         log("Python cannot open HTTPS URLs and curl is not available.", "ERROR")
@@ -218,6 +221,9 @@ def download_with_curl(url: str, temp_path: Path) -> bool:
         str(temp_path),
         url,
     ]
+    if resume and temp_path.exists() and temp_path.stat().st_size > 0:
+        cmd[1:1] = ["--continue-at", "-"]
+
     result = subprocess.run(cmd)
     if result.returncode != 0:
         log(f"curl download failed with exit code {result.returncode}", "ERROR")
@@ -227,15 +233,28 @@ def download_with_curl(url: str, temp_path: Path) -> bool:
 
 def download_file(url: str, destination: Path) -> bool:
     temp_path = destination.with_suffix(destination.suffix + ".tmp")
-    remove_if_exists(temp_path)
+    if temp_path.exists():
+        log(
+            f"Found partial download: {temp_path} "
+            f"({temp_path.stat().st_size / (1024 * 1024):.1f} MB)"
+        )
 
     try:
         log(f"Downloading from: {url}")
-        if urllib_can_open(url):
+        # Prefer curl when available because it can resume large interrupted OSF
+        # downloads. urllib is kept as a fallback for systems without curl.
+        if shutil.which("curl"):
+            if not download_with_curl(url, temp_path, resume=True):
+                remove_if_exists(temp_path)
+                log("Retrying download from the beginning.", "WARN")
+                if not download_with_curl(url, temp_path, resume=False):
+                    remove_if_exists(temp_path)
+                    return False
+        elif urllib_can_open(url):
             download_with_urllib(url, temp_path)
         else:
             log("This Python build lacks HTTPS support; using curl instead.", "WARN")
-            if not download_with_curl(url, temp_path):
+            if not download_with_curl(url, temp_path, resume=True):
                 remove_if_exists(temp_path)
                 return False
 
@@ -304,7 +323,7 @@ def preflight_check(components: list[str], force: bool) -> tuple[bool, list[tupl
             if target_dir in seen:
                 continue
             seen.add(target_dir)
-            if target_dir.is_symlink() or target_dir.exists():
+            if target_dir.is_symlink() or target_dir.is_file():
                 reason = _describe_blocker(target_dir)
                 blockers.append((component, target_dir, reason))
 
