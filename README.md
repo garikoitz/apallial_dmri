@@ -62,13 +62,68 @@ Then verify that MRtrix3 is available:
 mrinfo --version
 ```
 
-Some users will want to install ANTS.  We may need FreeSurfer at some point.  This is just a placeholder.
+Some users will want to install ANTs and FreeSurfer's freeview (for tractogram visualization and screenshots).
+
+#### ANTs (required for bias field correction)
 
 ```bash
-# ANTs (required for bias field correction)
 # macOS: brew install ants
 # Or download from: http://stnava.github.io/ANTs/
 ```
+
+#### FreeView (optional — for tractogram visualization & screenshots)
+
+FreeView is FreeSurfer's volume/surface viewer. It can load `.trk` tractogram files overlaid on T2W/NIfTI volumes, which is useful for capturing screenshots of tractography results.
+
+On macOS, you can install the **standalone freeview** (no full FreeSurfer installation required) from the FreeSurfer download server:
+
+```bash
+# 1. Download the freeview-only tarball (FreeSurfer 7.4.0, macOS)
+curl -L -o /tmp/freesurfer-freeview.tar.gz \
+  "https://surfer.nmr.mgh.harvard.edu/ftp/dist/freesurfer/freeview/freesurfer-darwin-macOS-7.4.0-freeview.tar.gz"
+
+# 2. Extract to /Applications (creates Freeview.app)
+tar xzf /tmp/freesurfer-freeview.tar.gz -C /Applications
+
+# 3. Create a symlink so `freeview` is on your PATH
+sudo ln -sf /Applications/Freeview.app/Contents/MacOS/freeview /usr/local/bin/freeview
+
+# 4. Create the FreeSurfer license directory
+sudo mkdir -p /Applications/freesurfer
+
+# 5. Add your FreeSurfer license file
+#    Register for FREE at: https://surfer.nmr.mgh.harvard.edu/registration.html
+#    You will receive a license email — copy its contents into the file below:
+sudo nano /Applications/freesurfer/.license
+#    (paste the license text, then Ctrl+O to save, Ctrl+X to exit)
+
+# 6. Verify installation
+freeview -h | head -5
+
+# 7. Clean up the tarball
+rm -f /tmp/freesurfer-freeview.tar.gz
+```
+
+> **⚠️ FreeSurfer License Required:** freeview will **not** run without a valid license file. Registration is **free** at <https://surfer.nmr.mgh.harvard.edu/registration.html>. You must add your license to `/Applications/freesurfer/.license` (step 5 above). Alternatively, set the `FS_LICENSE` environment variable:
+> ```bash
+> export FS_LICENSE=/path/to/your/license.txt
+> ```
+
+**Usage example** — load a T2W volume with a `.trk` tractogram overlay:
+
+```bash
+freeview \
+  /path/to/subject/dwi/t2w_highres_flip.nii.gz \
+  -t /path/to/subject/dwi/wholebrain/wholebrain_10k.trk
+```
+
+> **Note:** freeview requires NIfTI format (`.nii.gz`) for volumes, not MRtrix `.mif`. If you only have `.mif`, convert first: `mrconvert t2w_highres_flip.mif t2w_highres_flip.nii.gz`
+>
+> **Alternative (no license needed):** MRtrix3's `mrview` can also visualize tractograms (`.tck` format) overlaid on `.mif` volumes, and does not require a license:
+> ```bash
+> mrview t2w_highres_flip.mif \
+>   -tractography.load wholebrain_10k.tck
+> ```
 
 To run the whole script at once, you can do
 
@@ -93,7 +148,7 @@ The notebook imports reusable helper functions from `functions/pipeline_new_mask
 
 ### Preconditions
 
-1. Required modules available: MRtrix3 (for both options); MATLAB and FreeSurfer only for Option B (full pipeline)
+1. Required modules available: MRtrix3 (for both options); MATLAB and FreeSurfer only for Option B (full pipeline). FreeView is optional (for tractogram visualization — see install instructions in the Setup section above).
 2. `config1.yaml` paths are correct for the current machine
 3. Subject roster in config is final for the run
 4. Data downloaded via `python utils/setup_data.py`
