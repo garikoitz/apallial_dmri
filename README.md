@@ -1,12 +1,24 @@
-analys# apallial_dmri - Apallial Mouse Brain dMRI Analysis
+# apallial_dmri - Apallial Mouse Brain dMRI Analysis
 
 Analysis pipeline for apallial mouse brain imaging data using MRtrix3.
 
-## Fast data reproduction pipeline
+## Basic Replication Workflow
 
-You can use this repository in one of two ways, depending on your goal.  Here we describe the first and simplest method:  we show how to generate the paper figures from the data in the repository.  This is fairly fast (10 minutes). In this approach we install the pre-computed derivatives with `python utils/setup_data.py`, then run only the figure-generation cells in `notebooks/generate_figures_only.py` (or `.ipynb`). This reads the already-processed data and produces the images used in the paper — one figure per cell, no preprocessing required.
+You can use this repository in one of two ways, depending on your goal:
 
-See [SETUP.md](SETUP.md) for the component-by-component install commands and the "Basic Replication Workflow" section below for which notebook steps to run for each option.
+- **Basic Replication Workflow** (this section) — generates the paper figures from pre-computed data. Fast (~10 minutes). Install the pre-computed derivatives with `python utils/setup_data.py`, then run only the figure-generation cells in `notebooks/generate_figures_only.py`. No preprocessing required.
+- **Full Replication Workflow** (see below) — runs all analyses starting from the original data. Requires more components and time.
+
+See [SETUP.md](SETUP.md) for component-by-component install commands.
+
+To generate all figures at once:
+
+```bash
+python utils/setup_data.py
+python notebooks/generate_figures_only.py
+```
+
+But you might prefer to open `notebooks/generate_figures_only.py` in VS Code or your favorite Python IDE and step through it cell-by-cell.
 
 ## Setup
 
@@ -43,6 +55,8 @@ python --version # should show Python 3.11.x
 > - **Conda/Micromamba Warnings:** If you previously saw warnings about explicit `defaults` channels being missing or `pip` not being listed under conda dependencies, `mbrain_env.yml` has been updated to include them explicitly, which silences those warnings.
 > - **MRtrix3 Package Errors:** If your environment creation failed with `PackagesNotFoundError: The following packages are not available from current channels: - mrtrix3`, this is because Conda does not reliably distribute MRtrix3 packages on macOS (especially Apple Silicon). `mrtrix3` has been commented out inside `mbrain_env.yml`. Please install MRtrix3 separately via the official standalone installer (see **Step 3** below) or Homebrew.
 
+### 2. Download Data
+
 This downloads and extracts all 4 OSF components to `local/` and `data/`.
 See [SETUP.md](SETUP.md) for component-by-component download options.
 
@@ -64,14 +78,14 @@ mrinfo --version
 
 Some users will want to install ANTs and FreeSurfer's freeview (for tractogram visualization and screenshots).
 
-#### ANTs (required for bias field correction)
+#### ANTs (required for bias field correction, only for full workflow)
 
 ```bash
 # macOS: brew install ants
 # Or download from: http://stnava.github.io/ANTs/
 ```
 
-#### FreeView (optional — for tractogram visualization & screenshots)
+#### FreeView (for tractogram visualization & screenshots)
 
 FreeView is FreeSurfer's volume/surface viewer. It can load `.trk` tractogram files overlaid on T2W/NIfTI volumes, which is useful for capturing screenshots of tractography results.
 
@@ -125,22 +139,9 @@ freeview \
 >   -tractography.load wholebrain_10k.tck
 > ```
 
-To run the whole script at once, you can do
-
-```python
-python utils/setup_data.py
-python notebooks/generate_figures_only.py
-```
-
-But you might prefer to open the file in VScode or your favorite python IDE and step through it cell-by-cell. (Or use Jupyter notebook or equivalent for the .ipynb version).
-
-## Full pipeline methods (complete)
-
-This second approach offers you the chance to extend the analysis, but requires installing more components.
-
 ## Pipeline Overview
 
-The complete pipeline is in a single notebook:
+The full pipeline (also called "Full Replication Workflow") runs all analyses from the original data. The complete pipeline is in a single notebook:
 
 - **`notebooks/pipeline_groups_new_mask.py`** — The authoritative, complete, runnable pipeline for all subjects/groups.
 
@@ -193,7 +194,7 @@ apallial_dmri/
 │   ├── qc_viewer.py             # QC visualization
 │   ├── generate_qc_report.py    # QC report generation
 │   ├── generate_connectivity_report.py # Connectivity reporting
-│   ├── generate_tract_metrics_report.py # Tract metrics reporting
+│   ├── generate_tract_metrics_report_v2.py # Tract metrics reporting
 │   ├── fixel_roi_analysis.py    # Fixel-based ROI analysis
 │   ├── fixel_cluster_analysis.py # Fixel cluster analysis
 │   ├── fod_direction_analysis.py # FOD direction analysis
@@ -382,35 +383,6 @@ Component names are exactly: `local`, `pre_bids`, `pre_preproc`, `post`.
    - Confirm subject folders exist under `data/derivatives/mrtrix_newmask/`
    - Confirm masks and FODs are present for all subjects
    - Do visual QC before launching heavy tractography/cleaning branches
-
-### Individual Scripts
-
-All pipeline scripts are in `functions/` and use `config1.yaml` for parameters:
-
-```bash
-# Atlas coregistration
-python functions/atlas_coregistration.py                    # All subjects
-python functions/atlas_coregistration.py --group CTRL       # CTRL only
-python functions/atlas_coregistration.py --subject sub-129-921-R1F
-
-# Generate tracts
-python functions/generate_tracts.py                         # All tracts, all subjects
-python functions/generate_tracts.py --tract Isocortex_Striatum --hemisphere left
-python functions/generate_tracts.py --group AP --dry-run
-
-# Clean tracts (MATLAB AFQ)
-python functions/clean_tracts.py --subject sub-129-921-R1F
-python functions/clean_tracts.py --group CTRL --tract Isocortex_Thalamus
-
-# View tracts
-python functions/view_tracts.py --subject sub-129-921-R1F
-python functions/view_tracts.py --group CTRL --template
-python functions/view_tracts.py --list-tracts
-```
-
-## Configuration
-
-Edit `config1.yaml` to customize paths, groups, processing parameters, and ROI/tract definitions.
 
 ## Getting Help
 

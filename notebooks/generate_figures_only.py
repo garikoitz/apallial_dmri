@@ -137,10 +137,15 @@ print(f"Config keys : {list(config.keys())[:6]} ...")
 # **Output**: `reports/figures/figure_2g.png`
 
 # %% [Figure 2g] Whole-brain tractogram with direction-colored streamlines
-# TODO: implement Figure 2g here.
 # Use FIGURES_DIR / "figure_2g.png" as the save path.
 # Keep imports local to this cell so each figure is self-contained.
-raise NotImplementedError("Figure 2g not yet implemented.")
+
+cmd = ["freeview",
+  "/Users/glerma/soft/apallial_dmri/data/derivatives/mrtrix_newmask/sub-AP72-862-901-NmF/ses-251210093342/dwi/t2w_highres_flip.nii.gz",
+  "-t", "/Users/glerma/soft/apallial_dmri/data/derivatives/mrtrix_newmask/sub-AP72-862-901-NmF/ses-251210093342/dwi/wholebrain/wholebrain_10k.trk"
+]
+print("Run the following command in a terminal to view the tractogram:")
+print(" ".join(cmd))
 
 # %% [markdown] Figure 2h — Coronal FODs + radar plots (top/bottom composite)
 # ## Figure 2h — Coronal FODs + radar plots
