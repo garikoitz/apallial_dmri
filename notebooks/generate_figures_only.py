@@ -32,27 +32,27 @@
 #
 # ### Figure 2g
 # Whole-brain tractogram with 1M streamlines (10,000 shown) of a representative
-# tAP-hCO mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
+# xenocortex (XCX) mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
 # indicate a dorso-ventral (DV) preference for water diffusion, red indicate an
 # anterior-posterior (AP) preference, and blue indicate a medial-lateral (ML)
 # preference. Dashed white lines delineate the location of the hCO graft.
 #
 # ### Figure 2h
-# Top- Coronal T2W MRI scans in control, apallial, and tAP-hCO mice at 4-5
+# Top- Coronal T2W MRI scans in control, apallial, and xenocortex (XCX) mice at 4-5
 # months (organoid age post-differentiation and animal age) with fiber
 # orientation distributions (FODs) estimated from superimposed diffusion-weighted
 # imaging (DWI). FODs are coded with the same criteria as in panel g. The cortex
 # or graft margin is indicated by a dashed line. The lack of an average diffusion
 # direction in the apallial cavity is consistent with the absence of tissue and
 # coherent microstructure. Scale bar, 1 mm. Bottom- Radar plots depict the
-# principal directions of water diffusion for control, apallial, and tAP-hCO
+# principal directions of water diffusion for control, apallial, and xenocortex (XCX)
 # mice. Dashed lines delineate isocortex, apallial cavity, and graft in control,
-# apallial, and tAP-hCO groups, respectively. Each plot depicts n= 4 mice per
+# apallial, and xenocortex (XCX) groups, respectively. Each plot depicts n= 4 mice per
 # condition, differentiated by the shape of the points and shade of the
 # respective color. See Extended Data Fig. 3h for the full legend.
 #
 # ### Extended Data Fig. 3i
-# Coronal T2w MRI in tAP-hCO ~4.7 months post-differentiation with fiber
+# Coronal T2w MRI in xenocortex (XCX) ~4.7 months post-differentiation with fiber
 # orientation distributions (FODs) estimated from diffusion-weighted imaging
 # (DWI) superimposed. Green FODs indicate a dorso-ventral (DV) preference for
 # water diffusion, red: anterior-posterior (AP), and blue: medial-lateral (ML).
@@ -62,13 +62,13 @@
 # The distribution of dominant directions of water diffusion (see methods).
 # rmANOVA: group main effect F (1, 6) = 3.000 (P=0.1340), direction main effect
 # F (1.082, 6.494) = 6.347 (P=0.0409), interaction F (1.082, 6.494) = 7.399
-# (P=0.0306); Holm-Sidak corrected posthoc tests for Control vs tAP-hCO: DV
+# (P=0.0306); Holm-Sidak corrected posthoc tests for Control vs xenocortex (XCX): DV
 # (P=0.0014), ML (P=0.5367), AP (P=0.1262).
 #
 # ### Extended Data Fig. 3k
 # Radar plots depicting the principal directions of the fixels across 11
 # consecutive slices. Rows represent the experimental groups: control (top),
-# apallial (middle), and tAP-hCO (bottom). Columns represent the fixed, indexed
+# apallial (middle), and xenocortex (XCX) (bottom). Columns represent the fixed, indexed
 # slice position (Slices 1-11) across all subjects. Note that the comparison in
 # Fig. 2h displays a specific, per-subject anatomical landmark (the anterior
 # margin of the thalamus), which maps variably to Slices 2-6 depending on the
@@ -127,7 +127,7 @@ print(f"Config keys : {list(config.keys())[:6]} ...")
 # ## Figure 2g — Whole-brain tractogram (direction-colored)
 #
 # Whole-brain tractogram with 1M streamlines (10,000 shown) of a representative
-# tAP-hCO mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
+# xenocortex (XCX) mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
 # indicate a dorso-ventral (DV) preference for water diffusion, red indicate an
 # anterior-posterior (AP) preference, and blue indicate a medial-lateral (ML)
 # preference. Dashed white lines delineate the location of the hCO graft.
@@ -150,13 +150,13 @@ print(" ".join(cmd))
 # %% [markdown] Figure 2h — Coronal FODs + radar plots (top/bottom composite)
 # ## Figure 2h — Coronal FODs + radar plots
 #
-# **Top**: Coronal T2W MRI scans in control, apallial, and tAP-hCO mice at 4-5
+# **Top**: Coronal T2W MRI scans in control, apallial, and xenocortex (XCX) mice at 4-5
 # months with fiber orientation distributions (FODs) estimated from DWI
 # superimposed. FODs are color-coded: green = DV, red = AP, blue = ML. The
 # cortex or graft margin is indicated by a dashed line. Scale bar, 1 mm.
 #
 # **Bottom**: Radar plots depicting the principal directions of water diffusion
-# for control, apallial, and tAP-hCO mice. Dashed lines delineate isocortex,
+# for control, apallial, and xenocortex (XCX) mice. Dashed lines delineate isocortex,
 # apallial cavity, and graft. Each plot depicts n=4 mice per condition,
 # differentiated by point shape and color shade.
 #
@@ -504,10 +504,10 @@ except Exception as e:
 plt.close(fig_2h)
 print("Figure 2h complete.")
 
-# %% [markdown] Extended Data Fig. 3i — tAP-hCO coronal FODs with graft margin
-# ## Extended Data Fig. 3i — tAP-hCO coronal FODs
+# %% [markdown] Extended Data Fig. 3i — xenocortex (XCX) coronal FODs with graft margin
+# ## Extended Data Fig. 3i — xenocortex (XCX) coronal FODs
 #
-# Coronal T2w MRI in tAP-hCO ~4.7 months post-differentiation with fiber
+# Coronal T2w MRI in xenocortex (XCX) ~4.7 months post-differentiation with fiber
 # orientation distributions (FODs) estimated from DWI superimposed. Green FODs
 # indicate DV preference, red: AP, blue: ML. Graft margin is indicated by white
 # dashed line. Scale bar, 1mm.
@@ -515,7 +515,7 @@ print("Figure 2h complete.")
 # **Inputs**: T2W image (`.mif`), FOD image (`.mif`), graft ROI outline
 # **Output**: `reports/figures/figure_3i.png`
 
-# %% [Extended Data Fig. 3i] tAP-hCO coronal FODs with graft margin
+# %% [Extended Data Fig. 3i] xenocortex (XCX) coronal FODs with graft margin
 # TODO: implement Figure 3i here.
 raise NotImplementedError("Figure 3i not yet implemented.")
 
@@ -525,7 +525,7 @@ raise NotImplementedError("Figure 3i not yet implemented.")
 # The distribution of dominant directions of water diffusion. rmANOVA: group
 # main effect F(1,6)=3.000 (P=0.1340), direction main effect F(1.082,6.494)=6.347
 # (P=0.0409), interaction F(1.082,6.494)=7.399 (P=0.0306). Holm-Sidak corrected
-# posthoc tests for Control vs tAP-hCO: DV (P=0.0014), ML (P=0.5367), AP
+# posthoc tests for Control vs xenocortex (XCX): DV (P=0.0014), ML (P=0.5367), AP
 # (P=0.1262).
 #
 # **Inputs**: Per-subject dominant direction data, group assignments from config
@@ -539,7 +539,7 @@ raise NotImplementedError("Figure 3j not yet implemented.")
 # ## Extended Data Fig. 3k — Fixel radar plots (11 slices × 3 groups)
 #
 # Radar plots depicting the principal directions of the fixels across 11
-# consecutive slices. Rows: control (top), apallial (middle), tAP-hCO (bottom).
+# consecutive slices. Rows: control (top), apallial (middle), xenocortex (XCX) (bottom).
 # Columns: fixed, indexed slice position (Slices 1-11) across all subjects.
 # Fixels were clustered into two main populations, aligned to a principal
 # reference direction, weighted by peak amplitude, and normalized by total
