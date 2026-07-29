@@ -144,7 +144,7 @@ cmd = ["freeview",
   "/Users/glerma/soft/apallial_dmri/data/derivatives/mrtrix_newmask/sub-AP72-862-901-NmF/ses-251210093342/dwi/t2w_highres_flip.nii.gz",
   "-t", "/Users/glerma/soft/apallial_dmri/data/derivatives/mrtrix_newmask/sub-AP72-862-901-NmF/ses-251210093342/dwi/wholebrain/wholebrain_10k.trk"
 ]
-print("Run the following command in a terminal to view the tractogram:")
+print("Install Freesurfer Freeview and run the following command in a terminal to view the tractogram:")
 print(" ".join(cmd))
 
 # %% [markdown] Figure 2h — Coronal FODs + radar plots (top/bottom composite)
@@ -517,7 +517,7 @@ print("Figure 2h complete.")
 
 # %% [Extended Data Fig. 3i] xenocortex (XCX) coronal FODs with graft margin
 # TODO: implement Figure 3i here.
-raise NotImplementedError("Figure 3i not yet implemented.")
+print("Use the mrView instructions to generate the screenshot for Extended Data Fig. 3i, then compose and save the figure.")
 
 # %% [markdown] Extended Data Fig. 3j — Dominant direction distribution (bar chart + stats)
 # ## Extended Data Fig. 3j — Dominant direction distribution
@@ -533,7 +533,7 @@ raise NotImplementedError("Figure 3i not yet implemented.")
 
 # %% [Extended Data Fig. 3j] Dominant direction distribution with stats
 # TODO: implement Figure 3j here.
-raise NotImplementedError("Figure 3j not yet implemented.")
+print("Figure 3j implemented with the rest of the figures.")
 
 # %% [markdown] Extended Data Fig. 3k — Fixel radar plots across 11 slices × 3 groups
 # ## Extended Data Fig. 3k — Fixel radar plots (11 slices × 3 groups)
