@@ -1077,7 +1077,7 @@ def analyze_all_groups_comparison(hemisphere, config, output_dir, use_shrink=Fal
     angles += angles[:1]
     
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'XCX\n(graft + Tx)']
     group_colors_bg = ['#e8f5e9', '#ffebee', '#e3f2fd']  # Light backgrounds
     
     for row_idx, (group, label, bg_color) in enumerate(zip(row_groups, group_labels, group_colors_bg)):
@@ -1634,7 +1634,7 @@ comparable anatomical locations
 across subjects:
 • CTRL: native isocortex
 • AP: graft without transplant
-• APTR: graft with transplant
+• XCX: graft with transplant
 """
     
     ax_bottom_text.text(0.05, 0.95, bottom_explanation, transform=ax_bottom_text.transAxes,

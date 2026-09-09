@@ -1405,7 +1405,7 @@ def generate_plotly_density_script(ctrl_stats: dict, aptr_stats: dict, ctrl_data
         compData.push({{
             x: {json.dumps(aptr_labels)},
             y: {json.dumps(aptr_means)},
-            name: 'APTR (Graft)',
+            name: 'XCX (Graft)',
             type: 'bar',
             error_y: {{
                 type: 'data',

@@ -918,7 +918,7 @@ def analyze_fixel_3group_comparison(hemisphere: str, cfg: dict, output_dir: str,
     angles += angles[:1]
     
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'XCX\n(graft + Tx)']
     group_colors_bg = ['#e8f5e9', '#ffebee', '#e3f2fd']
     
     for row_idx, (group, label, bg_color) in enumerate(zip(row_groups, group_labels, group_colors_bg)):

@@ -413,7 +413,7 @@ def plot_3group_radar_v11(all_group_data, target_n_slices, y_max,
         mouse_markers = ['o', 's', '^', 'D']
 
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'XCX\n(graft + Tx)']
 
     radar_labels_list = ['DV', 'ML', 'AP']
     angles_radar = np.linspace(0, 2 * np.pi, 3, endpoint=False)

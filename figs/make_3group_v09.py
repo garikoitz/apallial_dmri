@@ -226,7 +226,7 @@ def plot_3group_radar_v09(all_group_data, target_n_slices, y_max,
     - Saves both PNG and SVG
     """
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'XCX\n(graft + Tx)']
     group_bg = ['#e8f5e9', '#ffebee', '#e3f2fd']
     subject_colors = ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12']
 
@@ -423,7 +423,7 @@ def plot_3group_components_v09(all_group_data, target_n_slices, y_max,
     Same as plot_3group_component_lines but bilateral + v09 naming.
     """
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_titles = ['CTRL (isocortex)', 'AP (graft, no Tx)', 'APTR (graft + Tx)']
+    group_titles = ['CTRL (isocortex)', 'AP (graft, no Tx)', 'XCX (graft + Tx)']
     group_bg = ['#e8f5e9', '#ffebee', '#e3f2fd']
     subject_markers = ['o', 's', '^', 'D', 'v']
 

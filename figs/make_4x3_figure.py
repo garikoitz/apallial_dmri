@@ -350,7 +350,7 @@ gs = fig.add_gridspec(4, 3, hspace=0.25, wspace=0.15,
                        height_ratios=[1, 1, 0.9, 0.9])
 
 groups_order = ['CTRL', 'AP', 'APTR']
-group_titles = ['CTRL (isocortex)', 'AP (graft)', 'APTR (graft + Tx)']
+group_titles = ['CTRL (isocortex)', 'AP (graft)', 'XCX (graft + Tx)']
 
 # Row 1: FOD screenshots
 for col, group in enumerate(groups_order):
@@ -407,7 +407,7 @@ fig.text(0.02, 0.40, 'Row 3: Single Mouse\n(central slice)', fontsize=11,
 fig.text(0.02, 0.15, 'Row 4: Group Average\n(all subjects)', fontsize=11,
          fontweight='bold', rotation=90, va='center')
 
-fig.suptitle('Fixel Direction Analysis — CTRL vs AP vs APTR (left hemisphere)',
+fig.suptitle('Fixel Direction Analysis — CTRL vs AP vs XCX (left hemisphere)',
              fontsize=16, fontweight='bold', y=0.98)
 
 save_path = REPORTS / 'fixel_4x3_comparison.png'

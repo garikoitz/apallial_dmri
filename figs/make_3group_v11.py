@@ -260,7 +260,7 @@ def plot_3group_radar_v11(all_group_data, target_n_slices, y_max,
     - Slice 0 already dropped in data loading
     """
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'APTR\n(graft + Tx)']
+    group_labels = ['CTRL\n(isocortex)', 'AP\n(graft, no Tx)', 'XCX\n(graft + Tx)']
 
     radar_labels_list = ['DV', 'ML', 'AP']
     angles_radar = np.linspace(0, 2 * np.pi, 3, endpoint=False)
@@ -478,7 +478,7 @@ def plot_3group_components_v11(all_group_data, target_n_slices, y_max,
     - Slice labels start at 1 (slice 0 was dropped in data loading)
     """
     row_groups = ['CTRL', 'AP', 'APTR']
-    group_titles = ['CTRL (isocortex)', 'AP (graft, no Tx)', 'APTR (graft + Tx)']
+    group_titles = ['CTRL (isocortex)', 'AP (graft, no Tx)', 'XCX (graft + Tx)']
     group_bg = ['#e8f5e9', '#ffebee', '#e3f2fd']
     subject_markers = ['o', 's', '^', 'D']
 

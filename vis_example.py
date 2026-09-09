@@ -10,7 +10,7 @@ def generate_banana_data():
         noise = np.random.uniform(-0.1, 0.1, (50, 3)) 
         ap_data.append(noise)
 
-    # 2. APTR MICE (Graft): Strong Ventral-Dorsal vectors
+    # 2. XCX MICE (Graft): Strong Ventral-Dorsal vectors
     # 5 slices. Slices 0 & 4 are weaker (edges), 1-3 are strong (center).
     aptr_data = []
     for i in range(5):
@@ -58,7 +58,7 @@ def plot_rose_summary(ap_data, aptr_data):
         ax.set_title(f"AP Slice {i+1}\n(Fluid/Noise)", fontsize=9)
         ax.set_theta_zero_location("N")
 
-    # --- ROW 2: APTR MICE (Graft) ---
+    # --- ROW 2: XCX MICE (Graft) ---
     for i, vecs in enumerate(aptr_data):
         ax = axes[1, i]
         magnitudes = np.linalg.norm(vecs, axis=1)
@@ -72,10 +72,10 @@ def plot_rose_summary(ap_data, aptr_data):
         
         ax.set_ylim(0, MAX_LIMIT)
         ax.set_yticks([])
-        ax.set_title(f"APTR Slice {i+1}\n(Graft)", fontsize=9, color='blue')
+        ax.set_title(f"XCX Slice {i+1}\n(Graft)", fontsize=9, color='blue')
         ax.set_theta_zero_location("N")
 
-    plt.suptitle("FOD Directionality: AP (Fluid) vs APTR (Graft)", fontsize=14, fontweight='bold')
+    plt.suptitle("FOD Directionality: AP (Fluid) vs XCX (Graft)", fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.show()
 

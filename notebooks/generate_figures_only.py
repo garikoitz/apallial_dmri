@@ -35,7 +35,7 @@
 # xenocortex (XCX) mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
 # indicate a dorso-ventral (DV) preference for water diffusion, red indicate an
 # anterior-posterior (AP) preference, and blue indicate a medial-lateral (ML)
-# preference. Dashed white lines delineate the location of the hCO graft.
+# preference. Dashed white lines delineate the location of the XCX graft.
 #
 # ### Figure 2h
 # Top- Coronal T2W MRI scans in control, apallial, and xenocortex (XCX) mice at 4-5
@@ -130,7 +130,7 @@ print(f"Config keys : {list(config.keys())[:6]} ...")
 # xenocortex (XCX) mouse, overlaid on a T2-weighted (T2W) image. Green streamlines
 # indicate a dorso-ventral (DV) preference for water diffusion, red indicate an
 # anterior-posterior (AP) preference, and blue indicate a medial-lateral (ML)
-# preference. Dashed white lines delineate the location of the hCO graft.
+# preference. Dashed white lines delineate the location of the XCX graft.
 #
 # **Inputs**: Whole-brain tractogram (`.tck`), T2W background (`.mif`), graft
 #   ROI for dashed outline
@@ -261,8 +261,8 @@ GROUP_MOUSE_COLORS_2H = {
 MOUSE_MARKERS_2H = ["o", "s", "^", "D"]
 
 GROUPS_ORDER_2H = ["CTRL", "AP", "APTR"]
-GROUP_TITLES_2H = ["Control (isocortex)", "Apallial (graft)", r"$t^{AP}$-hCO (graft + Tx)"]
-GROUP_DISPLAY_2H = {"CTRL": "Control", "AP": "Apallial", "APTR": r"$t^{AP}$-hCO"}
+GROUP_TITLES_2H = ["Control (isocortex)", "Apallial (graft)", "XCX (graft + Tx)"]
+GROUP_DISPLAY_2H = {"CTRL": "Control", "AP": "Apallial", "APTR": "XCX"}
 
 
 # ============================================================
@@ -478,7 +478,7 @@ fig_2h.text(0.015, 0.30, "Individual Mice\n(first-thalamus,\nbilateral)",
             fontsize=10, fontweight="bold", rotation=90, va="center")
 
 fig_2h.suptitle("FOD Direction Analysis — Control vs Apallial vs "
-                r"$t^{AP}$-hCO (bilateral)", fontsize=14, fontweight="bold", y=0.97)
+                "XCX (bilateral)", fontsize=14, fontweight="bold", y=0.97)
 
 # Save PNG
 out_png_2h = FIGURES_DIR / "figure_2h.png"

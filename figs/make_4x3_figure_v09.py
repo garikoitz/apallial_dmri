@@ -342,7 +342,7 @@ gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.20,
                        top=0.93, bottom=0.04, left=0.08, right=0.95)
 
 groups_order = ['CTRL', 'AP', 'APTR']
-group_titles = ['Control (isocortex)', 'Apallial (graft)', '$t^{AP}$-hCO (graft + Tx)']
+group_titles = ['Control (isocortex)', 'Apallial (graft)', 'XCX (graft + Tx)']
 
 # Row 1: FOD screenshots
 for col, group in enumerate(groups_order):
@@ -362,7 +362,7 @@ for col, group in enumerate(groups_order):
         ax.set_ylabel('Fixels', fontsize=14, fontweight='bold', labelpad=20)
 
 # Row 3: Per-mouse radar (4 mice, bilateral ROI)
-GROUP_DISPLAY = {'CTRL': 'Control', 'AP': 'Apallial', 'APTR': '$t^{AP}$-hCO'}
+GROUP_DISPLAY = {'CTRL': 'Control', 'AP': 'Apallial', 'APTR': 'XCX'}
 for col, group in enumerate(groups_order):
     ax = fig.add_subplot(gs[2, col], projection='polar')
     mice = per_mouse_data.get(group, [])
@@ -380,7 +380,7 @@ fig.text(0.02, 0.50, 'Row 2: Fixel Sticks', fontsize=12, fontweight='bold',
 fig.text(0.02, 0.20, 'Row 3: Individual Mice\n(first-thalamus slice, bilateral)', fontsize=11,
          fontweight='bold', rotation=90, va='center')
 
-fig.suptitle('Fixel Direction Analysis — Control vs Apallial vs $t^{AP}$-hCO (bilateral) v09 [newmask]',
+fig.suptitle('Fixel Direction Analysis — Control vs Apallial vs XCX (bilateral) v09 [newmask]',
              fontsize=16, fontweight='bold', y=0.97)
 
 save_path = REPORTS / 'fixel_4x3_comparison_v09.png'
