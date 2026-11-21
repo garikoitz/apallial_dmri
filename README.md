@@ -198,6 +198,7 @@ apallial_dmri/
 │   ├── fixel_roi_analysis.py    # Fixel-based ROI analysis
 │   ├── fixel_cluster_analysis.py # Fixel cluster analysis
 │   ├── fod_direction_analysis.py # FOD direction analysis
+│   ├── fixel_direction_rmsd.py  # Direction-vector r.m.s.d. (values reported in the paper)
 │   ├── collect_bilateral_data.py # Bilateral data collection
 │   ├── extract_passthrough_tracts.py # Passthrough tract extraction
 │   ├── run_passthrough_pipeline.py   # Full passthrough pipeline
