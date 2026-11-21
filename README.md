@@ -205,11 +205,10 @@ apallial_dmri/
 │   ├── validate_config.py       # Config validation
 │   └── _tests_/                 # Test suite
 │
-├── notebooks/               # Pipeline notebook + documentation
+├── notebooks/               # Pipeline and figure notebooks
 │   ├── pipeline_groups_new_mask.py  # Main pipeline notebook (all subjects/groups)
 │   ├── generate_figures_only.py     # Figures-only notebook (Option A, one figure per cell)
-│   ├── generate_figures_only.ipynb  # Same as .py, in native Jupyter format
-│   └── methods.md                   # Methods documentation
+│   └── generate_figures_only.ipynb  # Same as .py, in native Jupyter format
 │
 ├── utils/                   # Utility modules
 │   ├── setup_data.py        # OSF data download & extraction
