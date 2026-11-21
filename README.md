@@ -208,7 +208,7 @@ apallial_dmri/
 ├── notebooks/               # Pipeline and figure notebooks
 │   ├── pipeline_groups_new_mask.py  # Main pipeline notebook (all subjects/groups)
 │   ├── generate_figures_only.py     # Figures-only notebook (Option A, one figure per cell)
-│   └── generate_figures_only.ipynb  # Same as .py, in native Jupyter format
+│   └── figure_helpers.py            # Plotting/data-loading helpers for generate_figures_only.py
 │
 ├── utils/                   # Utility modules
 │   ├── setup_data.py        # OSF data download & extraction
